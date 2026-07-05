@@ -64,13 +64,21 @@ async function listCertificates() {
 function renderCertificates() {
   const select = el("cert");
   select.innerHTML = "";
-  certificates.forEach((cert, i) => {
-    const option = document.createElement("option");
-    const until = (cert.validTo || "").slice(0, 10);
-    option.value = i;
-    option.textContent = `${commonName(cert.subject)} (${cert.tokenLabel || "token"}, valid until ${until})`;
-    select.appendChild(option);
-  });
+  // Multi-cert tokens (ProxKey ships auth + signing + encryption certs) list
+  // the signing-capable ones first, tagged, like another vendor's key usage filters.
+  const canSign = (cert) =>
+    !!(cert.keyUsage && (cert.keyUsage.digitalSignature || cert.keyUsage.nonRepudiation));
+  certificates
+    .map((cert, i) => ({ cert, i }))
+    .sort((a, b) => canSign(b.cert) - canSign(a.cert))
+    .forEach(({ cert, i }) => {
+      const option = document.createElement("option");
+      const until = (cert.validTo || "").slice(0, 10);
+      const tag = canSign(cert) ? "signing, " : "";
+      option.value = i;
+      option.textContent = `${commonName(cert.subject)} (${tag}${cert.tokenLabel || "token"}, valid until ${until})`;
+      select.appendChild(option);
+    });
   select.disabled = certificates.length === 0;
 }
 

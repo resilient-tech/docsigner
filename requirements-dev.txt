@@ -1,0 +1,10 @@
+# Development dependencies: everything needed to run the test suites.
+# Runtime deps come from each component's own package (core/, server/, host/).
+#
+#   pip install -e ./core -e ./server -e ./host
+#   pip install -r requirements-dev.txt
+#   pytest core/tests server/tests host/tests
+
+pytest
+httpx        # FastAPI's TestClient needs it for server/tests
+cryptography # host/tests build a self-signed cert against the fake PKCS#11 layer

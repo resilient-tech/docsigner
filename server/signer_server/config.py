@@ -7,6 +7,27 @@ from pathlib import Path
 from typing import Optional
 
 
+def load_dotenv(path: str = ".env") -> None:
+    """Populate os.environ from a KEY=VALUE .env file if one exists.
+
+    Real environment variables always win (setdefault), so exported vars and
+    test setups are never overridden. Only enough syntax to read .env.example:
+    blank lines and #-comments are skipped, surrounding quotes are stripped.
+    """
+    try:
+        lines = Path(path).read_text().splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 @dataclass(frozen=True)
 class Config:
     session_dir: Path
@@ -25,6 +46,7 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
+        load_dotenv()
         default_base = Path(tempfile.gettempdir()) / "signer-server"
         return cls(
             session_dir=Path(os.environ.get("SESSION_DIR", default_base / "sessions")),

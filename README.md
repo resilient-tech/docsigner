@@ -39,16 +39,17 @@ Standards: PAdES baseline profiles per ETSI EN 319 142-1. B-B and B-T work today
 
 ## Run the server
 
-Works on Linux, macOS, and Windows. Use `python3` on Linux/macOS, `python` on Windows.
+Works on Linux, macOS, and Windows. Needs Python 3.10 or newer. Use `python3` on Linux/macOS, `python` on Windows.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -e ./core
-pip install -r server/requirements.txt
+pip install -e ./core -e ./server
 cp .env.example .env             # Windows: copy .env.example .env
 python -m signer_server          # http://localhost:8000
 ```
+
+`.env` is read from the directory you launch the server in. Run `python -m signer_server` from the repo root so it picks up the `.env` you just copied.
 
 ## Try the demo
 
@@ -127,7 +128,9 @@ or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.
 ## Tests
 
 ```bash
-pytest core/tests server/tests host/tests    # 59 tests
+pip install -e ./core -e ./server -e ./host   # if not already installed
+pip install -r requirements-dev.txt           # pytest + test-only deps
+pytest core/tests server/tests host/tests     # 61 tests
 cd js && node --test                          # 10 tests
 ```
 

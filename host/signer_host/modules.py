@@ -84,6 +84,7 @@ _WELL_KNOWN_POSIX = {
         "/usr/local/lib/libeToken.dylib",
         "/Library/Frameworks/eToken.framework/Versions/A/libeToken.dylib",
         # WatchData ProxKey
+        "/usr/local/lib/wdProxKeyUsbKeyTool/libwdpkcs_Proxkey.dylib",
         "/usr/local/lib/libwdpkcs_SignatureP11.dylib",
         "/Library/WatchData/ProxKey/lib/libwdpkcs_SignatureP11.dylib",
     ],

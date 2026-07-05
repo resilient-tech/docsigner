@@ -60,14 +60,30 @@ def _iter_tokens(stats):
             log.warning("cannot load PKCS#11 module %s: %s", path, exc)
             continue
         stats["loaded"] += 1
-        try:
-            tokens = list(lib.get_tokens())
-        except Exception as exc:
-            log.warning("cannot list tokens for %s: %s", path, exc)
-            continue
-        for token in tokens:
+        for token in _tokens_on(lib, path):
             stats["tokens"] += 1
             yield path, token
+
+
+def _tokens_on(lib, path):
+    """Yield the tokens across a module's slots, one slot at a time.
+
+    Some drivers (e.g. WatchData ProxKey) expose several reader slots and
+    return CKR_DEVICE_REMOVED for the empty ones. python-pkcs11's get_tokens()
+    aborts the whole scan on the first such slot, which hides a real token
+    sitting in another slot. Walk the present slots individually and skip the
+    ones that raise, so one bad slot never masks a good token.
+    """
+    try:
+        slots = lib.get_slots(token_present=True)
+    except Exception as exc:
+        log.warning("cannot list slots for %s: %s", path, exc)
+        return
+    for slot in slots:
+        try:
+            yield slot.get_token()
+        except Exception as exc:
+            log.warning("skipping slot %s on %s: %s", getattr(slot, "slot_id", "?"), path, exc)
 
 
 def _token_label(token):
@@ -101,6 +117,28 @@ def _name_to_string(name):
     return ", ".join(parts)
 
 
+# X.509 key usage flag -> contract field name (mirrors another vendor's KeyUsagesModel,
+# so pages can filter signing certificates on multi-cert tokens).
+_KEY_USAGE_FIELDS = {
+    "digital_signature": "digitalSignature",
+    "non_repudiation": "nonRepudiation",
+    "key_encipherment": "keyEncipherment",
+    "data_encipherment": "dataEncipherment",
+    "key_agreement": "keyAgreement",
+    "key_cert_sign": "keyCertSign",
+    "crl_sign": "crlSign",
+}
+
+
+def _key_usage(cert):
+    """Key usage booleans; all false when the extension is absent or unreadable."""
+    try:
+        usage_set = cert.key_usage_value.native if cert.key_usage_value else set()
+    except Exception:
+        usage_set = set()
+    return {field: flag in usage_set for flag, field in _KEY_USAGE_FIELDS.items()}
+
+
 def _cert_info(der):
     """Contract fields for one DER certificate (tokenLabel/moduleName added by callers)."""
     cert = x509.Certificate.load(der)
@@ -114,6 +152,7 @@ def _cert_info(der):
         "validFrom": _iso_utc(validity["not_before"].native),
         "validTo": _iso_utc(validity["not_after"].native),
         "keyType": _KEY_TYPES.get(algorithm, algorithm.upper()),
+        "keyUsage": _key_usage(cert),
     }
 
 

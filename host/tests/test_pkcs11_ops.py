@@ -110,12 +110,35 @@ class FakeToken:
         return FakeSession(self)
 
 
-class FakeLib:
-    def __init__(self, tokens):
-        self.tokens = tokens
+class FakeSlot:
+    """One slot; get_token() raises when the slot is empty or broken,
+    which is exactly what ProxKey's driver does for its unused readers."""
 
-    def get_tokens(self):
-        return iter(self.tokens)
+    def __init__(self, token=None, error=None, slot_id=0):
+        self._token = token
+        self._error = error
+        self.slot_id = slot_id
+
+    def get_token(self):
+        if self._error is not None:
+            raise self._error
+        return self._token
+
+
+class FakeLib:
+    """Mirrors the python-pkcs11 surface the host uses: slots, not get_tokens().
+
+    Deliberately has no get_tokens() so a regression back to the aborting
+    whole-scan call fails these tests immediately.
+    """
+
+    def __init__(self, tokens=None, slots=None):
+        if slots is None:
+            slots = [FakeSlot(token, slot_id=i) for i, token in enumerate(tokens or [])]
+        self.slots = slots
+
+    def get_slots(self, token_present=False):
+        return list(self.slots)
 
 
 def rsa_token(private_key, der, label="RSA Token"):
@@ -364,3 +387,73 @@ def test_cancelled_pin_maps_to_user_cancelled(fake_env, rsa_key):
         pkcs11_ops.sign_hashes(hashlib.sha1(der).hexdigest(), [digest], "sha256",
                                pin_provider=cancel)
     assert err.value.code == "USER_CANCELLED"
+
+
+def test_bad_slot_does_not_hide_good_token(monkeypatch, rsa_key):
+    """Regression: ProxKey exposes empty reader slots that raise on access.
+    One bad slot must never mask a token sitting in another slot."""
+    der = make_cert(rsa_key, "ProxKey User")
+    lib = FakeLib(slots=[
+        FakeSlot(error=p11ex.DeviceRemoved(), slot_id=0),
+        FakeSlot(rsa_token(rsa_key, der, label="WD PROXKey"), slot_id=1),
+        FakeSlot(error=p11ex.TokenNotPresent(), slot_id=2),
+    ])
+    monkeypatch.setattr(modules, "discover_modules", lambda: ["/fake/wd.dylib"])
+    monkeypatch.setattr(pkcs11_ops, "load_library", lambda path: lib)
+
+    certs = pkcs11_ops.list_certificates()
+    assert len(certs) == 1
+    assert certs[0]["tokenLabel"] == "WD PROXKey"
+
+    digest = hashlib.sha256(b"payload").digest()
+    signatures = pkcs11_ops.sign_hashes(
+        certs[0]["thumbprint"], [digest], "sha256", pin_provider=lambda label: "1234"
+    )
+    assert len(signatures) == 1
+
+
+def test_duplicate_cert_across_modules_deduplicated(monkeypatch, rsa_key):
+    """The same token reachable through two drivers must list its certs once."""
+    der = make_cert(rsa_key, "Dup Holder")
+    libs = {
+        "/fake/a.so": FakeLib([rsa_token(rsa_key, der)]),
+        "/fake/b.so": FakeLib([rsa_token(rsa_key, der)]),
+    }
+    monkeypatch.setattr(modules, "discover_modules", lambda: list(libs))
+    monkeypatch.setattr(pkcs11_ops, "load_library", lambda path: libs[path])
+    assert len(pkcs11_ops.list_certificates()) == 1
+
+
+def test_key_usage_reported_for_signing_cert(fake_env, rsa_key):
+    """Multi-cert tokens need keyUsage so UIs can pick the signing certificate."""
+    name = cx509.Name([cx509.NameAttribute(NameOID.COMMON_NAME, "Usage Holder")])
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    cert = (
+        cx509.CertificateBuilder()
+        .subject_name(name).issuer_name(name)
+        .public_key(rsa_key.public_key())
+        .serial_number(cx509.random_serial_number())
+        .not_valid_before(now - timedelta(days=1))
+        .not_valid_after(now + timedelta(days=365))
+        .add_extension(cx509.KeyUsage(
+            digital_signature=True, content_commitment=True,
+            key_encipherment=False, data_encipherment=False,
+            key_agreement=False, key_cert_sign=False, crl_sign=False,
+            encipher_only=False, decipher_only=False), critical=True)
+        .sign(rsa_key, chashes.SHA256())
+    )
+    der = cert.public_bytes(Encoding.DER)
+    fake_env([rsa_token(rsa_key, der)])
+    usage = pkcs11_ops.list_certificates()[0]["keyUsage"]
+    assert usage["digitalSignature"] is True
+    assert usage["nonRepudiation"] is True  # content_commitment is its new name
+    assert usage["keyEncipherment"] is False
+
+
+def test_key_usage_all_false_when_extension_absent(fake_env, rsa_key):
+    der = make_cert(rsa_key, "No Usage Ext")
+    fake_env([rsa_token(rsa_key, der)])
+    usage = pkcs11_ops.list_certificates()[0]["keyUsage"]
+    assert set(usage) == {"digitalSignature", "nonRepudiation", "keyEncipherment",
+                          "dataEncipherment", "keyAgreement", "keyCertSign", "crlSign"}
+    assert not any(usage.values())

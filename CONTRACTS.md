@@ -136,6 +136,15 @@ Result:
       "validFrom": "2025-01-01T00:00:00Z",
       "validTo": "2027-01-01T00:00:00Z",
       "keyType": "RSA | EC",
+      "keyUsage": {
+        "digitalSignature": true,
+        "nonRepudiation": true,
+        "keyEncipherment": false,
+        "dataEncipherment": false,
+        "keyAgreement": false,
+        "keyCertSign": false,
+        "crlSign": false
+      },
       "tokenLabel": "ePass2003",
       "moduleName": "libcastle.so"
     }
