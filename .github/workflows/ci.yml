@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          pip install -e ./core -e ./host
+          pip install -r server/requirements.txt pytest httpx
+      - name: Test core
+        run: pytest core/tests -q
+      - name: Test server
+        run: pytest server/tests -q
+      - name: Test host
+        run: pytest host/tests -q
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test signer-js + extension checks
+        working-directory: js
+        run: node --test

@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+# signer-core lives in this repo; the path below resolves when you run
+# `pip install -r requirements.txt` from the server/ directory.
+../core

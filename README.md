@@ -1,0 +1,138 @@
+# OpenSigner
+
+Open-source digital signatures for PDFs. Sign with a USB token (DSC) or smartcard from any website, or with a key held on your own server. Python backend, plain JS everywhere else.
+
+The design follows a simple rule: the PDF never leaves the server. The browser only carries a 32-byte hash out and a ~256-byte signature back. A 200 MB file signs as fast as a 200 KB one.
+
+Status: working end to end. Signed output validates as PAdES. Not yet published to extension stores.
+
+## How it works
+
+```
+Web page ──(cert, 32-byte hash, signature)── Your server (pyHanko, PDF stays here)
+   │
+Extension ──(native messaging)── opensigner-host ──(PKCS#11)── USB token
+```
+
+1. The page asks the extension for the user's certificates. The extension asks `opensigner-host`, a small native app that reads them from the token over PKCS#11.
+2. The page sends the chosen certificate to your server. The server prepares the signature inside the PDF and returns the hash to sign.
+3. The token signs the hash (PIN prompt happens in the native app, the PIN never touches the browser or the network).
+4. The server embeds the signature and hands back a download link.
+
+Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a `.p12` configured.
+
+## What's in this repo
+
+| Folder | What it is |
+|---|---|
+| `core/` | `signer-core`, the Python signing library (pyHanko underneath) |
+| `server/` | `signer-server`, a small FastAPI reference server |
+| `js/` | `opensigner.js`, the page-side library (single file, no deps) |
+| `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
+| `host/` | `opensigner-host`, the native messaging app that talks to tokens |
+| `demo/` | A working demo page, also the integration example |
+| `spike/` | Phase 0 proof scripts, kept as executable documentation |
+| `CONTRACTS.md` | The frozen protocol between all components |
+| `PLAN.md` | The build plan and architecture decisions |
+
+Standards: PAdES baseline profiles per ETSI EN 319 142-1. B-B and B-T work today (B-T needs a TSA URL). B-LT and B-LTA are implemented for server-side signing; for token sessions they currently return a clear error pointing at the server-side path. RSA and ECDSA keys, SHA-256/384/512.
+
+## Run the server
+
+Works on Linux, macOS, and Windows. Use `python3` on Linux/macOS, `python` on Windows.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -e ./core
+pip install -r server/requirements.txt
+cp .env.example .env             # Windows: copy .env.example .env
+python -m signer_server          # http://localhost:8000
+```
+
+## Try the demo
+
+With the server running, serve the demo folder (browsers block `file://` fetch):
+
+```bash
+python3 -m http.server 8080 --directory demo
+```
+
+Open http://localhost:8080. To sign with a token you also need the extension and the host installed (next 2 sections). Server-side signing needs neither.
+
+## Install the extension (development)
+
+Chrome / Edge / Brave: open `chrome://extensions`, enable Developer mode, Load unpacked, pick `extension/`. Note the extension ID it gets, the host installer needs it.
+
+Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → pick `extension/manifest.json`. Firefox also asks you to grant site access per site in the extension's settings.
+
+## Install the native host
+
+The host needs Python or a built binary, plus your token's driver installed (the driver ships the PKCS#11 module the host loads).
+
+From source, for development:
+
+```bash
+pip install -e ./host
+opensigner-host-cli list         # should print your token's certificates
+```
+
+Build a single-file binary for your OS:
+
+```bash
+pip install pyinstaller
+pyinstaller host/packaging/opensigner-host.spec
+```
+
+Then register it with your browsers (pass your extension ID):
+
+```bash
+host/packaging/install.sh <chrome-extension-id>     # macOS / Linux
+host\packaging\install.bat <chrome-extension-id>    # Windows
+```
+
+The installer copies the binary and writes the native messaging manifests for Chrome, Chromium, Edge, Brave, and Firefox.
+
+### Token support
+
+Any device with a PKCS#11 driver. Known module paths ship for OpenSC, ePass2003, WatchData ProxKey, SafeNet eToken, and eMudhra tokens. Yours somewhere else? Point the env var at it:
+
+```bash
+export OPENSIGNER_PKCS11_MODULES=/path/to/your/pkcs11.so
+```
+
+or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.json` on Windows).
+
+## Use it from your own page
+
+```html
+<script src="js/opensigner.iife.js"></script>
+<script>
+  const signer = new OpenSigner();
+  await signer.init();
+  const certs = await signer.listCertificates();
+  // POST /api/signatures with your PDF + certs[i].certificate,
+  // sign the returned hash:
+  const { signatures } = await signer.signHash({
+    thumbprint: certs[0].thumbprint,
+    hashes: [toSignHash],
+    digestAlgorithm: "sha256",
+  });
+  // POST /api/signatures/{session_id}/complete with signatures[0]
+</script>
+```
+
+`demo/demo.js` is the full worked example, including error handling for every error code in `CONTRACTS.md`.
+
+## Tests
+
+```bash
+pytest core/tests server/tests host/tests    # 59 tests
+cd js && node --test                          # 10 tests
+```
+
+Everything runs without hardware: token logic is tested against a fake PKCS#11 layer that does real RSA math, and the whole HTTP flow is tested with in-memory keys. Testing with a real DSC token is a manual step before releases: plug it in and run `opensigner-host-cli list`, then sign through the demo.
+
+## Before publishing
+
+Things this repo still needs before a public release: a license file (pick one), extension store listings, signed host binaries (Authenticode on Windows, notarization on macOS), and real-token runs on all 3 OSes. `PLAN.md` phase 5 has the details.

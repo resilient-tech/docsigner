@@ -1,0 +1,12 @@
+{
+  "name": "opensigner",
+  "version": "0.1.0",
+  "description": "Browser library for the OpenSigner document signing stack.",
+  "type": "module",
+  "main": "opensigner.js",
+  "scripts": {
+    "build": "node build-iife.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

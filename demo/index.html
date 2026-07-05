@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenSigner demo</title>
+  <!--
+    Token signing, end to end. Needs 3 things running:
+      1. signer-server on http://localhost:8000 (see server/)
+      2. the OpenSigner extension loaded in this browser (see extension/)
+      3. the native host installed (see host/)
+    Serve the repo root over HTTP, e.g.:  python3 -m http.server 8080
+    then open http://localhost:8080/demo/
+  -->
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      font-size: 15px;
+      color: #1a1a1a;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    h1 { font-size: 22px; }
+    fieldset {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin: 0 0 16px;
+      padding: 12px 16px 16px;
+    }
+    legend { font-weight: 600; padding: 0 6px; }
+    label { display: block; margin: 8px 0 4px; }
+    select, input[type="text"] {
+      font: inherit;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+    }
+    .inline { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+    .inline input { width: auto; }
+    button {
+      font: inherit;
+      padding: 8px 20px;
+      border-radius: 4px;
+      border: 1px solid #1a56db;
+      background: #1a56db;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #fff; color: #1a56db; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      display: none;
+      white-space: pre-wrap;
+    }
+    #status.info { display: block; background: #eef4ff; }
+    #status.error { display: block; background: #fdecec; }
+    #status.success { display: block; background: #e8f7ee; }
+    #status a { color: inherit; }
+  </style>
+</head>
+<body>
+  <h1>OpenSigner demo</h1>
+  <p>Signs a PDF with a certificate on your USB token. The PDF goes to your own server; only a hash reaches the token.</p>
+
+  <fieldset>
+    <legend>1. Document</legend>
+    <input type="file" id="file" accept="application/pdf,.pdf">
+  </fieldset>
+
+  <fieldset>
+    <legend>2. Certificate</legend>
+    <button id="list" class="secondary" type="button">List certificates</button>
+    <label for="cert">Signer</label>
+    <select id="cert" disabled>
+      <option>Click "List certificates" first</option>
+    </select>
+  </fieldset>
+
+  <fieldset>
+    <legend>3. Options</legend>
+    <label for="profile">Signature profile</label>
+    <select id="profile">
+      <option value="B-B" selected>PAdES B-B (basic)</option>
+      <option value="B-T">PAdES B-T (with timestamp)</option>
+    </select>
+    <div class="inline">
+      <input type="checkbox" id="visible">
+      <label for="visible" style="margin:0">Visible signature box on page 1</label>
+    </div>
+    <label for="server">Server URL</label>
+    <input type="text" id="server" value="http://localhost:8000">
+  </fieldset>
+
+  <button id="sign" type="button" disabled>Sign</button>
+
+  <div id="status"></div>
+
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

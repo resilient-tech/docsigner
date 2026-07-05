@@ -1,0 +1,25 @@
+# reference material (another vendor repos, studied for PLAN.md)
+VendorPythonClient/
+VendorSamples/
+vendor-extension-dump/
+.DS_Store
+
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# secrets & runtime state
+.env
+server/sessions/
+server/documents/
+*.p12
+!*test*.p12
+
+# tooling
+.pytest_cache/
+node_modules/
+spike/spike_signed.pdf

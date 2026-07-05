@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "signer-core"
+version = "0.1.0"
+description = "PDF digital signing on top of pyHanko: interrupted signing sessions, PAdES profiles, validation"
+requires-python = ">=3.10"
+dependencies = [
+    "pyhanko[image-support]>=0.35",
+    "cryptography",
+]
+
+[tool.setuptools.packages.find]
+include = ["signer_core*"]
