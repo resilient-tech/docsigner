@@ -127,6 +127,7 @@ def complete_signature(session_id: str, payload: dict = Body(...)):
         SessionState.from_bytes(raw_state),
         signature,
         timestamper=make_timestamper(config.tsa_url),
+        validation_context=_signing_validation_context(),
     )
     # Single-use: consumed on success; a failed attempt may be retried.
     sessions.delete(session_id)

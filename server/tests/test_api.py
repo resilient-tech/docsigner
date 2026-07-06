@@ -144,6 +144,37 @@ def test_profile_unsupported(client, signer, blank_pdf):
     assert response.json()["error"]["code"] == "PROFILE_UNSUPPORTED"
 
 
+def test_lt_completion_failure_maps_to_500(client, signer, blank_pdf, monkeypatch):
+    """LTV augmentation that cannot certify the signer chain surfaces as INTERNAL."""
+    from helpers_server import make_dummy_timestamper
+    from pyhanko_certvalidator import ValidationContext
+
+    import signer_server.app as app_module
+
+    dummy_tsa = make_dummy_timestamper()
+    # A TSA and trust anchors are configured, so the session starts; but the
+    # self-signed token cert has no path to the configured root, so the
+    # revocation-data step at completion must fail.
+    monkeypatch.setattr(app_module, "make_timestamper", lambda url: dummy_tsa)
+    monkeypatch.setattr(
+        app_module,
+        "_signing_validation_context",
+        lambda: ValidationContext(
+            trust_roots=[dummy_tsa.tsa_cert], allow_fetching=False
+        ),
+    )
+
+    key, _ = signer
+    started = _start_session(client, signer, blank_pdf, options={"profile": "B-LT"})
+    signature = sign_hash(key, base64.b64decode(started["to_sign_hash"]))
+    completed = client.post(
+        f"/api/signatures/{started['session_id']}/complete",
+        json={"signature": b64(signature)},
+    )
+    assert completed.status_code == 500
+    assert completed.json()["error"]["code"] == "INTERNAL"
+
+
 def test_document_not_found(client):
     response = client.get("/api/documents/no-such-document")
     assert response.status_code == 404

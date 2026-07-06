@@ -70,6 +70,8 @@ Response 200:
 
 Sessions are single-use and expire after 15 minutes.
 
+For B-LT and B-LTA sessions the server embeds revocation data (DSS) and, for B-LTA, an archive timestamp before returning. The request and response shapes are unchanged; completion takes as long as the CA's OCSP/CRL endpoints take to answer.
+
 ### GET /api/documents/{document_id}
 
 Returns the signed PDF, `application/pdf`. Documents expire after 1 hour.

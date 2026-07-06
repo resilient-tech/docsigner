@@ -33,6 +33,7 @@ from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from .appearance import build_appearance
 from .errors import SignerError
+from .ltv import async_augment
 from .profiles import Profile, build_metadata, check_requirements, parse_digest_algorithm
 
 # Placeholder for the yet-unknown signature value; fits RSA-4096.
@@ -97,28 +98,37 @@ class SigningSession:
         )
 
     @staticmethod
-    def complete(state: SessionState, signature: bytes, *, timestamper=None) -> bytes:
-        """Embed the signature produced by the token; returns the signed PDF."""
-        return asyncio.run(_complete(state, signature, timestamper))
+    def complete(
+        state: SessionState,
+        signature: bytes,
+        *,
+        timestamper=None,
+        validation_context=None,
+    ) -> bytes:
+        """Embed the signature produced by the token; returns the signed PDF.
+
+        B-LT and B-LTA sessions also need a validation context here: after
+        the signature lands, revocation data is written to the DSS and (for
+        B-LTA) an archive timestamp is appended. See ltv.py.
+        """
+        return asyncio.run(_complete(state, signature, timestamper, validation_context))
 
 
 async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
     profile = Profile.parse(options.get("profile"))
     check_requirements(profile, timestamper, validation_context)
-    if profile.needs_revocation_info:
-        # ponytail: LT/LTA need pyHanko's PostSignInstructions carried across the
-        # start/complete gap, which is not serializable yet; server-side signing
-        # covers those profiles today
-        raise SignerError(
-            "PROFILE_UNSUPPORTED",
-            f"profile {profile.value} is not available for token sessions yet;"
-            " use server-side signing",
-        )
+    # B-LT/B-LTA prepare and embed as B-T: PAdES wants the signature timestamp
+    # in place before LTV data, and the DSS write plus archive timestamp are
+    # key-free incremental updates that complete() adds afterwards (ltv.py).
+    prepare_profile = Profile.B_T if profile.needs_revocation_info else profile
 
     md_algorithm = parse_digest_algorithm(options)
     signer_cert = _parse_cert(cert_der)
     try:
-        writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
+        # strict=False: real-world PDFs (govt/portal/scanner output) often carry
+        # minor xref-stream quirks that strict mode rejects; lenient parsing signs
+        # them. Tradeoff: pyHanko's strict xref-ambiguity checks are skipped.
+        writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes), strict=False)
     except Exception:
         raise SignerError("DOCUMENT_INVALID", "document is not a readable PDF") from None
 
@@ -131,7 +141,7 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
         signature_value=PLACEHOLDER_SIG_SIZE,
     )
     pdf_signer = signers.PdfSigner(
-        build_metadata(options, profile, field_name, validation_context),
+        build_metadata(options, prepare_profile, field_name),
         signer=placeholder_signer,
         timestamper=timestamper if profile.needs_timestamp else None,
         stamp_style=stamp_style,
@@ -167,13 +177,19 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
     return state, to_sign_hash, md_algorithm
 
 
-async def _complete(state, signature, timestamper):
+async def _complete(state, signature, timestamper, validation_context):
     profile = Profile(state.profile)
     if profile.needs_timestamp and timestamper is None:
         raise SignerError(
             "PROFILE_UNSUPPORTED",
             f"profile {profile.value} requires an RFC 3161 timestamp authority"
             " at completion; none is configured (set TSA_URL)",
+        )
+    if profile.needs_revocation_info and validation_context is None:
+        raise SignerError(
+            "PROFILE_UNSUPPORTED",
+            f"profile {profile.value} requires trust anchors to gather revocation"
+            " data at completion; none are configured (set TRUST_DIR)",
         )
 
     signer_cert = _parse_cert(state.cert_der)
@@ -200,7 +216,17 @@ async def _complete(state, signature, timestamper):
         reserved_region_end=state.reserved_region_end,
     )
     await PdfTBSDocument.async_finish_signing(output, prep_digest, signature_cms)
-    return output.getvalue()
+    signed_pdf = output.getvalue()
+
+    if profile.needs_revocation_info:
+        signed_pdf = await async_augment(
+            signed_pdf,
+            validation_context,
+            timestamper=timestamper,
+            archive_timestamp=profile is Profile.B_LTA,
+            md_algorithm=state.digest_algorithm,
+        )
+    return signed_pdf
 
 
 def _parse_cert(cert_der: bytes) -> asn1_x509.Certificate:

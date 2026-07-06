@@ -23,7 +23,8 @@ def validate(pdf_bytes: bytes, trust_dir=None) -> list[dict]:
 
 async def _validate(pdf_bytes, trust_dir):
     try:
-        reader = PdfFileReader(io.BytesIO(pdf_bytes))
+        # strict=False: validate real-world signed PDFs with minor xref quirks (see session.py).
+        reader = PdfFileReader(io.BytesIO(pdf_bytes), strict=False)
         embedded = list(reader.embedded_signatures)
     except Exception:
         raise SignerError("DOCUMENT_INVALID", "document is not a readable PDF") from None

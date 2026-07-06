@@ -35,7 +35,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
 
-Standards: PAdES baseline profiles per ETSI EN 319 142-1. B-B and B-T work today (B-T needs a TSA URL). B-LT and B-LTA are implemented for server-side signing; for token sessions they currently return a clear error pointing at the server-side path. RSA and ECDSA keys, SHA-256/384/512.
+Standards: PAdES baseline profiles per ETSI EN 319 142-1. All 4 profiles work in both flows, token sessions and server-side signing. B-T needs `TSA_URL`; B-LT and B-LTA need `TSA_URL` and `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
 
 ## Run the server
 
@@ -50,6 +50,21 @@ python -m signer_server          # http://localhost:8000
 ```
 
 `.env` is read from the directory you launch the server in. Run `python -m signer_server` from the repo root so it picks up the `.env` you just copied.
+
+### Trust anchors for B-LT / B-LTA
+
+`TRUST_DIR` points at a folder of PEM or DER certificates. For the LTV profiles it must hold the full chain of the signers you expect: the root plus every issuing intermediate.
+
+For Indian DSC tokens that means the CCA India root and your CA's sub-CA chain. Capricorn, for example, publishes both on its repository page; download them into the folder:
+
+```
+trust/
+  cca-india-2022.pem
+  capricorn-ca-2022.pem
+  capricorn-sub-ca-individual.pem
+```
+
+While completing a B-LT or B-LTA signature the server fetches revocation data from the CA. OCSP is tried first (a response is 1 to 2 KB; Capricorn serves it at http://ocsp.certificate.digital), with CRLs as the fallback (multi-MB files under http://www.certificate.digital/crl/). If neither endpoint answers, completion fails with an `INTERNAL` error: a B-LT signature without revocation data would be an empty claim.
 
 ## Try the demo
 
@@ -130,7 +145,7 @@ or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.
 ```bash
 pip install -e ./core -e ./server -e ./host   # if not already installed
 pip install -r requirements-dev.txt           # pytest + test-only deps
-pytest core/tests server/tests host/tests     # 61 tests
+pytest core/tests server/tests host/tests     # 72 tests
 cd js && node --test                          # 10 tests
 ```
 

@@ -38,8 +38,10 @@ os.environ["SESSION_DIR"] = str(TMP_DIR / "sessions")
 os.environ["DOCUMENT_DIR"] = str(TMP_DIR / "documents")
 os.environ["P12_PATH"] = str(_write_server_p12())
 os.environ["P12_PASSPHRASE"] = P12_PASSPHRASE
-os.environ.pop("TSA_URL", None)
-os.environ.pop("TRUST_DIR", None)
+# Empty rather than popped: load_dotenv only fills in missing keys, so this
+# keeps a developer's local .env from configuring the test server.
+os.environ["TSA_URL"] = ""
+os.environ["TRUST_DIR"] = ""
 
 
 @pytest.fixture(scope="session")

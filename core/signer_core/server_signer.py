@@ -36,7 +36,8 @@ def sign_with_p12(
         )
 
     try:
-        writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
+        # strict=False: tolerate real-world PDFs with minor xref quirks (see session.py).
+        writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes), strict=False)
     except Exception:
         raise SignerError("DOCUMENT_INVALID", "document is not a readable PDF") from None
 

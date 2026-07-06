@@ -6,7 +6,6 @@ from helpers_core import sign_hash
 from pyhanko.pdf_utils.reader import PdfFileReader
 
 from signer_core import SessionState, SignerError, SigningSession, validate
-from signer_core.trust import build_validation_context
 
 
 def _round_trip(key, cert_der, pdf_bytes, options, timestamper=None):
@@ -90,19 +89,6 @@ def test_bt_without_timestamper_is_rejected(signer, blank_pdf):
     _, cert_der = signer
     with pytest.raises(SignerError) as err:
         SigningSession.start(blank_pdf, cert_der, {"profile": "B-T"})
-    assert err.value.code == "PROFILE_UNSUPPORTED"
-
-
-def test_lt_session_is_rejected(signer, blank_pdf, dummy_timestamper):
-    _, cert_der = signer
-    with pytest.raises(SignerError) as err:
-        SigningSession.start(
-            blank_pdf,
-            cert_der,
-            {"profile": "B-LT"},
-            timestamper=dummy_timestamper,
-            validation_context=build_validation_context(),
-        )
     assert err.value.code == "PROFILE_UNSUPPORTED"
 
 
