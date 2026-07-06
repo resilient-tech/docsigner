@@ -30,7 +30,7 @@ const MESSAGES = {
   SESSION_NOT_FOUND: { text: "The signing session was not found on the server. Start again." },
   SESSION_EXPIRED: { text: "The signing session expired (they last 15 minutes). Start again." },
   SIGNATURE_INVALID: { text: "The server rejected the signature produced by the token." },
-  PROFILE_UNSUPPORTED: { text: "The server does not support the chosen signature profile." },
+  PROFILE_UNSUPPORTED: { text: "The server is missing configuration for this profile. B-T needs TSA_URL; B-LT and B-LTA also need TRUST_DIR." },
   INTERNAL: { text: "Something went wrong." },
 };
 

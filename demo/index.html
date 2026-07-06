@@ -50,6 +50,7 @@
       cursor: pointer;
     }
     button.secondary { background: #fff; color: #1a56db; }
+    .hint { font-size: 13px; color: #666; margin: 4px 0 0; }
     button:disabled { opacity: 0.5; cursor: default; }
     #status {
       margin-top: 16px;
@@ -88,7 +89,10 @@
     <select id="profile">
       <option value="B-B" selected>PAdES B-B (basic)</option>
       <option value="B-T">PAdES B-T (with timestamp)</option>
+      <option value="B-LT">PAdES B-LT (long-term, embeds revocation data)</option>
+      <option value="B-LTA">PAdES B-LTA (long-term with archive timestamp)</option>
     </select>
+    <p class="hint">B-T and up need TSA_URL on the server; B-LT and B-LTA also need TRUST_DIR with your CA chain and reachable OCSP/CRL endpoints.</p>
     <div class="inline">
       <input type="checkbox" id="visible">
       <label for="visible" style="margin:0">Visible signature box on page 1</label>
