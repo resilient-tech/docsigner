@@ -6,13 +6,14 @@ B-LTA adds a document-level archive timestamp on top. Both are incremental
 updates over the signed bytes, so no private key is involved and the work can
 happen after a token session completes.
 
-Revocation source preference: the certvalidator fetcher tries OCSP first but
-still collects CRLs along the way, and everything it caches would land in the
-DSS. Indian CA CRLs run to megabytes while the OCSP responses total a few KB,
-so after validation the collected revinfo is filtered: when every certificate
-below its trust anchor has a good OCSP response, the CRLs are dropped and the
-DSS carries OCSP only. CCA ESAIG 1.19.3 prefers OCSP over large CRLs, and
-PAdES does not require both sources.
+The DSS carries every OCSP response and CRL the certvalidator fetcher gathered
+while validating the chain. The fetcher is OCSP-first, so it pulls a CRL only
+when OCSP cannot answer, and one Indian CA case makes that happen: a Capricorn
+end-entity is answered by a CA-level OCSP responder that RFC 6960 does not
+authorise for the leaf, so the validator falls back to the sub-CA's CRL. Keeping
+that CRL is what lets a reader validate the chain offline; dropping it (an
+earlier OCSP-first size trim did) leaves the signature reported as not LTV
+enabled, even though the leaf also carries an unusable OCSP response.
 """
 
 import io
@@ -48,11 +49,17 @@ async def async_augment(
     reader = PdfFileReader(output, strict=False)
     embedded_sig = reader.embedded_regular_signatures[-1]
     try:
-        paths = await collect_validation_info(embedded_sig, validation_context)
+        await collect_validation_info(embedded_sig, validation_context)
         if archive_timestamp:
-            async for ts_path in timestamper.validation_paths(validation_context):
-                paths.append(ts_path)
-        dss_context = _filtered_offline_context(validation_context, paths)
+            # Gather the archive timestamp chain's revocation into the context as
+            # well, so the DSS covers it before the timestamp is applied.
+            async for _ts_path in timestamper.validation_paths(validation_context):
+                pass
+        # Hand the DSS writers a non-fetching context holding the gathered
+        # revinfo. async_add_validation_info re-validates the chain against it and
+        # aborts if that revinfo is not enough, which keeps a partial (not LTV)
+        # DSS from being written silently.
+        dss_context = _offline_context(validation_context)
         await async_add_validation_info(embedded_sig, dss_context, in_place=True)
     except Exception as exc:
         raise SignerError(
@@ -113,28 +120,21 @@ def _embedded_revinfo(embedded_sig):
     return None
 
 
-def _filtered_offline_context(validation_context, paths) -> ValidationContext:
-    """A non-fetching context holding only the revinfo the DSS should carry.
+def _offline_context(validation_context) -> ValidationContext:
+    """A non-fetching context preloaded with the gathered OCSP responses and CRLs.
 
-    async_add_validation_info and async_timestamp_pdf embed every OCSP
-    response and CRL cached on the context they receive, so the filtering
-    happens here: validate first against the caller's fetching context, then
-    hand the DSS writers a context preloaded with the filtered revinfo. Trust
-    anchors and gathered certificates carry over, so revalidation inside the
-    writers stays offline.
+    async_add_validation_info and async_timestamp_pdf embed the revinfo cached on
+    the context they receive, so validation runs first against the caller's
+    fetching context and the DSS writers get this offline copy. Every gathered
+    CRL is kept: the fetcher is OCSP-first, so the CRLs it did pull are the ones
+    the chain needs to verify offline. Trust anchors and gathered certificates
+    carry over, so the writers' revalidation stays offline.
     """
-    ocsps = list(validation_context.ocsps)
-    crls = list(validation_context.crls)
-    needs_revinfo = set()
-    for path in paths:
-        needs_revinfo.update(_serials_below_anchor(path))
-    if ocsps and crls and needs_revinfo <= _ocsp_good_serials(ocsps):
-        crls = []
     return ValidationContext(
         trust_manager=validation_context.path_builder.trust_manager,
         certificate_registry=validation_context.certificate_registry,
-        ocsps=ocsps,
-        crls=crls,
+        ocsps=list(validation_context.ocsps),
+        crls=list(validation_context.crls),
         allow_fetching=False,
         revinfo_policy=validation_context.revinfo_policy,
     )

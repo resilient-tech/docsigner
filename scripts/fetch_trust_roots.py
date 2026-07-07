@@ -93,8 +93,11 @@ SOURCES = {
         ("Sectigo-Public-Time-Stamping-Root-R46", "http://crt.sectigo.com/SectigoPublicTimeStampingRootR46.crt"),
         ("Certum-Trusted-Network-CA", "https://repository.certum.pl/ctnca.cer"),
         ("Certum-Trusted-Network-CA-2", "https://repository.certum.pl/ctnca2.cer"),
-        # Entrust and SSL.com gate their repositories behind a WAF; for LTV with
-        # those TSAs drop the root into trust/tsa/ by hand.
+        # SSL.com's HTML repository sits behind a WAF, but the AIA caIssuers URL
+        # from its timestamp tokens serves the root certificate directly.
+        ("SSLcom-Root-Certification-Authority-RSA", "http://www.ssl.com/repository/SSLcomRootCertificationAuthorityRSA.crt"),
+        # Entrust's public TSA is served by Sectigo; its tokens chain to the
+        # Sectigo and USERTrust roots already listed above, so it needs no entry.
     ],
 }
 

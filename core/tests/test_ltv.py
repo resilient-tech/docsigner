@@ -66,13 +66,17 @@ def test_blt_embeds_dss(pki, blank_pdf, dummy_timestamper):
     assert result["intact"] and result["valid"]
 
 
-def test_blta_drops_crls_when_ocsp_covers_chain(pki, blank_pdf, dummy_timestamper):
-    """OCSP-first filtering: full OCSP coverage keeps CRLs out of the DSS."""
+def test_blta_ocsp_only_dss_when_crl_not_needed(pki, blank_pdf, dummy_timestamper):
+    """When OCSP alone verifies the chain, the DSS carries no CRL.
+
+    The certvalidator fetcher is OCSP-first and pulls a CRL only when OCSP cannot
+    answer. Here the responder is the issuer itself, so its OCSP response stands
+    on its own and no CRL is gathered or embedded.
+    """
 
     def ctx():
         return ValidationContext(
             trust_roots=[pki.root_cert, dummy_timestamper.tsa_cert],
-            crls=[pki.crl],
             ocsps=[pki.ocsp],
             allow_fetching=False,
             revocation_mode="require",
@@ -83,8 +87,39 @@ def test_blta_drops_crls_when_ocsp_covers_chain(pki, blank_pdf, dummy_timestampe
     reader = PdfFileReader(io.BytesIO(signed_pdf), strict=False)
     dss = DocumentSecurityStore.read_dss(reader)
     assert dss.ocsps, "the DSS must carry the chain's OCSP responses"
-    assert not dss.crls, "CRLs are redundant when OCSP covers the whole chain"
+    assert not dss.crls, "no CRL is needed when OCSP verifies the chain"
     assert len(reader.embedded_timestamp_signatures) == 1
+
+    result = validate(signed_pdf)[0]
+    assert result["intact"] and result["valid"]
+
+
+def test_blt_keeps_crl_for_delegated_responder(blank_pdf, dummy_timestamper):
+    """A delegated OCSP responder without ocsp-nocheck needs its CRL kept.
+
+    The Capricorn and CCA India responders sign with a delegated certificate and
+    omit id-pkix-ocsp-nocheck, so verifying their OCSP response means checking the
+    responder's own revocation against a CRL. Dropping that CRL leaves the chain
+    unverifiable offline, which Adobe reports as not LTV enabled, so the CRL the
+    fetcher gathered has to survive into the DSS.
+    """
+    pki = make_test_pki(delegated_ocsp=True)
+
+    def ctx():
+        return ValidationContext(
+            trust_roots=[pki.root_cert, dummy_timestamper.tsa_cert],
+            crls=[pki.crl],
+            ocsps=[pki.ocsp],
+            allow_fetching=False,
+            revocation_mode="require",
+        )
+
+    signed_pdf = _round_trip(pki, blank_pdf, "B-LT", dummy_timestamper, ctx)
+
+    reader = PdfFileReader(io.BytesIO(signed_pdf), strict=False)
+    dss = DocumentSecurityStore.read_dss(reader)
+    assert dss.ocsps, "the DSS must carry the delegated OCSP response"
+    assert dss.crls, "the responder's CRL must survive so its OCSP can be verified"
 
     result = validate(signed_pdf)[0]
     assert result["intact"] and result["valid"]

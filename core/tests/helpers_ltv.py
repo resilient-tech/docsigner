@@ -15,7 +15,11 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509 import ocsp as x509_ocsp
-from cryptography.x509.oid import AuthorityInformationAccessOID, NameOID
+from cryptography.x509.oid import (
+    AuthorityInformationAccessOID,
+    ExtendedKeyUsageOID,
+    NameOID,
+)
 
 # URLs nobody fetches: they only mark the leaf as CRL- and OCSP-capable so
 # validators consult the revocation data preloaded into the validation context.
@@ -41,7 +45,15 @@ def _name(common_name):
     )
 
 
-def make_test_pki() -> TestPki:
+def make_test_pki(delegated_ocsp: bool = False) -> TestPki:
+    """A root CA, a leaf signer, an empty CRL, and a 'good' OCSP response.
+
+    With ``delegated_ocsp`` the OCSP response is signed by a separate responder
+    certificate that carries the OCSP-signing usage but not id-pkix-ocsp-nocheck,
+    the way the CCA India and Capricorn responders do. A validator that re-checks
+    the responder's own revocation then needs the CRL, so once OCSP-first sizing
+    drops it the DSS can only be built by embedding the gathered revinfo directly.
+    """
     now = datetime.datetime.now(datetime.timezone.utc)
     root_name = _name("LTV Test Root CA")
 
@@ -123,21 +135,41 @@ def make_test_pki() -> TestPki:
         .sign(root_key, hashes.SHA256())
     )
 
-    ocsp_response = (
-        x509_ocsp.OCSPResponseBuilder()
-        .add_response(
-            cert=leaf_cert,
-            issuer=root_cert,
-            algorithm=hashes.SHA1(),
-            cert_status=x509_ocsp.OCSPCertStatus.GOOD,
-            this_update=now - datetime.timedelta(minutes=5),
-            next_update=now + datetime.timedelta(days=7),
-            revocation_time=None,
-            revocation_reason=None,
-        )
-        .responder_id(x509_ocsp.OCSPResponderEncoding.NAME, root_cert)
-        .sign(root_key, hashes.SHA256())
+    ocsp_builder = x509_ocsp.OCSPResponseBuilder().add_response(
+        cert=leaf_cert,
+        issuer=root_cert,
+        algorithm=hashes.SHA1(),
+        cert_status=x509_ocsp.OCSPCertStatus.GOOD,
+        this_update=now - datetime.timedelta(minutes=5),
+        next_update=now + datetime.timedelta(days=7),
+        revocation_time=None,
+        revocation_reason=None,
     )
+    if delegated_ocsp:
+        responder_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        responder_cert = (
+            x509.CertificateBuilder()
+            .subject_name(_name("LTV Test OCSP Responder"))
+            .issuer_name(root_name)
+            .public_key(responder_key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - datetime.timedelta(minutes=5))
+            .not_valid_after(now + datetime.timedelta(days=30))
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(
+                x509.ExtendedKeyUsage([ExtendedKeyUsageOID.OCSP_SIGNING]), critical=False
+            )
+            .sign(root_key, hashes.SHA256())
+        )
+        ocsp_response = (
+            ocsp_builder.certificates([responder_cert])
+            .responder_id(x509_ocsp.OCSPResponderEncoding.HASH, responder_cert)
+            .sign(responder_key, hashes.SHA256())
+        )
+    else:
+        ocsp_response = ocsp_builder.responder_id(
+            x509_ocsp.OCSPResponderEncoding.NAME, root_cert
+        ).sign(root_key, hashes.SHA256())
 
     crl = (
         x509.CertificateRevocationListBuilder()
