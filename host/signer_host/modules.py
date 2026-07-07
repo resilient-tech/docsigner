@@ -24,24 +24,54 @@ def config_dir():
     return Path.home() / ".config" / "opensigner"
 
 
+# Paths harvested from a reference project (config.go) and a vendor host (sdscript.js)
+# in addition to our own research; see docs/host.md.
 def _win_well_known():
     system32 = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
-    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
-    return [
+    syswow64 = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "SysWOW64")
+    paths = [
         # OpenSC
-        os.path.join(program_files, "OpenSC Project", "OpenSC", "pkcs11", "opensc-pkcs11.dll"),
         os.path.join(system32, "opensc-pkcs11.dll"),
-        # Feitian ePass2003
+        # Feitian ePass2003 / ePass3003 (eMudhra, Capricorn, Sify, (n)Code, Pantasign)
         os.path.join(system32, "eps2003csp11.dll"),
-        # SafeNet eToken
+        os.path.join(system32, "eps2003csp11_v2.dll"),
+        os.path.join(system32, "eps2003csp11v2.dll"),
+        os.path.join(syswow64, "eps2003csp11v2.dll"),
+        os.path.join(system32, "ShuttleCsp11_3000.dll"),
+        os.path.join(system32, "ep3003csp11.dll"),
+        # Feitian generic / Hypersecu HyperPKI (Castle)
+        os.path.join(system32, "castle_v3.dll"),
+        os.path.join(system32, "castle.dll"),
+        os.path.join(system32, "HyperPKICsp11_2003.dll"),
+        os.path.join(syswow64, "HyperPKICsp11_2003.dll"),
+        # SafeNet / Aladdin / Thales eToken
         os.path.join(system32, "eTPKCS11.dll"),
         # WatchData ProxKey
         os.path.join(system32, "SignatureP11.dll"),
         os.path.join(system32, "wdpkcs.dll"),
+        os.path.join(system32, "WDPKCS11.dll"),
         # eMudhra variants (Trust Key, Longmai mToken CryptoID)
         os.path.join(system32, "TRUSTKEYP11.dll"),
         os.path.join(system32, "CryptoIDA_pkcs11.dll"),
+        os.path.join(system32, "mToken CryptoID PKCS11.dll"),
+        # Bit4id tokenME
+        os.path.join(system32, "bit4ipki.dll"),
+        # Precision InnaITKey
+        os.path.join(system32, "InnaITPKCS11Driver.dll"),
+        # A.E.T. SafeSign / Athena IDProtect / YubiKey
+        os.path.join(system32, "aetpkcs11.dll"),
+        os.path.join(system32, "asepkcs.dll"),
+        os.path.join(system32, "ykcs11.dll"),
     ]
+    for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")):
+        if base:
+            paths += [
+                os.path.join(base, "OpenSC Project", "OpenSC", "pkcs11", "opensc-pkcs11.dll"),
+                os.path.join(base, "HYP", "HYP PKI Manager", "pkcs11hw.dll"),
+                os.path.join(base, "Hypersecu", "HyperPKI", "castle_v3.dll"),
+                os.path.join(base, "Yubico", "Yubico PIV Tool", "bin", "libykcs11.dll"),
+            ]
+    return paths
 
 
 _WELL_KNOWN_POSIX = {
@@ -55,21 +85,35 @@ _WELL_KNOWN_POSIX = {
         # Feitian ePass2003 (castle)
         "/usr/lib/libcastle.so",
         "/usr/lib/libcastle.so.1.0.0",
+        "/usr/lib/libcastle_v2.so.1.0.0",
         "/usr/lib64/libcastle.so",
         "/usr/lib64/libcastle.so.1.0.0",
         "/usr/lib/x86_64-linux-gnu/libcastle.so.1.0.0",
+        "/usr/lib/libes2003.so",
         # WatchData ProxKey
         "/usr/lib/WatchData/ProxKey/lib/libwdpkcs_SignatureP11.so",
         "/usr/lib64/WatchData/ProxKey/lib/libwdpkcs_SignatureP11.so",
         "/usr/lib/libwdpkcs_SignatureP11.so",
+        "/usr/lib/libwdpkcs.so",
+        "/usr/lib/libProxKeyP11.so",
         # SafeNet eToken
+        "/usr/lib/libeTPkcs11.so",
+        "/usr/lib/x86_64-linux-gnu/libeTPkcs11.so",
+        "/usr/lib64/libeTPkcs11.so",
         "/usr/lib/libeToken.so",
         "/usr/lib64/libeToken.so",
         "/usr/lib/pkcs11/libeToken.so",
-        # eMudhra variants (Trust Key, mToken)
+        # eMudhra variants (Trust Key, Longmai mToken CryptoID)
         "/usr/lib/TRUSTKEY/libtrustkeyP11.so",
         "/usr/lib/libtrustkeyP11.so",
         "/usr/lib/libcryptoida_pkcs11.so",
+        "/opt/CryptoIDATools/bin/lib/libcryptoid_pkcs11.so",
+        # Precision InnaITKey
+        "/opt/Precision_Biometric/InnaITDSC/libraries/libInnaITPKCS11Driver.so",
+        # YubiKey
+        "/usr/lib/x86_64-linux-gnu/libykcs11.so",
+        "/usr/lib/libykcs11.so",
+        "/usr/lib64/libykcs11.so",
     ],
     "darwin": [
         # OpenSC
@@ -77,16 +121,26 @@ _WELL_KNOWN_POSIX = {
         "/usr/local/lib/opensc-pkcs11.so",
         "/opt/homebrew/lib/opensc-pkcs11.so",
         "/usr/local/lib/pkcs11/opensc-pkcs11.so",
-        # Feitian ePass2003
+        # Feitian ePass2003 / Hypersecu HYP2003 (castle)
         "/usr/local/lib/libcastle.dylib",
         "/usr/local/lib/libcastle.1.0.0.dylib",
-        # SafeNet eToken
+        "/usr/local/lib/libcastle_v2.1.0.0.dylib",
+        # SafeNet eToken (libeTPkcs11 is the real basename; libeToken kept for old installs)
+        "/usr/local/lib/libeTPkcs11.dylib",
+        "/Library/Frameworks/eToken.framework/Versions/A/libeTPkcs11.dylib",
         "/usr/local/lib/libeToken.dylib",
         "/Library/Frameworks/eToken.framework/Versions/A/libeToken.dylib",
         # WatchData ProxKey
         "/usr/local/lib/wdProxKeyUsbKeyTool/libwdpkcs_Proxkey.dylib",
         "/usr/local/lib/libwdpkcs_SignatureP11.dylib",
         "/Library/WatchData/ProxKey/lib/libwdpkcs_SignatureP11.dylib",
+        # Longmai mToken CryptoID (eMudhra)
+        "/Applications/CryptoIDATools.app/Contents/MacOS/libcryptoid_pkcs11.dylib",
+        # Precision InnaITKey
+        "/opt/Precision_Biometric/InnaITDSC/libraries/libInnaITPKCS11Driver.dylib",
+        # YubiKey
+        "/usr/local/lib/libykcs11.dylib",
+        "/opt/homebrew/lib/libykcs11.dylib",
     ],
 }
 

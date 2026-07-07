@@ -46,15 +46,16 @@ def test_host_error_code_surfaces(monkeypatch):
     assert response["error"] == {"code": "PIN_LOCKED", "message": "locked"}
 
 
-def test_unexpected_exception_is_internal(monkeypatch):
+def test_broken_discovery_source_yields_empty_list(monkeypatch):
+    """One failing discovery source (here pkcs11) must not error the whole
+    listing; protocol._safe logs it and the other sources still answer."""
     def boom():
         raise ValueError("surprise")
 
     monkeypatch.setattr(pkcs11_ops, "list_certificates", boom)
     response = protocol.handle_message({"id": "a5", "command": "listCertificates", "params": {}})
     assert response["id"] == "a5"
-    assert response["error"]["code"] == "INTERNAL"
-    assert "surprise" in response["error"]["message"]
+    assert response["result"]["certificates"] == []
 
 
 def test_sign_hash_rejects_bad_base64():
@@ -70,6 +71,34 @@ def test_sign_hash_requires_params():
     assert response["error"]["code"] == "INTERNAL"
 
 
+def test_sign_hash_pin_param_replaces_prompt(monkeypatch):
+    captured = {}
+
+    def fake(thumbprint, hashes, algorithm, pin_provider=None):
+        captured["pin"] = pin_provider("label") if pin_provider else None
+        return [b"sig"]
+
+    monkeypatch.setattr(pkcs11_ops, "sign_hashes", fake)
+    digest = base64.b64encode(b"\x01" * 32).decode("ascii")
+
+    protocol.handle_message({"id": "p1", "command": "signHash",
+                             "params": {"thumbprint": "ab", "hashes": [digest], "pin": "1234"}})
+    assert captured["pin"] == "1234"
+
+    protocol.handle_message({"id": "p2", "command": "signHash",
+                             "params": {"thumbprint": "ab", "hashes": [digest]}})
+    assert captured["pin"] is None  # no pin -> native prompt path
+
+    protocol.handle_message({"id": "p3", "command": "signHash",
+                             "params": {"thumbprint": "ab", "hashes": [digest], "pin": ""}})
+    assert captured["pin"] is None  # empty pin treated as absent
+
+    response = protocol.handle_message({"id": "p4", "command": "signHash",
+                                        "params": {"thumbprint": "ab", "hashes": [digest],
+                                                   "pin": 1234}})
+    assert response["error"]["code"] == "INTERNAL"
+
+
 def test_sign_hash_encodes_signatures_as_base64(monkeypatch):
     monkeypatch.setattr(pkcs11_ops, "sign_hashes",
                         lambda thumbprint, hashes, algorithm: [b"sig-bytes"])
@@ -79,3 +108,23 @@ def test_sign_hash_encodes_signatures_as_base64(monkeypatch):
         "params": {"thumbprint": "ab", "hashes": [digest], "digestAlgorithm": "sha256"},
     })
     assert response["result"]["signatures"] == [base64.b64encode(b"sig-bytes").decode("ascii")]
+
+
+def test_check_update_dispatches(monkeypatch):
+    from signer_host import update
+    monkeypatch.setattr(update, "check_update", lambda: {"updateAvailable": False})
+    response = protocol.handle_message({"id": "u1", "command": "checkUpdate", "params": {}})
+    assert response == {"id": "u1", "result": {"updateAvailable": False}}
+
+
+def test_sign_hash_fires_notification(monkeypatch):
+    from signer_host import notify
+    calls = []
+    monkeypatch.setattr(notify, "notify", lambda title, body: calls.append((title, body)))
+    monkeypatch.setattr(pkcs11_ops, "sign_hashes",
+                        lambda thumbprint, hashes, algorithm: [b"sig"])
+    digest = base64.b64encode(b"\x01" * 32).decode("ascii")
+    protocol.handle_message({"id": "n1", "command": "signHash",
+                             "params": {"thumbprint": "abcdef123456789", "hashes": [digest]}})
+    assert len(calls) == 1
+    assert "abcdef123456" in calls[0][1]

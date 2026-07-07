@@ -197,3 +197,100 @@ def test_server_side_flow(client, blank_pdf):
     assert signatures[0]["intact"] is True
     assert signatures[0]["valid"] is True
     assert "Server P12 Signer" in signatures[0]["signer"]
+
+
+def test_batch_flow_with_one_signing_pass_and_audit(client, signer, blank_pdf):
+    import hashlib
+
+    key, cert_der = signer
+    started = client.post(
+        "/api/signatures/batch",
+        json={
+            "documents": [b64(blank_pdf)] * 3,
+            "certificate": b64(cert_der),
+            "options": {"profile": "B-B", "reason": "Approved"},
+        },
+    )
+    assert started.status_code == 200, started.text
+    batch = started.json()
+    assert len(batch["sessions"]) == 3
+    assert batch["digest_algorithm"] == "sha256"
+
+    # One signHash call worth of signatures, then one batch-complete.
+    items = [
+        {
+            "session_id": entry["session_id"],
+            "signature": b64(sign_hash(key, base64.b64decode(entry["to_sign_hash"]))),
+        }
+        for entry in batch["sessions"]
+    ]
+    completed = client.post("/api/signatures/batch-complete", json={"items": items})
+    assert completed.status_code == 200, completed.text
+    documents = completed.json()["documents"]
+    assert len(documents) == 3
+
+    audit = documents[0]["audit"]
+    assert audit["profile"] == "B-B"
+    assert "Token Signer" in audit["signer"]
+    assert audit["digest_algorithm"] == "sha256"
+    assert audit["field_name"]
+    download = client.get(documents[0]["download_url"])
+    assert download.status_code == 200
+    assert audit["document_sha256"] == hashlib.sha256(download.content).hexdigest()
+
+
+def test_batch_complete_fails_fast_with_index(client, signer, blank_pdf):
+    key, cert_der = signer
+    batch = client.post(
+        "/api/signatures/batch",
+        json={"documents": [b64(blank_pdf)] * 2, "certificate": b64(cert_der), "options": {}},
+    ).json()
+    items = [
+        {
+            "session_id": batch["sessions"][0]["session_id"],
+            "signature": b64(sign_hash(key, base64.b64decode(batch["sessions"][0]["to_sign_hash"]))),
+        },
+        {"session_id": batch["sessions"][1]["session_id"], "signature": b64(b"garbage")},
+    ]
+    response = client.post("/api/signatures/batch-complete", json={"items": items})
+    assert response.status_code == 400
+    assert "item 1" in response.json()["error"]["message"]
+
+
+def test_batch_rejects_oversize(client, signer, blank_pdf):
+    _, cert_der = signer
+    response = client.post(
+        "/api/signatures/batch",
+        json={"documents": [b64(blank_pdf)] * 51, "certificate": b64(cert_der), "options": {}},
+    )
+    assert response.status_code == 400
+    assert "capped" in response.json()["error"]["message"]
+
+
+def test_single_complete_carries_audit(client, signer, blank_pdf):
+    key, _ = signer
+    started = _start_session(client, signer, blank_pdf, options={"profile": "B-B"})
+    signature = sign_hash(key, base64.b64decode(started["to_sign_hash"]))
+    completed = client.post(
+        f"/api/signatures/{started['session_id']}/complete",
+        json={"signature": b64(signature)},
+    )
+    assert completed.status_code == 200, completed.text
+    audit = completed.json()["audit"]
+    assert "Token Signer" in audit["signer"]
+    assert audit["completed_at"].endswith("Z")
+
+
+def test_appearance_position_signs(client, signer, blank_pdf):
+    key, _ = signer
+    started = _start_session(
+        client, signer, blank_pdf,
+        options={"profile": "B-B", "reason": "Approved",
+                 "appearance": {"position": "bottom-right", "text": "OK {reason}"}},
+    )
+    signature = sign_hash(key, base64.b64decode(started["to_sign_hash"]))
+    completed = client.post(
+        f"/api/signatures/{started['session_id']}/complete",
+        json={"signature": b64(signature)},
+    )
+    assert completed.status_code == 200, completed.text

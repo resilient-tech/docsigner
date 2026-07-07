@@ -42,7 +42,9 @@ def sign_with_p12(
         raise SignerError("DOCUMENT_INVALID", "document is not a readable PDF") from None
 
     field_name = options.get("field_name") or f"Signature-{secrets.token_hex(4)}"
-    stamp_style, field_spec = build_appearance(options.get("appearance"), field_name)
+    stamp_style, field_spec = build_appearance(
+        options.get("appearance"), field_name, writer=writer, reason=options.get("reason")
+    )
     pdf_signer = signers.PdfSigner(
         build_metadata(options, profile, field_name, validation_context),
         signer=signer,

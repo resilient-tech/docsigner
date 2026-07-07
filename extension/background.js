@@ -13,6 +13,57 @@ const CONSENT_MESSAGE = "org.opensigner.consent";
 // prompt, so it has to be generous. Per-command budgets if this ever bites.
 const NATIVE_TIMEOUT_MS = 120000;
 
+// One long-lived native messaging port instead of a process per request, so
+// the host survives between calls and its in-memory PIN cache works
+// (CONTRACTS.md section 2). Chrome 116+ keeps this service worker alive while
+// the port is open; if the worker is ever killed anyway, the port drops, the
+// host exits, the PIN cache dies with it, and the next request reconnects.
+let nativePort = null;
+const pendingNative = new Map(); // request id -> {resolve, reject, timer}
+
+function getNativePort() {
+  if (nativePort) return nativePort;
+  nativePort = api.runtime.connectNative(HOST_NAME);
+  nativePort.onMessage.addListener((reply) => {
+    const pending = pendingNative.get(reply && reply.id);
+    if (!pending) return;
+    pendingNative.delete(reply.id);
+    clearTimeout(pending.timer);
+    pending.resolve(reply);
+  });
+  nativePort.onDisconnect.addListener(() => {
+    const text = String(
+      (api.runtime.lastError && api.runtime.lastError.message) || "native host disconnected"
+    );
+    nativePort = null;
+    for (const pending of pendingNative.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(text));
+    }
+    pendingNative.clear();
+  });
+  return nativePort;
+}
+
+function callNative(message) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pendingNative.delete(message.id);
+      reject(new Error(
+        `Native host did not answer "${message.command}" within ${NATIVE_TIMEOUT_MS / 1000}s`
+      ));
+    }, NATIVE_TIMEOUT_MS);
+    pendingNative.set(message.id, { resolve, reject, timer });
+    try {
+      getNativePort().postMessage(message);
+    } catch (e) {
+      pendingNative.delete(message.id);
+      clearTimeout(timer);
+      reject(e);
+    }
+  });
+}
+
 // Consent prompts waiting for a click, keyed by origin.
 // ponytail: in-memory map. The open response channel keeps the worker alive
 // long enough for a human to click a button; persist to storage if it doesn't.
@@ -59,11 +110,8 @@ async function handleRequest(message, sender) {
       }
     }
 
-    const reply = await withTimeout(
-      api.runtime.sendNativeMessage(HOST_NAME, { id: message.requestId, command, params }),
-      NATIVE_TIMEOUT_MS,
-      `Native host did not answer "${command}" within ${NATIVE_TIMEOUT_MS / 1000}s`
-    );
+    const id = message.requestId || crypto.randomUUID();
+    const reply = await callNative({ id, command, params });
     if (reply && reply.error) {
       return { error: { code: reply.error.code || "INTERNAL", message: reply.error.message || "" } };
     }
@@ -88,16 +136,6 @@ function senderOrigin(sender) {
   } catch {
     return null;
   }
-}
-
-function withTimeout(promise, ms, message) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    promise.then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (err) => { clearTimeout(timer); reject(err); }
-    );
-  });
 }
 
 // ---- origin consent ----

@@ -40,6 +40,10 @@ def main(argv=None):
 
     response = protocol.handle_message({"id": "cli", "command": command, "params": params})
     print(json.dumps(response, indent=2, ensure_ascii=False))
+    for reader in response.get("result", {}).get("readers", []):
+        if not reader["driverFound"]:
+            print("note: %s detected but no matching driver is installed"
+                  % (reader["token"] or reader["name"]), file=sys.stderr)
     return 0 if "result" in response else 1
 
 

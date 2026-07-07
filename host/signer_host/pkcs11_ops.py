@@ -4,6 +4,7 @@ import base64
 import hashlib
 import logging
 import os
+import time
 from datetime import timezone
 
 import pkcs11
@@ -17,6 +18,25 @@ from .errors import HostError
 log = logging.getLogger(__name__)
 
 DIGEST_ALGORITHMS = ("sha256", "sha384", "sha512")
+
+# Successful PINs, cached per token label so a batch of separate signHash
+# calls costs one prompt. Memory-only: the cache lives exactly as long as the
+# host process, i.e. as long as the extension keeps its native messaging port
+# open. ponytail: flat 10-minute TTL, make it configurable if anyone asks.
+PIN_CACHE_TTL_SECONDS = 600
+_pin_cache = {}  # token label -> (pin, monotonic expiry)
+
+
+def _cached_pin(label):
+    entry = _pin_cache.get(label)
+    if entry and entry[1] > time.monotonic():
+        return entry[0]
+    _pin_cache.pop(label, None)
+    return None
+
+
+def clear_pin_cache():
+    _pin_cache.clear()
 
 # OID friendly-name -> short attribute name, CN first ordering handled in _name_to_string.
 _NAME_SHORT = {
@@ -41,8 +61,23 @@ _KEY_TYPES = {"rsa": "RSA", "rsassa_pss": "RSA", "ec": "EC"}
 
 
 def load_library(path):
-    """Load a PKCS#11 module. Kept as a seam so tests can substitute a fake."""
-    return pkcs11.lib(path)
+    """Load a PKCS#11 module, forcing a fresh slot enumeration each scan.
+
+    The browser keeps one host process alive for the whole session, so
+    python-pkcs11 runs C_Initialize once and caches the module. Some drivers
+    (WatchData ProxKey) enumerate the token only at C_Initialize: after a
+    replug or a USB sleep the cached handle reports the token gone, and every
+    listCertificates returns empty until the process dies. reinitialize()
+    re-runs C_Initialize so a long-lived host scans like a fresh one. Best
+    effort: an older python-pkcs11 without it, or a driver that refuses, leaves
+    the already-loaded module in place. Kept as a seam so tests fake it.
+    """
+    lib = pkcs11.lib(path)
+    try:
+        lib.reinitialize()
+    except Exception as exc:
+        log.warning("could not reinitialize %s, using the cached handle: %s", path, exc)
+    return lib
 
 
 def _iter_tokens(stats):
@@ -284,14 +319,30 @@ def sign_hashes(thumbprint, hashes, digest_algorithm="sha256", pin_provider=None
     if pin_provider is None:
         from . import pin as pin_module
         pin_provider = pin_module.get_pin
-    pin_value = pin_provider(_token_label(token))
+    label = _token_label(token)
+    cached = _cached_pin(label)
+    pin_value = cached or pin_provider(label)
     if not pin_value:
         raise HostError("USER_CANCELLED", "PIN entry was cancelled")
 
     try:
         session = token.open(user_pin=pin_value)
+    except p11ex.PinIncorrect:
+        _pin_cache.pop(label, None)
+        if cached is None:
+            raise _map_error(p11ex.PinIncorrect())
+        # The cached PIN went stale (changed on the token): one proper retry.
+        pin_value = pin_provider(label)
+        if not pin_value:
+            raise HostError("USER_CANCELLED", "PIN entry was cancelled")
+        try:
+            session = token.open(user_pin=pin_value)
+        except p11ex.PKCS11Error as exc:
+            raise _map_error(exc)
     except p11ex.PKCS11Error as exc:
         raise _map_error(exc)
+    # Login succeeded, so the PIN is right: remember it for a while.
+    _pin_cache[label] = (pin_value, time.monotonic() + PIN_CACHE_TTL_SECONDS)
 
     with session:
         key = _find_private_key(session, cka_id, cka_label)

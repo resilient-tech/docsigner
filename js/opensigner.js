@@ -55,15 +55,19 @@ export class OpenSigner {
   /**
    * Sign one or more digests with a token-held private key. The native host
    * prompts for the PIN; all hashes in one call cost one PIN prompt.
-   * @param {{thumbprint: string, hashes: string[], digestAlgorithm?: string}} params
+   * @param {{thumbprint: string, hashes: string[], digestAlgorithm?: string, pin?: string}} params
    *   thumbprint: lowercase hex SHA-1 of the chosen certificate's DER.
    *   hashes: base64 digests to sign.
    *   digestAlgorithm: sha256 (default), sha384 or sha512.
+   *   pin: optional token PIN. When set, the host signs without showing its
+   *     dialog; your page then owns PIN security (CONTRACTS.md section 2).
    * @returns {Promise<{signatures: string[]}>} base64 CMS-ready signature
    *   values, same order as the input hashes.
    */
-  signHash({ thumbprint, hashes, digestAlgorithm = "sha256" }) {
-    return this._call("signHash", { thumbprint, hashes, digestAlgorithm });
+  signHash({ thumbprint, hashes, digestAlgorithm = "sha256", pin }) {
+    const params = { thumbprint, hashes, digestAlgorithm };
+    if (pin) params.pin = pin;
+    return this._call("signHash", params);
   }
 
   _call(command, params, { timeoutMs, timeoutCode, timeoutMessage } = {}) {

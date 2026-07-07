@@ -221,6 +221,26 @@ def test_list_certificates_reports_ec_key_type(fake_env, ec_key):
     assert certs[0]["keyType"] == "EC"
 
 
+def test_load_library_reinitializes_each_scan(monkeypatch):
+    """A long-lived host must re-enumerate slots per scan, or a replug/sleep
+    leaves its cached handle blind. reinitialize() is best effort: a driver
+    that refuses it still yields a usable (already-loaded) module."""
+    class RecordingLib:
+        def __init__(self, fail): self.calls = 0; self.fail = fail
+        def reinitialize(self):
+            self.calls += 1
+            if self.fail:
+                raise RuntimeError("driver refuses reinitialize")
+
+    good = RecordingLib(fail=False)
+    monkeypatch.setattr(pkcs11_ops.pkcs11, "lib", lambda path: good)
+    assert pkcs11_ops.load_library("/fake.so") is good and good.calls == 1
+
+    bad = RecordingLib(fail=True)
+    monkeypatch.setattr(pkcs11_ops.pkcs11, "lib", lambda path: bad)
+    assert pkcs11_ops.load_library("/fake.so") is bad  # swallowed, still usable
+
+
 def test_list_certificates_survives_broken_module(monkeypatch):
     monkeypatch.setattr(modules, "discover_modules", lambda: ["/fake/broken.so"])
 
@@ -457,3 +477,78 @@ def test_key_usage_all_false_when_extension_absent(fake_env, rsa_key):
     assert set(usage) == {"digitalSignature", "nonRepudiation", "keyEncipherment",
                           "dataEncipherment", "keyAgreement", "keyCertSign", "crlSign"}
     assert not any(usage.values())
+
+
+# --- PIN cache ---
+
+def test_pin_cached_across_sign_calls(fake_env, rsa_key):
+    der = make_cert(rsa_key, "Cached Signer")
+    token = rsa_token(rsa_key, der)
+    fake_env([token])
+    digest = hashlib.sha256(b"x").digest()
+    prompts = []
+
+    def provider(label):
+        prompts.append(label)
+        return "1234"
+
+    for _ in range(3):
+        pkcs11_ops.sign_hashes(hashlib.sha1(der).hexdigest(), [digest], "sha256",
+                               pin_provider=provider)
+
+    assert len(prompts) == 1  # first call prompts, the rest hit the cache
+    assert token.logins == 3  # every call still logs in with the cached PIN
+
+
+def test_pin_cache_expires(fake_env, rsa_key, monkeypatch):
+    der = make_cert(rsa_key, "Expiring Signer")
+    fake_env([rsa_token(rsa_key, der)])
+    digest = hashlib.sha256(b"x").digest()
+    prompts = []
+
+    def provider(label):
+        prompts.append(label)
+        return "1234"
+
+    thumb = hashlib.sha1(der).hexdigest()
+    pkcs11_ops.sign_hashes(thumb, [digest], "sha256", pin_provider=provider)
+
+    now = pkcs11_ops.time.monotonic()
+    monkeypatch.setattr(pkcs11_ops.time, "monotonic",
+                        lambda: now + pkcs11_ops.PIN_CACHE_TTL_SECONDS + 1)
+    pkcs11_ops.sign_hashes(thumb, [digest], "sha256", pin_provider=provider)
+
+    assert len(prompts) == 2
+
+
+def test_stale_cached_pin_reprompts_once(fake_env, rsa_key):
+    der = make_cert(rsa_key, "Stale Pin Signer")
+    token = rsa_token(rsa_key, der)
+    fake_env([token])
+    digest = hashlib.sha256(b"x").digest()
+    thumb = hashlib.sha1(der).hexdigest()
+
+    pkcs11_ops.sign_hashes(thumb, [digest], "sha256", pin_provider=lambda label: "1234")
+
+    token.expected_pin = "5678"  # PIN changed on the token; cache is now stale
+    prompts = []
+
+    def provider(label):
+        prompts.append(label)
+        return "5678"
+
+    signatures = pkcs11_ops.sign_hashes(thumb, [digest], "sha256", pin_provider=provider)
+    assert len(signatures) == 1
+    assert prompts == ["RSA Token"]  # exactly one fresh prompt, no blind retry
+
+
+def test_wrong_prompted_pin_not_cached(fake_env, rsa_key):
+    der = make_cert(rsa_key, "Wrong Pin Signer")
+    fake_env([rsa_token(rsa_key, der)])
+    digest = hashlib.sha256(b"x").digest()
+    thumb = hashlib.sha1(der).hexdigest()
+
+    with pytest.raises(HostError) as err:
+        pkcs11_ops.sign_hashes(thumb, [digest], "sha256", pin_provider=lambda label: "9999")
+    assert err.value.code == "PIN_INCORRECT"
+    assert pkcs11_ops._cached_pin("RSA Token") is None

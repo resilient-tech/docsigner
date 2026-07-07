@@ -1,4 +1,5 @@
-# reference material (another vendor repos, studied for PLAN.md)
+# reference material (external repos and installers, studied not shipped)
+learn/
 VendorPythonClient/
 VendorSamples/
 vendor-extension-dump/
@@ -15,6 +16,8 @@ build/
 
 # secrets & runtime state
 .env
+e2e/.env.e2e
+e2e/artifacts/
 server/sessions/
 server/documents/
 *.p12

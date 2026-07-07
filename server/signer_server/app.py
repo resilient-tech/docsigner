@@ -2,7 +2,10 @@
 signing logic lives in signer-core; this module only speaks HTTP."""
 
 import base64
+import hashlib
 from datetime import datetime, timedelta, timezone
+
+from cryptography import x509 as pyca_x509
 
 from fastapi import Body, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -134,6 +137,7 @@ def start_signature(payload: dict = Body(...)):
         options,
         timestamper=_request_timestamper(options),
         validation_context=_signing_validation_context(),
+        strict_ltv=config.strict_ltv,
     )
     session_id = sessions.put(state.to_bytes())
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
@@ -155,9 +159,22 @@ def _load_session(session_id: str) -> bytes:
         raise SignerError("SESSION_NOT_FOUND", "no such session") from None
 
 
-@app.post("/api/signatures/{session_id}/complete")
-def complete_signature(session_id: str, payload: dict = Body(...)):
-    signature = _b64_bytes(payload, "signature", "SIGNATURE_INVALID")
+def _audit_record(state: SessionState, signed_pdf: bytes) -> dict:
+    """Machine-readable completion record (CONTRACTS.md section 1)."""
+    cert = pyca_x509.load_der_x509_certificate(state.cert_der)
+    return {
+        "signer": cert.subject.rfc4514_string(),
+        "certificate_serial": str(cert.serial_number),
+        "certificate_issuer": cert.issuer.rfc4514_string(),
+        "profile": state.profile,
+        "digest_algorithm": state.digest_algorithm,
+        "field_name": state.field_name,
+        "document_sha256": hashlib.sha256(signed_pdf).hexdigest(),
+        "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+def _complete_one(session_id: str, signature: bytes) -> dict:
     try:
         state = SessionState.from_bytes(_load_session(session_id))
     except SignerError:
@@ -171,10 +188,85 @@ def complete_signature(session_id: str, payload: dict = Body(...)):
         signature,
         timestamper=make_timestamper(state.tsa_url or config.tsa_url),
         validation_context=_signing_validation_context(),
+        strict_ltv=config.strict_ltv,
     )
     # Single-use: consumed on success; a failed attempt may be retried.
     sessions.delete(session_id)
-    return _stored_document_response(signed_pdf)
+    return {**_stored_document_response(signed_pdf), "audit": _audit_record(state, signed_pdf)}
+
+
+@app.post("/api/signatures/{session_id}/complete")
+def complete_signature(session_id: str, payload: dict = Body(...)):
+    return _complete_one(session_id, _b64_bytes(payload, "signature", "SIGNATURE_INVALID"))
+
+
+BATCH_LIMIT = 50
+
+
+def _batch_list(payload: dict, field: str) -> list:
+    items = payload.get(field)
+    if not isinstance(items, list) or not items:
+        raise SignerError("DOCUMENT_INVALID", f"'{field}' must be a non-empty list")
+    if len(items) > BATCH_LIMIT:
+        raise SignerError("DOCUMENT_INVALID", f"batch is capped at {BATCH_LIMIT} documents")
+    return items
+
+
+@app.post("/api/signatures/batch")
+def start_batch(payload: dict = Body(...)):
+    """N documents, one certificate, one options object: the server half of
+    bulk signing. The client signs all returned hashes in one signHash call
+    (one PIN prompt), then posts them to batch-complete."""
+    documents = _batch_list(payload, "documents")
+    cert_der = _b64_bytes(payload, "certificate", "CERT_INVALID")
+    options = payload.get("options") or {}
+    timestamper = _request_timestamper(options)
+    # One shared context: revocation data fetched for the first document is
+    # reused for the rest of the batch instead of re-hitting the CA N times.
+    validation_context = _signing_validation_context()
+
+    entries = []
+    digest_algorithm = "sha256"
+    for index, document in enumerate(documents):
+        try:
+            pdf_bytes = _document_bytes({"document": document})
+            state, to_sign_hash, digest_algorithm = SigningSession.start(
+                pdf_bytes,
+                cert_der,
+                options,
+                timestamper=timestamper,
+                validation_context=validation_context,
+                strict_ltv=config.strict_ltv,
+            )
+        except SignerError as exc:
+            raise SignerError(exc.code, f"document {index}: {exc.message}") from None
+        entries.append({
+            "session_id": sessions.put(state.to_bytes()),
+            "to_sign_hash": base64.b64encode(to_sign_hash).decode("ascii"),
+        })
+
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
+    return {
+        "sessions": entries,
+        "digest_algorithm": digest_algorithm,
+        "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+@app.post("/api/signatures/batch-complete")
+def complete_batch(payload: dict = Body(...)):
+    items = _batch_list(payload, "items")
+    results = []
+    for index, item in enumerate(items):
+        try:
+            if not isinstance(item, dict) or not isinstance(item.get("session_id"), str):
+                raise SignerError("SESSION_NOT_FOUND", "missing session_id")
+            signature = _b64_bytes(item, "signature", "SIGNATURE_INVALID")
+            results.append(_complete_one(item["session_id"], signature))
+        except SignerError as exc:
+            # Fail fast; earlier completions stay stored (see CONTRACTS.md).
+            raise SignerError(exc.code, f"item {index}: {exc.message}") from None
+    return {"documents": results}
 
 
 def _sniff_media_type(data: bytes) -> str:
