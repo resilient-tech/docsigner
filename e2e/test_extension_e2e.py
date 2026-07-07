@@ -73,10 +73,12 @@ def test_extension_bridge_in_browser(tmp_path):
             )
             page = ctx.new_page()
             page.goto(f"http://127.0.0.1:{port}/demo/")
-            # The IIFE global must be present, and ping must resolve via the
-            # content-script bridge (the extension is installed).
+            # The demo loads OpenSigner as an ES module, so there is no page
+            # global; import it the same way and ping through the
+            # content-script bridge (proves the extension is installed).
             installed = page.evaluate(
                 """async () => {
+                     const { OpenSigner } = await import("/js/opensigner.js");
                      const s = new OpenSigner();
                      try { await s.init({ timeout: 3000 }); return true; }
                      catch (e) { return e.code || String(e); }

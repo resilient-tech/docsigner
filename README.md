@@ -87,7 +87,7 @@ Open http://localhost:8080/demo/. To sign with a token you also need the extensi
 
 Chrome / Edge / Brave: open `chrome://extensions`, enable Developer mode, Load unpacked, pick `extension/`. Note the extension ID it gets, the host installer needs it.
 
-Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → pick `extension/manifest.json`. Firefox also asks you to grant site access per site in the extension's settings.
+Firefox: run `python scripts/build_firefox_extension.py` first (Firefox runs the background as an event page, and Chrome refuses a manifest that declares one, so the Firefox copy is generated). Then `about:debugging` → This Firefox → Load Temporary Add-on → pick `dist/firefox-extension/manifest.json`. Firefox also asks you to grant site access per site in the extension's settings.
 
 ## Install the native host
 

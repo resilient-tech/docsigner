@@ -16,7 +16,9 @@ test("manifest.json is valid and matches the contract", () => {
   assert.ok(manifest.permissions.includes("nativeMessaging"));
   assert.ok(manifest.permissions.includes("storage"));
   assert.equal(manifest.background.service_worker, "background.js"); // Chromium
-  assert.deepEqual(manifest.background.scripts, ["background.js"]); // Firefox
+  // Chrome refuses to load MV3 manifests carrying background.scripts; the
+  // Firefox event-page variant comes from scripts/build_firefox_extension.py.
+  assert.equal(manifest.background.scripts, undefined);
   assert.equal(manifest.content_scripts[0].run_at, "document_start");
   assert.deepEqual(manifest.content_scripts[0].matches, ["<all_urls>"]);
   assert.equal(manifest.browser_specific_settings.gecko.id, "opensigner@opensigner.org");

@@ -5,8 +5,7 @@
   "description": "Lets web pages sign document hashes with certificates on USB tokens and smartcards, through a local native host.",
   "permissions": ["nativeMessaging", "storage"],
   "background": {
-    "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
