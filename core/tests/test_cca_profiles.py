@@ -63,6 +63,9 @@ def test_cca_ltv_embeds_revinfo_signed_attr(pki, blank_pdf, dummy_timestamper):
     # LTV enabled; the CRL from the offline PKI carries over.
     dss = DocumentSecurityStore.read_dss(reader)
     assert dss.crls, "the DSS must carry the chain's revocation data"
+    # The signer's chain rides along too: the CMS holds only the leaf, so without
+    # the extra certs a reader could not build the path (Adobe: not LTV enabled).
+    assert len(dss.certs) >= 2, "the DSS must carry the chain, not just the signer"
 
     report = validate(signed_pdf, None)[0]
     assert report["valid"] and report["intact"]

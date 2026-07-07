@@ -39,6 +39,7 @@ class Config:
     tsa_url: Optional[str]
     trust_dir: Optional[str]
     max_pdf_mb: int
+    strict_ltv: bool
 
     @property
     def max_pdf_bytes(self) -> int:
@@ -58,4 +59,8 @@ class Config:
             tsa_url=os.environ.get("TSA_URL"),
             trust_dir=os.environ.get("TRUST_DIR"),
             max_pdf_mb=int(os.environ.get("MAX_PDF_MB", "50")),
+            # Keep the CRLs a chain needs so B-LT/B-LTA/CCA read as LTV enabled
+            # (larger files). Set STRICT_LTV=false for OCSP-first sizing instead.
+            strict_ltv=os.environ.get("STRICT_LTV", "true").strip().lower()
+            not in ("false", "0", "no", "off"),
         )

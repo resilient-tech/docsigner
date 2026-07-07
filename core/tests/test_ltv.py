@@ -32,19 +32,21 @@ def _offline_context(pki, dummy_timestamper):
     )
 
 
-def _round_trip(pki, blank_pdf, profile, timestamper, context_factory):
+def _round_trip(pki, blank_pdf, profile, timestamper, context_factory, strict_ltv=True):
     state, to_sign_hash, _ = SigningSession.start(
         blank_pdf,
         pki.leaf_cert_der,
         {"profile": profile},
         timestamper=timestamper,
         validation_context=context_factory(),
+        strict_ltv=strict_ltv,
     )
     return SigningSession.complete(
         state,
         sign_hash(pki.leaf_key, to_sign_hash),
         timestamper=timestamper,
         validation_context=context_factory(),
+        strict_ltv=strict_ltv,
     )
 
 
@@ -120,6 +122,35 @@ def test_blt_keeps_crl_for_delegated_responder(blank_pdf, dummy_timestamper):
     dss = DocumentSecurityStore.read_dss(reader)
     assert dss.ocsps, "the DSS must carry the delegated OCSP response"
     assert dss.crls, "the responder's CRL must survive so its OCSP can be verified"
+
+    result = validate(signed_pdf)[0]
+    assert result["intact"] and result["valid"]
+
+
+def test_blt_strict_ltv_off_drops_crl(blank_pdf, dummy_timestamper):
+    """strict_ltv=False trims the CRL once OCSP covers the chain (smaller DSS).
+
+    Same delegated responder as the strict test, so this pins the toggle: the
+    CRL is dropped and the signature still validates (soft-fail), it just reads
+    as not LTV enabled in a strict validator.
+    """
+    pki = make_test_pki(delegated_ocsp=True)
+
+    def ctx():
+        return ValidationContext(
+            trust_roots=[pki.root_cert, dummy_timestamper.tsa_cert],
+            crls=[pki.crl],
+            ocsps=[pki.ocsp],
+            allow_fetching=False,
+            revocation_mode="require",
+        )
+
+    signed_pdf = _round_trip(pki, blank_pdf, "B-LT", dummy_timestamper, ctx, strict_ltv=False)
+
+    reader = PdfFileReader(io.BytesIO(signed_pdf), strict=False)
+    dss = DocumentSecurityStore.read_dss(reader)
+    assert dss.ocsps, "the DSS must carry the OCSP response"
+    assert not dss.crls, "strict_ltv off drops the CRL once OCSP covers the chain"
 
     result = validate(signed_pdf)[0]
     assert result["intact"] and result["valid"]

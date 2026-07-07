@@ -85,6 +85,39 @@ def test_bt_profile_embeds_timestamp(signer, blank_pdf, dummy_timestamper):
     assert r["intact"] and r["valid"]
 
 
+def test_second_signature_preserves_first(blank_pdf):
+    """A second signature on an already-signed PDF keeps the first one valid.
+
+    The second signing is an incremental update, so the first signature must
+    stay intact with the addition classed as an acceptable modification, never a
+    break: a reader shows both valid with no suspicious ("miscellaneous") change.
+    """
+    from cryptography.hazmat.primitives import serialization
+    from helpers_core import make_self_signed_cert
+
+    def sign(pdf, common_name, field):
+        key, cert = make_self_signed_cert(common_name)
+        der = cert.public_bytes(serialization.Encoding.DER)
+        state, to_sign_hash, _ = SigningSession.start(
+            pdf, der, {"profile": "B-B", "field_name": field}
+        )
+        return SigningSession.complete(state, sign_hash(key, to_sign_hash))
+
+    signed_once = sign(blank_pdf, "First Signer", "Sig-A")
+    signed_twice = sign(signed_once, "Second Signer", "Sig-B")
+
+    reader = PdfFileReader(io.BytesIO(signed_twice))
+    assert len(reader.embedded_regular_signatures) == 2
+
+    by_field = {r["field_name"]: r for r in validate(signed_twice)}
+    assert set(by_field) == {"Sig-A", "Sig-B"}
+    for field, r in by_field.items():
+        assert r["intact"] and r["valid"], (field, r["profile_notes"])
+    # The first signature must class the second as an acceptable addition, not a
+    # suspicious modification (what Adobe flags as a breaking change).
+    assert "ACCEPTABLE_MODIFICATIONS" in by_field["Sig-A"]["profile_notes"]
+
+
 def test_bt_without_timestamper_is_rejected(signer, blank_pdf):
     _, cert_der = signer
     with pytest.raises(SignerError) as err:

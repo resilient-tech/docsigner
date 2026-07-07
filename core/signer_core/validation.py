@@ -6,7 +6,10 @@ from datetime import timezone
 
 from cryptography import x509 as pyca_x509
 from pyhanko.pdf_utils.reader import PdfFileReader
-from pyhanko.sign.validation import async_validate_pdf_signature
+from pyhanko.sign.validation import (
+    async_validate_pdf_signature,
+    async_validate_pdf_timestamp,
+)
 
 from .errors import SignerError
 from .trust import build_validation_context
@@ -47,9 +50,16 @@ async def _validate_one(emb, trust_dir):
 
     try:
         # A fresh context per signature; contexts accumulate state.
-        status = await async_validate_pdf_signature(
-            emb, signer_validation_context=build_validation_context(trust_dir)
-        )
+        context = build_validation_context(trust_dir)
+        if emb.sig_object_type == "/DocTimeStamp":
+            # A B-LTA/CCA-LTA document timestamp is a /DocTimeStamp, not a /Sig.
+            # async_validate_pdf_signature rejects it ("object type must be /Sig"),
+            # so validate it as the RFC 3161 timestamp it is.
+            status = await async_validate_pdf_timestamp(emb, validation_context=context)
+        else:
+            status = await async_validate_pdf_signature(
+                emb, signer_validation_context=context
+            )
     except Exception as exc:
         result["profile_notes"] = f"validation failed: {exc}"
         return result
@@ -57,7 +67,7 @@ async def _validate_one(emb, trust_dir):
     result["valid"] = bool(status.valid)
     result["intact"] = bool(status.intact)
     result["trusted"] = bool(status.trusted)
-    signing_time = status.signer_reported_dt or emb.self_reported_timestamp
+    signing_time = getattr(status, "signer_reported_dt", None) or emb.self_reported_timestamp
     if signing_time is not None:
         result["signing_time"] = signing_time.astimezone(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
