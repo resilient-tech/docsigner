@@ -197,6 +197,7 @@ def list_certificates():
             seen.add(info["thumbprint"])
             info["tokenLabel"] = _token_label(token)
             info["moduleName"] = os.path.basename(path)
+            info["source"] = "pkcs11"
             found.append(info)
     return found
 

@@ -9,7 +9,7 @@ import binascii
 import json
 import logging
 
-from . import __version__, pkcs11_ops
+from . import __version__, os_store, pkcs11_ops
 from .errors import HostError
 
 log = logging.getLogger(__name__)
@@ -57,7 +57,16 @@ def _get_version(params):
 
 
 def _list_certificates(params):
-    return {"certificates": pkcs11_ops.list_certificates()}
+    """PKCS#11 tokens plus the OS store, deduplicated by thumbprint.
+
+    A token certificate its driver also registered in the OS store shows up
+    once, as pkcs11, keeping today's behaviour for existing users.
+    """
+    certificates = pkcs11_ops.list_certificates()
+    seen = {c["thumbprint"] for c in certificates}
+    certificates += [c for c in os_store.list_certificates()
+                     if c["thumbprint"] not in seen]
+    return {"certificates": certificates}
 
 
 def _sign_hash(params):
@@ -72,8 +81,26 @@ def _sign_hash(params):
         digests = [base64.b64decode(h, validate=True) for h in hashes]
     except (binascii.Error, ValueError):
         raise HostError("INTERNAL", "hashes must be valid base64")
-    signatures = pkcs11_ops.sign_hashes(thumbprint, digests, algorithm)
+    signatures = _sign_with_fallback(thumbprint, digests, algorithm)
     return {"signatures": [base64.b64encode(s).decode("ascii") for s in signatures]}
+
+
+def _sign_with_fallback(thumbprint, digests, algorithm):
+    """Tokens first (unchanged behaviour), then the OS store.
+
+    Only not-found outcomes trigger the fallback; PIN and cancellation errors
+    surface as-is. When neither side has the certificate, the PKCS#11 error
+    wins: it distinguishes "no module", "no token" and "no certificate".
+    """
+    try:
+        return pkcs11_ops.sign_hashes(thumbprint, digests, algorithm)
+    except HostError as exc:
+        if exc.code not in ("TOKEN_NOT_FOUND", "CERT_NOT_FOUND", "MODULE_ERROR"):
+            raise
+        try:
+            return os_store.sign_hashes(thumbprint, digests, algorithm)
+        except HostError as fallback:
+            raise exc if fallback.code == "CERT_NOT_FOUND" else fallback
 
 
 _HANDLERS = {
