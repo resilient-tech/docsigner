@@ -25,19 +25,49 @@ from cryptography.hazmat.primitives import serialization
 
 TRUST = Path(__file__).resolve().parents[1] / "trust"
 
+_CCA_FILES = "https://www.cca.gov.in/cca/sites/default/files/files/"
+
+# Every licensed CA operating under RCAI 2022, from CCA's own listing
+# (cca.gov.in/display_cert2022.php). These are intermediates, not anchors:
+# chains terminate at the CCA India roots. Holding them locally keeps chain
+# building off each CA's repository at signing time; a CA absent here still
+# validates through AIA fetching.
+_LICENSED_CAS_2022 = [
+    ("SafeScrypt-CA-2022", "Sify%20Safecrypt%20CA%202022.cer"),
+    ("eMudhra-CA-2022", "e-Mudhra%20CA%202022.cer"),
+    ("RajComp-CA-2022", "RajComp%20CA%202022.cer"),
+    ("Verasys-CA-2022", "Verasys%20CA%202022.cer"),
+    ("XtraTrust-CA-2022", "XtratrustCA2022.cer"),
+    ("IDRBT-CA-2022", "IDRBT%20CA%202022.cer"),
+    ("IDSign-CA-2022", "IDSign_CA_2022.cer"),
+    ("nCode-Solutions-CA-2022", "nCode%20Solutions%20CA%202022.cer"),
+    ("PantaSign-CA-2022", "PantaSign_CA_2022.cer"),
+    ("Capricorn-CA-2022", "Capricorn%20CA%202022.cer"),
+    ("ProDigiSign-CA-2022", "ProDigiSign-CA-2022.cer"),
+    ("SignX-CA-2022", "SignX%20CA%202022.cer"),
+    ("CDAC-CA-2022", "CDAC%20CA.cer"),
+    ("CDSL-Ventures-CA-2022", "CDSL%20Ventures%20Limited%20CA.cer"),
+    ("Protean-eGov-CA-2022", "Protean%20eGov%20CA.cer"),
+    ("Care4Sign-CA-2022", "Care4sign-CA-2022.cer"),
+    ("IGCAR-CA-2022", "IGCAR%20CA%202022.cer"),
+    ("JPSL-CA-2022", "JPSL_%20CA_%202022%20.cer"),
+    ("CDSL-CA-2022", "CDSL_CA_2022.cer"),
+    ("Speed-Sign-CA-2022", "Speed_Sign_2022.cer"),
+    ("CSC-CA-2022", "CSC_CA_2022.cer"),
+]
+
 # folder -> [(file stem, url)]
 SOURCES = {
-    # India: CCA roots anchor every licensed CA (Capricorn, eMudhra, Sify, ...).
-    # The Capricorn intermediates are optional speed-ups; AIA fetching finds
-    # them anyway when absent.
+    # India: CCA roots anchor every licensed CA; the licensed-CA certificates
+    # and Capricorn's sub-CAs ride along as locally held intermediates.
     "in": [
-        ("CCA-India-2022", "https://www.cca.gov.in/cca/sites/default/files/files/CCAIndia2022.cer"),
-        ("CCA-India-2022-SPL", "https://www.cca.gov.in/cca/sites/default/files/files/CCAIndia2022SPL.cer"),
-        ("CCA-India-2015", "https://www.cca.gov.in/cca/sites/default/files/files/CCAIndia2015.cer"),
-        ("CCA-India-2014", "https://www.cca.gov.in/cca/sites/default/files/files/CCAIndia2014.cer"),
-        ("CCA-India-2011", "https://www.cca.gov.in/cca/sites/default/files/files/cca%20india%202011.cer"),
-        ("CCA-India-2007", "https://www.cca.gov.in/cca/sites/default/files/files/cca%20india%202007.cer"),
-        ("Capricorn-CA-2022", "http://www.certificate.digital/repository/CapricornCA2022.cer"),
+        ("CCA-India-2022", _CCA_FILES + "CCAIndia2022.cer"),
+        ("CCA-India-2022-SPL", _CCA_FILES + "CCAIndia2022SPL.cer"),
+        ("CCA-India-2015", _CCA_FILES + "CCAIndia2015.cer"),
+        ("CCA-India-2014", _CCA_FILES + "CCAIndia2014.cer"),
+        ("CCA-India-2011", _CCA_FILES + "cca%20india%202011.cer"),
+        ("CCA-India-2007", _CCA_FILES + "cca%20india%202007.cer"),
+        *[(stem, _CCA_FILES + fname) for stem, fname in _LICENSED_CAS_2022],
         ("Capricorn-Sub-CA-for-Individual-DSC-2022", "http://www.certificate.digital/repository/CapricornSubCAforIndividualDSC2022.cer"),
         ("Capricorn-Sub-CA-for-Organisation-DSC-2022", "http://www.certificate.digital/repository/CapricornSubCAforOrganisationDSC2022.cer"),
     ],

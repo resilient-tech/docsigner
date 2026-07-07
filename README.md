@@ -61,7 +61,7 @@ python scripts/fetch_trust_roots.py
 
 ```
 trust/
-  in/       CCA India roots (anchor every licensed Indian CA) + Capricorn intermediates
+  in/       CCA India roots + all 21 licensed CA certificates from CCA's registry
   br/       ICP-Brasil roots
   us/       US Federal PKI root
   tsa/      roots for the timestamp authority in TSA_URL (DigiCert)
