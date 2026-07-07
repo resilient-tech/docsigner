@@ -282,11 +282,17 @@ async function verifyDocument() {
       return;
     }
     for (const sig of result.signatures) {
-      const ok = sig.valid && sig.intact;
+      // intact covers the signed bytes; modifications_ok covers what was added
+      // afterwards (DSS and timestamps are fine, content edits are not).
+      const altered = sig.modifications_ok === false;
+      const ok = sig.valid && sig.intact && !altered;
       const headline = `${ok ? "✓" : "✗"} ${sig.field_name} — ${sig.signer || "unknown signer"}`;
+      const integrity = !sig.intact ? "signed content MODIFIED"
+        : altered ? "signed content intact, but the document was ALTERED after signing"
+        : "intact";
       const meta = [
         sig.signing_time ? `Signed: ${sig.signing_time}` : null,
-        `Integrity: ${sig.intact ? "intact" : "MODIFIED after signing"}`,
+        `Integrity: ${integrity}`,
         `Trust: ${sig.trusted ? "chains to a trusted CA" : "not trusted by this server's TRUST_DIR"}`,
         sig.profile_notes || null,
       ].filter(Boolean).join("\n");

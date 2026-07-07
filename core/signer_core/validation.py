@@ -6,6 +6,7 @@ from datetime import timezone
 
 from cryptography import x509 as pyca_x509
 from pyhanko.pdf_utils.reader import PdfFileReader
+from pyhanko.sign.diff_analysis import ModificationLevel
 from pyhanko.sign.validation import (
     async_validate_pdf_signature,
     async_validate_pdf_timestamp,
@@ -40,6 +41,7 @@ async def _validate_one(emb, trust_dir):
         "valid": False,
         "intact": False,
         "trusted": False,
+        "modifications_ok": None,
         "signer": None,
         "signing_time": None,
         "profile_notes": None,
@@ -67,6 +69,16 @@ async def _validate_one(emb, trust_dir):
     result["valid"] = bool(status.valid)
     result["intact"] = bool(status.intact)
     result["trusted"] = bool(status.trusted)
+    # intact only says the signed bytes are unchanged. Later incremental updates
+    # (DSS, document timestamps, more signatures) are permitted by PAdES; content
+    # edits are not. pyHanko's diff analysis makes that call: surface it so a
+    # tampered document cannot hide behind valid/intact/trusted all being true.
+    mod_level = getattr(status, "modification_level", None)
+    if mod_level is not None:
+        result["modifications_ok"] = (
+            mod_level is not ModificationLevel.OTHER
+            and getattr(status, "docmdp_ok", None) is not False
+        )
     signing_time = getattr(status, "signer_reported_dt", None) or emb.self_reported_timestamp
     if signing_time is not None:
         result["signing_time"] = signing_time.astimezone(timezone.utc).strftime(

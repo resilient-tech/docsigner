@@ -156,6 +156,7 @@ Response:
       "valid": true,
       "intact": true,
       "trusted": false,
+      "modifications_ok": true,
       "signer": "CN=...",
       "signing_time": "2026-07-05T12:00:00Z",
       "profile_notes": "optional free text"
@@ -166,6 +167,13 @@ Response:
 ```
 
 `pdfa` is null when the document does not claim PDF/A.
+
+`modifications_ok` reports whether every incremental update applied after this
+signature is one PAdES permits (DSS, document timestamps, further signatures,
+form fills). `false` means the document was altered after signing in a way a
+reader should flag; `null` means the analysis could not run. `intact` only
+covers the signed byte range, so a tampered document can still be
+`intact: true` — check both.
 
 ---
 
