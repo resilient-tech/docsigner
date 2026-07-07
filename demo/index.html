@@ -91,14 +91,16 @@
       <option value="B-T">PAdES B-T (with timestamp)</option>
       <option value="B-LT">PAdES B-LT (long-term, embeds revocation data)</option>
       <option value="B-LTA">PAdES B-LTA (long-term with archive timestamp)</option>
+      <option value="CCA-LTV">CCA-LTV (India: PKCS#7 with pdfRevocationInfoArchival)</option>
+      <option value="CCA-LTA">CCA-LTA (India: CCA-LTV plus RFC 3161 timestamp)</option>
     </select>
-    <p class="hint">B-T and up need TSA_URL on the server; B-LT and B-LTA also need TRUST_DIR with your CA chain and reachable OCSP/CRL endpoints.</p>
+    <p class="hint">B-T, B-LT, B-LTA and CCA-LTA need TSA_URL on the server; B-LT, B-LTA, CCA-LTV and CCA-LTA also need TRUST_DIR with your CA chain and reachable OCSP/CRL endpoints.</p>
     <div class="inline">
       <input type="checkbox" id="visible">
       <label for="visible" style="margin:0">Visible signature box on page 1</label>
     </div>
     <label for="server">Server URL</label>
-    <input type="text" id="server" value="http://localhost:8000">
+    <input type="text" id="server" value="http://127.0.0.1:8989">
   </fieldset>
 
   <button id="sign" type="button" disabled>Sign</button>

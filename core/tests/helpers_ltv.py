@@ -1,22 +1,26 @@
-"""A two-cert test PKI for the LTV tests: root CA, leaf signer, and a CRL.
+"""A two-cert test PKI for the LTV tests: root CA, leaf signer, CRL, OCSP.
 
-Everything lives in memory and the CRL is empty (nothing revoked), which is
-exactly what a validation context needs to certify a chain offline.
+Everything lives in memory. The CRL is empty (nothing revoked) and the OCSP
+response reports the leaf as good, which is exactly what a validation context
+needs to certify a chain offline through either source.
 """
 
 import dataclasses
 import datetime
 
 from asn1crypto import crl as asn1_crl
+from asn1crypto import ocsp as asn1_ocsp
 from asn1crypto import x509 as asn1_x509
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
+from cryptography.x509 import ocsp as x509_ocsp
+from cryptography.x509.oid import AuthorityInformationAccessOID, NameOID
 
-# A URL nobody fetches: it only marks the leaf as CRL-capable so validators
-# consult the CRLs preloaded into the validation context.
+# URLs nobody fetches: they only mark the leaf as CRL- and OCSP-capable so
+# validators consult the revocation data preloaded into the validation context.
 CRL_DP_URL = "http://crl.invalid/root.crl"
+AIA_OCSP_URL = "http://ocsp.invalid/root"
 
 
 @dataclasses.dataclass
@@ -25,6 +29,7 @@ class TestPki:
     leaf_key: rsa.RSAPrivateKey
     leaf_cert_der: bytes
     crl: asn1_crl.CertificateList
+    ocsp: asn1_ocsp.OCSPResponse
 
 
 def _name(common_name):
@@ -104,6 +109,33 @@ def make_test_pki() -> TestPki:
             ),
             critical=False,
         )
+        .add_extension(
+            x509.AuthorityInformationAccess(
+                [
+                    x509.AccessDescription(
+                        AuthorityInformationAccessOID.OCSP,
+                        x509.UniformResourceIdentifier(AIA_OCSP_URL),
+                    )
+                ]
+            ),
+            critical=False,
+        )
+        .sign(root_key, hashes.SHA256())
+    )
+
+    ocsp_response = (
+        x509_ocsp.OCSPResponseBuilder()
+        .add_response(
+            cert=leaf_cert,
+            issuer=root_cert,
+            algorithm=hashes.SHA1(),
+            cert_status=x509_ocsp.OCSPCertStatus.GOOD,
+            this_update=now - datetime.timedelta(minutes=5),
+            next_update=now + datetime.timedelta(days=7),
+            revocation_time=None,
+            revocation_reason=None,
+        )
+        .responder_id(x509_ocsp.OCSPResponderEncoding.NAME, root_cert)
         .sign(root_key, hashes.SHA256())
     )
 
@@ -122,4 +154,7 @@ def make_test_pki() -> TestPki:
         leaf_key=leaf_key,
         leaf_cert_der=leaf_cert.public_bytes(serialization.Encoding.DER),
         crl=asn1_crl.CertificateList.load(crl.public_bytes(serialization.Encoding.DER)),
+        ocsp=asn1_ocsp.OCSPResponse.load(
+            ocsp_response.public_bytes(serialization.Encoding.DER)
+        ),
     )

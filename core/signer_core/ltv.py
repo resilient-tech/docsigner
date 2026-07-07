@@ -6,11 +6,13 @@ B-LTA adds a document-level archive timestamp on top. Both are incremental
 updates over the signed bytes, so no private key is involved and the work can
 happen after a token session completes.
 
-Revocation source preference: pyhanko-certvalidator tries OCSP first whenever
-the certificate carries an OCSP URL and falls back to CRLs only when OCSP
-yields no good status. That default suits Indian CAs, whose CRLs run to
-megabytes while an OCSP response is a couple of kilobytes; no extra fetcher
-configuration is needed.
+Revocation source preference: the certvalidator fetcher tries OCSP first but
+still collects CRLs along the way, and everything it caches would land in the
+DSS. Indian CA CRLs run to megabytes while the OCSP responses total a few KB,
+so after validation the collected revinfo is filtered: when every certificate
+below its trust anchor has a good OCSP response, the CRLs are dropped and the
+DSS carries OCSP only. CCA ESAIG 1.19.3 prefers OCSP over large CRLs, and
+PAdES does not require both sources.
 """
 
 import io
@@ -18,8 +20,9 @@ import io
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.pdf_utils.reader import PdfFileReader
 from pyhanko.sign.signers.pdf_signer import PdfTimeStamper
-from pyhanko.sign.validation import async_add_validation_info
+from pyhanko.sign.validation import async_add_validation_info, collect_validation_info
 from pyhanko.sign.validation.dss import DocumentSecurityStore
+from pyhanko_certvalidator import ValidationContext
 
 from .errors import SignerError
 
@@ -45,9 +48,12 @@ async def async_augment(
     reader = PdfFileReader(output, strict=False)
     embedded_sig = reader.embedded_regular_signatures[-1]
     try:
-        await async_add_validation_info(
-            embedded_sig, validation_context, in_place=True
-        )
+        paths = await collect_validation_info(embedded_sig, validation_context)
+        if archive_timestamp:
+            async for ts_path in timestamper.validation_paths(validation_context):
+                paths.append(ts_path)
+        dss_context = _filtered_offline_context(validation_context, paths)
+        await async_add_validation_info(embedded_sig, dss_context, in_place=True)
     except Exception as exc:
         raise SignerError(
             "INTERNAL",
@@ -63,7 +69,7 @@ async def async_augment(
             await PdfTimeStamper(timestamper).async_timestamp_pdf(
                 writer,
                 md_algorithm,
-                validation_context=validation_context,
+                validation_context=dss_context,
                 in_place=True,
             )
         except Exception as exc:
@@ -71,6 +77,56 @@ async def async_augment(
                 "INTERNAL", f"could not add the archive timestamp: {exc}"
             ) from None
     return output.getvalue()
+
+
+def _filtered_offline_context(validation_context, paths) -> ValidationContext:
+    """A non-fetching context holding only the revinfo the DSS should carry.
+
+    async_add_validation_info and async_timestamp_pdf embed every OCSP
+    response and CRL cached on the context they receive, so the filtering
+    happens here: validate first against the caller's fetching context, then
+    hand the DSS writers a context preloaded with the filtered revinfo. Trust
+    anchors and gathered certificates carry over, so revalidation inside the
+    writers stays offline.
+    """
+    ocsps = list(validation_context.ocsps)
+    crls = list(validation_context.crls)
+    needs_revinfo = set()
+    for path in paths:
+        needs_revinfo.update(_serials_below_anchor(path))
+    if ocsps and crls and needs_revinfo <= _ocsp_good_serials(ocsps):
+        crls = []
+    return ValidationContext(
+        trust_manager=validation_context.path_builder.trust_manager,
+        certificate_registry=validation_context.certificate_registry,
+        ocsps=ocsps,
+        crls=crls,
+        allow_fetching=False,
+        revinfo_policy=validation_context.revinfo_policy,
+    )
+
+
+def _serials_below_anchor(path):
+    """Serials of every certificate in a validation path except its anchor.
+
+    Trust anchors need no revocation data (ESAIG 1.21: the root is verified
+    by thumbprint, not revocation).
+    """
+    certs = list(path)
+    return {cert.serial_number for cert in certs[1:]}
+
+
+def _ocsp_good_serials(ocsps):
+    """Serials confirmed 'good' by a successful OCSP response."""
+    good = set()
+    for resp in ocsps:
+        if resp["response_status"].native != "successful":
+            continue
+        basic = resp["response_bytes"]["response"].parsed
+        for single in basic["tbs_response_data"]["responses"]:
+            if single["cert_status"].name == "good":
+                good.add(single["cert_id"]["serial_number"].native)
+    return good
 
 
 def _require_revocation_info(pdf_bytes: bytes) -> None:

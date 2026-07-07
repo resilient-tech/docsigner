@@ -15,6 +15,12 @@ class Profile(enum.Enum):
     B_T = "B-T"
     B_LT = "B-LT"
     B_LTA = "B-LTA"
+    # CCA India ESAIG section 1.19/1.25: PKCS#7 signature with the chain and
+    # revocation info carried as the pdfRevocationInfoArchival signed attribute
+    # (OID 1.2.840.113583.1.1.8) instead of a PAdES DSS. CCA-LTA adds an
+    # RFC 3161 signature timestamp on top of CCA-LTV.
+    CCA_LTV = "CCA-LTV"
+    CCA_LTA = "CCA-LTA"
 
     @classmethod
     def parse(cls, value) -> "Profile":
@@ -31,13 +37,18 @@ class Profile(enum.Enum):
 
     @property
     def needs_timestamp(self) -> bool:
-        """B-T and up carry an RFC 3161 signature timestamp."""
-        return self is not Profile.B_B
+        """Profiles that carry an RFC 3161 signature timestamp."""
+        return self in (Profile.B_T, Profile.B_LT, Profile.B_LTA, Profile.CCA_LTA)
 
     @property
     def needs_revocation_info(self) -> bool:
         """B-LT and up embed revocation data (DSS)."""
         return self in (Profile.B_LT, Profile.B_LTA)
+
+    @property
+    def adobe_revinfo(self) -> bool:
+        """CCA profiles embed revocation as the pdfRevocationInfoArchival signed attribute."""
+        return self in (Profile.CCA_LTV, Profile.CCA_LTA)
 
 
 def check_requirements(profile: Profile, timestamper, validation_context) -> None:
@@ -48,7 +59,7 @@ def check_requirements(profile: Profile, timestamper, validation_context) -> Non
             f"profile {profile.value} requires an RFC 3161 timestamp authority;"
             " none is configured (set TSA_URL)",
         )
-    if profile.needs_revocation_info and validation_context is None:
+    if (profile.needs_revocation_info or profile.adobe_revinfo) and validation_context is None:
         raise SignerError(
             "PROFILE_UNSUPPORTED",
             f"profile {profile.value} requires trust anchors to gather revocation"
@@ -72,13 +83,23 @@ def build_metadata(
     field_name: str,
     validation_context=None,
 ) -> signers.PdfSignatureMetadata:
+    # CCA profiles use the plain PKCS#7 subfilter; pyHanko then routes embedded
+    # validation info into the pdfRevocationInfoArchival signed attribute rather
+    # than a DSS. The token flow gathers that attribute itself (session.py), so
+    # it builds metadata without a validation context.
+    if profile.adobe_revinfo:
+        subfilter = SigSeedSubFilter.ADOBE_PKCS7_DETACHED
+        embed = validation_context is not None
+    else:
+        subfilter = SigSeedSubFilter.PADES
+        embed = profile.needs_revocation_info
     return signers.PdfSignatureMetadata(
         field_name=field_name,
         md_algorithm=parse_digest_algorithm(options),
         reason=options.get("reason"),
         location=options.get("location"),
-        subfilter=SigSeedSubFilter.PADES,
-        embed_validation_info=profile.needs_revocation_info,
+        subfilter=subfilter,
+        embed_validation_info=embed,
         use_pades_lta=profile is Profile.B_LTA,
-        validation_context=validation_context if profile.needs_revocation_info else None,
+        validation_context=validation_context if embed else None,
     )

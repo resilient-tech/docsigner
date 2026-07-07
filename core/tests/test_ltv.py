@@ -66,6 +66,30 @@ def test_blt_embeds_dss(pki, blank_pdf, dummy_timestamper):
     assert result["intact"] and result["valid"]
 
 
+def test_blta_drops_crls_when_ocsp_covers_chain(pki, blank_pdf, dummy_timestamper):
+    """OCSP-first filtering: full OCSP coverage keeps CRLs out of the DSS."""
+
+    def ctx():
+        return ValidationContext(
+            trust_roots=[pki.root_cert, dummy_timestamper.tsa_cert],
+            crls=[pki.crl],
+            ocsps=[pki.ocsp],
+            allow_fetching=False,
+            revocation_mode="require",
+        )
+
+    signed_pdf = _round_trip(pki, blank_pdf, "B-LTA", dummy_timestamper, ctx)
+
+    reader = PdfFileReader(io.BytesIO(signed_pdf), strict=False)
+    dss = DocumentSecurityStore.read_dss(reader)
+    assert dss.ocsps, "the DSS must carry the chain's OCSP responses"
+    assert not dss.crls, "CRLs are redundant when OCSP covers the whole chain"
+    assert len(reader.embedded_timestamp_signatures) == 1
+
+    result = validate(signed_pdf)[0]
+    assert result["intact"] and result["valid"]
+
+
 def test_blta_adds_archive_timestamp(pki, blank_pdf, dummy_timestamper):
     def ctx():
         return _offline_context(pki, dummy_timestamper)

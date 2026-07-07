@@ -16,6 +16,7 @@ import hashlib
 import io
 import json
 import secrets
+from datetime import datetime, timezone
 
 from asn1crypto import cms
 from asn1crypto import x509 as asn1_x509
@@ -27,13 +28,14 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
 from pyhanko.sign.signers.pdf_byterange import PreparedByteRangeDigest
-from pyhanko.sign.signers.pdf_cms import ExternalSigner
+from pyhanko.sign.signers.pdf_cms import ExternalSigner, PdfCMSSignedAttributes, Signer
 from pyhanko.sign.signers.pdf_signer import PdfTBSDocument
+from pyhanko_certvalidator import CertificateValidator
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from .appearance import build_appearance
 from .errors import SignerError
-from .ltv import async_augment
+from .ltv import _ocsp_good_serials, _serials_below_anchor, async_augment
 from .profiles import Profile, build_metadata, check_requirements, parse_digest_algorithm
 
 # Placeholder for the yet-unknown signature value; fits RSA-4096.
@@ -135,6 +137,26 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
     field_name = options.get("field_name") or f"Signature-{secrets.token_hex(4)}"
     stamp_style, field_spec = build_appearance(options.get("appearance"), field_name)
 
+    # CCA profiles (ESAIG 1.19): revocation for the signer chain, and the TSA
+    # chain when timestamping, is a *signed* attribute, so it must be gathered
+    # before the token signs. It also has to fit inside the signature
+    # placeholder, so it is collected before the placeholder is sized: Indian
+    # CA CRLs run to megabytes, far past pyHanko's default estimate.
+    attr_settings = None
+    bytes_reserved = None
+    if profile.adobe_revinfo:
+        revinfo = await _gather_adobe_revinfo(
+            signer_cert,
+            validation_context,
+            timestamper if profile.needs_timestamp else None,
+        )
+        attr_settings = PdfCMSSignedAttributes(
+            signing_time=datetime.now(timezone.utc), adobe_revinfo_attr=revinfo
+        )
+        # /Contents is hex-encoded (2 chars per byte); 32 KB of headroom covers
+        # the CMS body, the signer certificate, and a CCA-LTA timestamp token.
+        bytes_reserved = (len(revinfo.dump()) + 32_768) * 2
+
     placeholder_signer = ExternalSigner(
         signing_cert=signer_cert,
         cert_registry=SimpleCertificateStore(),
@@ -149,7 +171,9 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
     )
     try:
         prep_digest, _tbs_document, output = (
-            await pdf_signer.async_digest_doc_for_signing(writer)
+            await pdf_signer.async_digest_doc_for_signing(
+                writer, bytes_reserved=bytes_reserved
+            )
         )
     except SignerError:
         raise
@@ -159,7 +183,10 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
         ) from None
 
     signed_attrs = await placeholder_signer.signed_attrs(
-        prep_digest.document_digest, md_algorithm, use_pades=True
+        prep_digest.document_digest,
+        md_algorithm,
+        attr_settings=attr_settings,
+        use_pades=not profile.adobe_revinfo,
     )
     signed_attrs_der = signed_attrs.dump()
     to_sign_hash = hashlib.new(md_algorithm, signed_attrs_der).digest()
@@ -175,6 +202,49 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
         profile=profile.value,
     )
     return state, to_sign_hash, md_algorithm
+
+
+async def _gather_adobe_revinfo(signer_cert, validation_context, timestamper):
+    """Collect chain revocation data into a RevocationInfoArchival value.
+
+    Validating the signer (and, for CCA-LTA, the TSA) against a fetching
+    context leaves the gathered OCSP responses and CRLs on the context; those
+    become the pdfRevocationInfoArchival signed attribute per CCA ESAIG 1.19.
+    """
+    needs_revinfo = set()
+    try:
+        validator = CertificateValidator(
+            signer_cert, validation_context=validation_context
+        )
+        path = await validator.async_validate_usage(set())
+        needs_revinfo.update(_serials_below_anchor(path))
+        if timestamper is not None:
+            async for ts_path in timestamper.validation_paths(validation_context):
+                needs_revinfo.update(_serials_below_anchor(ts_path))
+    except Exception as exc:
+        raise SignerError(
+            "INTERNAL",
+            f"could not collect revocation data for the signer chain: {exc}"
+            " (check TRUST_DIR contents and OCSP/CRL reachability)",
+        ) from None
+
+    ocsps = list(validation_context.ocsps)
+    crls = list(validation_context.crls)
+    # The fetcher collects both sources; CRLs from Indian CAs run to megabytes
+    # while the OCSP responses total a few KB. ESAIG 1.19.3 prefers OCSP, so
+    # drop the CRLs whenever every chain certificate below its trust anchor is
+    # covered by a good OCSP response.
+    if ocsps and crls and needs_revinfo <= _ocsp_good_serials(ocsps):
+        crls = []
+
+    revinfo = Signer.format_revinfo(ocsp_responses=ocsps, crls=crls)
+    if revinfo is None:
+        raise SignerError(
+            "INTERNAL",
+            "no OCSP response or CRL could be obtained for the signer chain;"
+            " refusing to produce a CCA-LTV signature without revocation data",
+        )
+    return revinfo
 
 
 async def _complete(state, signature, timestamper, validation_context):

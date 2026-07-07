@@ -54,9 +54,13 @@ async def request_validation_handler(request: Request, exc: RequestValidationErr
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request: Request, exc: Exception):
+    # This handler runs in Starlette's outermost error middleware, outside
+    # CORSMiddleware, so the header must be set by hand: without it browsers
+    # report a 500 as a network failure instead of showing the error.
     return JSONResponse(
         status_code=500,
         content={"error": {"code": "INTERNAL", "message": "internal server error"}},
+        headers={"Access-Control-Allow-Origin": "*"},
     )
 
 
@@ -81,7 +85,12 @@ def _document_bytes(payload: dict) -> bytes:
 
 def _signing_validation_context():
     if config.trust_dir:
-        return build_validation_context(config.trust_dir, allow_fetching=True)
+        # "require" so B-LT/B-LTA embed revocation for the whole chain; a partial
+        # DSS reads as "not LTV enabled" in Adobe. Only affects LTV completion,
+        # which is the sole caller that gathers revocation.
+        return build_validation_context(
+            config.trust_dir, allow_fetching=True, revocation_mode="require"
+        )
     return None
 
 
