@@ -6,6 +6,8 @@ from pyhanko.keys.pemder import load_certs_from_pemder_data
 from pyhanko.sign.timestamps import HTTPTimeStamper
 from pyhanko_certvalidator import ValidationContext
 
+from .errors import SignerError
+
 CERT_SUFFIXES = (".pem", ".crt", ".cer", ".der")
 
 
@@ -51,6 +53,37 @@ def build_validation_context(
         allow_fetching=allow_fetching,
         revocation_mode=revocation_mode,
     )
+
+
+# Public RFC 3161 endpoints that answer without an account. A request picks
+# one by name (options.tsa); arbitrary URLs from clients are refused so the
+# deployment's trust decisions stay server-side. For LTV profiles the chosen
+# TSA's root must sit in TRUST_DIR (trust/tsa/, fed by scripts/fetch_trust_roots.py).
+KNOWN_TSAS = {
+    "digicert": "http://timestamp.digicert.com",
+    "sectigo": "http://timestamp.sectigo.com",
+    "certum": "http://time.certum.pl",
+    "entrust": "http://timestamp.entrust.net/TSS/RFC3161sha2TS",
+    "ssl-com": "http://ts.ssl.com",
+}
+
+
+def resolve_tsa_url(name, default_url=None):
+    """Map a client-supplied TSA name to its URL; None/empty means the default.
+
+    Unknown names raise instead of falling back, so a tester who picked a TSA
+    is never silently timestamped by a different one.
+    """
+    if not name:
+        return default_url
+    try:
+        return KNOWN_TSAS[name]
+    except KeyError:
+        raise SignerError(
+            "PROFILE_UNSUPPORTED",
+            f"unknown timestamp authority {name!r}; expected one of "
+            + ", ".join(sorted(KNOWN_TSAS)),
+        ) from None
 
 
 def make_timestamper(tsa_url=None):

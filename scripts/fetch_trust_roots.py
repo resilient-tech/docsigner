@@ -82,11 +82,19 @@ SOURCES = {
     "us": [
         ("FPKI-Federal-Common-Policy-G2", "http://repo.fpki.gov/fcpca/fcpcag2.crt"),
     ],
-    # Timestamp authorities configured in TSA_URL. The TSA's intermediates
-    # arrive inside each timestamp token; only the roots are needed here.
+    # Roots for every TSA in the server's registry (signer_core.trust.KNOWN_TSAS).
+    # A TSA's intermediates arrive inside each timestamp token; only roots are
+    # needed here, and only the LTV profiles consult them.
     "tsa": [
         ("DigiCert-Trusted-Root-G4", "https://cacerts.digicert.com/DigiCertTrustedRootG4.crt"),
         ("DigiCert-Assured-ID-Root-CA", "https://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt"),
+        # crt.sectigo.com rejects plain TLS clients; the repo is served over http.
+        ("USERTrust-RSA-CA", "http://crt.sectigo.com/USERTrustRSACertificationAuthority.crt"),
+        ("Sectigo-Public-Time-Stamping-Root-R46", "http://crt.sectigo.com/SectigoPublicTimeStampingRootR46.crt"),
+        ("Certum-Trusted-Network-CA", "https://repository.certum.pl/ctnca.cer"),
+        ("Certum-Trusted-Network-CA-2", "https://repository.certum.pl/ctnca2.cer"),
+        # Entrust and SSL.com gate their repositories behind a WAF; for LTV with
+        # those TSAs drop the root into trust/tsa/ by hand.
     ],
 }
 

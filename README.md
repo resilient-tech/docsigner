@@ -35,7 +35,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
 
-Standards: PAdES baseline profiles per ETSI EN 319 142-1, plus CCA-LTV and CCA-LTA per CCA India's Electronic Signature Application Integration Guidelines (PKCS#7 with revocation data in the pdfRevocationInfoArchival signed attribute, ESAIG 1.19). All profiles work in both flows, token sessions and server-side signing. B-T and CCA-LTA need `TSA_URL`; the LTV profiles also need `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
+Standards: PAdES baseline profiles per ETSI EN 319 142-1, plus CCA-LTV and CCA-LTA per CCA India's Electronic Signature Application Integration Guidelines (PKCS#7 with revocation data in the pdfRevocationInfoArchival signed attribute, ESAIG 1.19). All PDF profiles work in both flows, token sessions and server-side signing. Beyond PDF: detached CAdES-BES (.p7s) over any file in both flows, and enveloped XAdES-B over XML with the server-held key. Timestamps come from `TSA_URL` or a per-request pick from the built-in registry (DigiCert, Sectigo, Certum, Entrust, SSL.com). PDF/A input is detected and reported so an invisible signature can keep conformance intact. The LTV profiles need `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
 
 ## Run the server
 
@@ -117,6 +117,8 @@ host\packaging\install.bat <chrome-extension-id>    # Windows
 The installer copies the binary and writes the native messaging manifests for Chrome, Chromium, Edge, Brave, and Firefox.
 
 ### Token support
+
+The host also reports connected smart-card readers through the OS smart-card service (PC/SC), which sees the token even when its driver is missing — so `opensigner-host-cli list` can tell you "ProxKey detected, driver not installed" instead of showing nothing. How the strategies compare across products: `docs/host.md`.
 
 Two discovery paths, merged into one certificate list:
 

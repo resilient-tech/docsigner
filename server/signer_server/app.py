@@ -1,4 +1,4 @@
-"""The five endpoints from CONTRACTS.md section 1. Thin on purpose: all
+"""The endpoints from CONTRACTS.md section 1. Thin on purpose: all
 signing logic lives in signer-core; this module only speaks HTTP."""
 
 import base64
@@ -9,7 +9,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from signer_core import SessionState, SignerError, SigningSession, sign_with_p12, validate
-from signer_core.trust import build_validation_context, make_timestamper
+from signer_core.cades import CadesSession, CadesState, sign_cades_with_p12
+from signer_core.pdfa import detect_pdfa
+from signer_core.trust import build_validation_context, make_timestamper, resolve_tsa_url
+from signer_core.xades import sign_xml_with_p12
 
 from .config import Config
 from .store import Expired, FileStore, Missing
@@ -99,6 +102,26 @@ def _stored_document_response(signed_pdf: bytes) -> dict:
     return {"document_id": document_id, "download_url": f"/api/documents/{document_id}"}
 
 
+def _request_timestamper(options: dict):
+    """The TSA for this request: options.tsa (a registry name) or the default."""
+    return make_timestamper(resolve_tsa_url(options.get("tsa"), config.tsa_url))
+
+
+def _pdfa_fields(pdf_bytes: bytes, options: dict) -> dict:
+    """Additive response fields describing the document's PDF/A claim."""
+    pdfa = detect_pdfa(pdf_bytes)
+    if not pdfa:
+        return {}
+    fields = {"pdfa": pdfa}
+    if options.get("appearance"):
+        fields["pdfa_note"] = (
+            f"PDF/A-{pdfa['part']}{pdfa['conformance'] or ''} detected: the visible"
+            " stamp uses an unembedded font, which breaks PDF/A conformance."
+            " Omit 'appearance' to sign invisibly and preserve it."
+        )
+    return fields
+
+
 @app.post("/api/signatures")
 def start_signature(payload: dict = Body(...)):
     pdf_bytes = _document_bytes(payload)
@@ -109,8 +132,108 @@ def start_signature(payload: dict = Body(...)):
         pdf_bytes,
         cert_der,
         options,
-        timestamper=make_timestamper(config.tsa_url),
+        timestamper=_request_timestamper(options),
         validation_context=_signing_validation_context(),
+    )
+    session_id = sessions.put(state.to_bytes())
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
+    return {
+        "session_id": session_id,
+        "to_sign_hash": base64.b64encode(to_sign_hash).decode("ascii"),
+        "digest_algorithm": digest_algorithm,
+        "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        **_pdfa_fields(pdf_bytes, options),
+    }
+
+
+def _load_session(session_id: str) -> bytes:
+    try:
+        return sessions.get(session_id)
+    except Expired:
+        raise SignerError("SESSION_EXPIRED", "session has expired") from None
+    except Missing:
+        raise SignerError("SESSION_NOT_FOUND", "no such session") from None
+
+
+@app.post("/api/signatures/{session_id}/complete")
+def complete_signature(session_id: str, payload: dict = Body(...)):
+    signature = _b64_bytes(payload, "signature", "SIGNATURE_INVALID")
+    try:
+        state = SessionState.from_bytes(_load_session(session_id))
+    except SignerError:
+        raise
+    except Exception:
+        # A CAdES session id, or a corrupt blob: not a PDF signing session.
+        raise SignerError("SESSION_NOT_FOUND", "no such session") from None
+
+    signed_pdf = SigningSession.complete(
+        state,
+        signature,
+        timestamper=make_timestamper(state.tsa_url or config.tsa_url),
+        validation_context=_signing_validation_context(),
+    )
+    # Single-use: consumed on success; a failed attempt may be retried.
+    sessions.delete(session_id)
+    return _stored_document_response(signed_pdf)
+
+
+def _sniff_media_type(data: bytes) -> str:
+    if data.startswith(b"%PDF"):
+        return "application/pdf"
+    if data.lstrip()[:1] == b"<":
+        return "application/xml"
+    return "application/pkcs7-signature"  # detached CAdES (.p7s)
+
+
+@app.get("/api/documents/{document_id}")
+def get_document(document_id: str):
+    try:
+        data = documents.get(document_id)
+    except Expired:
+        raise SignerError("SESSION_EXPIRED", "document has expired") from None
+    except Missing:
+        # The contract defines no document-specific code; this is the closest fit.
+        raise SignerError("SESSION_NOT_FOUND", "no such document") from None
+    return Response(content=data, media_type=_sniff_media_type(data))
+
+
+@app.post("/api/sign-server-side")
+def sign_server_side(payload: dict = Body(...)):
+    if not config.p12_path:
+        raise SignerError("INTERNAL", "server-side signing is not configured (set P12_PATH)")
+    pdf_bytes = _document_bytes(payload)
+    options = payload.get("options") or {}
+    signed_pdf = sign_with_p12(
+        pdf_bytes,
+        config.p12_path,
+        config.p12_passphrase,
+        options,
+        timestamper=_request_timestamper(options),
+        validation_context=_signing_validation_context(),
+    )
+    return {**_stored_document_response(signed_pdf), **_pdfa_fields(pdf_bytes, options)}
+
+
+@app.post("/api/validate")
+def validate_document(payload: dict = Body(...)):
+    pdf_bytes = _document_bytes(payload)
+    return {
+        "signatures": validate(pdf_bytes, config.trust_dir),
+        "pdfa": detect_pdfa(pdf_bytes),
+    }
+
+
+# ---- CAdES: detached .p7s over any file (CONTRACTS.md section 1, CAdES) ----
+
+
+@app.post("/api/cades/signatures")
+def start_cades(payload: dict = Body(...)):
+    data = _document_bytes(payload)
+    cert_der = _b64_bytes(payload, "certificate", "CERT_INVALID")
+    options = payload.get("options") or {}
+
+    state, to_sign_hash, digest_algorithm = CadesSession.start(
+        data, cert_der, options, timestamper=_request_timestamper(options)
     )
     session_id = sessions.put(state.to_bytes())
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
@@ -122,56 +245,48 @@ def start_signature(payload: dict = Body(...)):
     }
 
 
-@app.post("/api/signatures/{session_id}/complete")
-def complete_signature(session_id: str, payload: dict = Body(...)):
+@app.post("/api/cades/signatures/{session_id}/complete")
+def complete_cades(session_id: str, payload: dict = Body(...)):
     signature = _b64_bytes(payload, "signature", "SIGNATURE_INVALID")
     try:
-        raw_state = sessions.get(session_id)
-    except Expired:
-        raise SignerError("SESSION_EXPIRED", "session has expired") from None
-    except Missing:
+        state = CadesState.from_bytes(_load_session(session_id))
+    except SignerError:
+        raise
+    except Exception:
         raise SignerError("SESSION_NOT_FOUND", "no such session") from None
 
-    signed_pdf = SigningSession.complete(
-        SessionState.from_bytes(raw_state),
-        signature,
-        timestamper=make_timestamper(config.tsa_url),
-        validation_context=_signing_validation_context(),
+    p7s = CadesSession.complete(
+        state, signature, timestamper=make_timestamper(state.tsa_url or config.tsa_url)
     )
-    # Single-use: consumed on success; a failed attempt may be retried.
     sessions.delete(session_id)
-    return _stored_document_response(signed_pdf)
+    return _stored_document_response(p7s)
 
 
-@app.get("/api/documents/{document_id}")
-def get_document(document_id: str):
-    try:
-        pdf_bytes = documents.get(document_id)
-    except Expired:
-        raise SignerError("SESSION_EXPIRED", "document has expired") from None
-    except Missing:
-        # The contract defines no document-specific code; this is the closest fit.
-        raise SignerError("SESSION_NOT_FOUND", "no such document") from None
-    return Response(content=pdf_bytes, media_type="application/pdf")
-
-
-@app.post("/api/sign-server-side")
-def sign_server_side(payload: dict = Body(...)):
+@app.post("/api/cades/sign-server-side")
+def cades_server_side(payload: dict = Body(...)):
     if not config.p12_path:
         raise SignerError("INTERNAL", "server-side signing is not configured (set P12_PATH)")
-    pdf_bytes = _document_bytes(payload)
-    signed_pdf = sign_with_p12(
-        pdf_bytes,
+    data = _document_bytes(payload)
+    options = payload.get("options") or {}
+    p7s = sign_cades_with_p12(
+        data,
         config.p12_path,
         config.p12_passphrase,
-        payload.get("options") or {},
-        timestamper=make_timestamper(config.tsa_url),
-        validation_context=_signing_validation_context(),
+        options,
+        timestamper=_request_timestamper(options),
     )
-    return _stored_document_response(signed_pdf)
+    return _stored_document_response(p7s)
 
 
-@app.post("/api/validate")
-def validate_document(payload: dict = Body(...)):
-    pdf_bytes = _document_bytes(payload)
-    return {"signatures": validate(pdf_bytes, config.trust_dir)}
+# ---- XAdES: enveloped XML signature, server-held key only ----
+
+
+@app.post("/api/xades/sign-server-side")
+def xades_server_side(payload: dict = Body(...)):
+    if not config.p12_path:
+        raise SignerError("INTERNAL", "server-side signing is not configured (set P12_PATH)")
+    xml_bytes = _document_bytes(payload)
+    signed_xml = sign_xml_with_p12(
+        xml_bytes, config.p12_path, config.p12_passphrase, payload.get("options") or {}
+    )
+    return _stored_document_response(signed_xml)

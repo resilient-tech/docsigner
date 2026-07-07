@@ -5,11 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "signer-core"
 version = "0.1.0"
-description = "PDF digital signing on top of pyHanko: interrupted signing sessions, PAdES profiles, validation"
+description = "Digital signing on top of pyHanko: interrupted signing sessions, PAdES/CAdES/XAdES, validation"
 requires-python = ">=3.10"
 dependencies = [
     "pyhanko[image-support]>=0.35",
     "cryptography",
+    # XAdES assembly (xades.py); pyHanko covers PAdES and CAdES but not XML.
+    "signxml>=5",
 ]
 
 [tool.setuptools.packages.find]

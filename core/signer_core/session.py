@@ -62,6 +62,8 @@ class SessionState:
     cert_der: bytes
     digest_algorithm: str
     profile: str
+    # TSA chosen at start; complete() must timestamp with the same authority.
+    tsa_url: str = ""
 
     def to_bytes(self) -> bytes:
         data = dataclasses.asdict(self)
@@ -200,6 +202,7 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context):
         cert_der=cert_der,
         digest_algorithm=md_algorithm,
         profile=profile.value,
+        tsa_url=getattr(timestamper, "url", "") or "",
     )
     return state, to_sign_hash, md_algorithm
 

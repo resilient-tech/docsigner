@@ -30,7 +30,7 @@
     }
     legend { font-weight: 600; padding: 0 6px; }
     label { display: block; margin: 8px 0 4px; }
-    select, input[type="text"] {
+    select, input[type="text"], input[type="password"] {
       font: inherit;
       width: 100%;
       box-sizing: border-box;
@@ -71,10 +71,17 @@
 
   <fieldset>
     <legend>1. Document</legend>
+    <label for="doctype">What to sign</label>
+    <select id="doctype">
+      <option value="pdf" selected>PDF (PAdES / CCA signature inside the file)</option>
+      <option value="cades">Any file (detached CAdES .p7s, signed by the token)</option>
+      <option value="xades">XML (enveloped XAdES, server-held key)</option>
+    </select>
     <input type="file" id="file" accept="application/pdf,.pdf">
+    <p class="hint" id="doctype-hint"></p>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="cert-fieldset">
     <legend>2. Certificate</legend>
     <button id="list" class="secondary" type="button">List certificates</button>
     <label for="cert">Signer</label>
@@ -95,10 +102,22 @@
       <option value="CCA-LTA">CCA-LTA (India: CCA-LTV plus RFC 3161 timestamp)</option>
     </select>
     <p class="hint">B-T, B-LT, B-LTA and CCA-LTA need TSA_URL on the server; B-LT, B-LTA, CCA-LTV and CCA-LTA also need TRUST_DIR with your CA chain and reachable OCSP/CRL endpoints.</p>
-    <div class="inline">
+    <label for="tsa">Timestamp authority</label>
+    <select id="tsa">
+      <option value="" selected>Server default (TSA_URL)</option>
+      <option value="digicert">DigiCert</option>
+      <option value="sectigo">Sectigo</option>
+      <option value="certum">Certum</option>
+      <option value="entrust">Entrust</option>
+      <option value="ssl-com">SSL.com</option>
+    </select>
+    <p class="hint">Used by profiles that timestamp. For B-LT/B-LTA the chosen TSA's root must be in TRUST_DIR (trust/tsa/).</p>
+    <div class="inline" id="visible-row">
       <input type="checkbox" id="visible">
       <label for="visible" style="margin:0">Visible signature box on page 1</label>
     </div>
+    <label for="pin">Token PIN (optional — leave empty to use the native prompt)</label>
+    <input type="password" id="pin" autocomplete="off" placeholder="Prompted by the token app if empty">
     <label for="server">Server URL</label>
     <input type="text" id="server" value="http://127.0.0.1:8989">
   </fieldset>

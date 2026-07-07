@@ -25,7 +25,7 @@ const MESSAGES = {
   CERT_NOT_FOUND: { text: "The selected certificate is no longer available. List certificates again." },
   MODULE_ERROR: { text: "The token driver reported an error. Unplug and replug the token, then retry." },
   UNSUPPORTED: { text: "This operation is not supported by the installed host version." },
-  DOCUMENT_INVALID: { text: "The server could not read this file as a PDF." },
+  DOCUMENT_INVALID: { text: "The server could not read this file (wrong format for the chosen signature type?)." },
   CERT_INVALID: { text: "The server rejected the selected certificate." },
   SESSION_NOT_FOUND: { text: "The signing session was not found on the server. Start again." },
   SESSION_EXPIRED: { text: "The signing session expired (they last 15 minutes). Start again." },
@@ -38,8 +38,54 @@ const el = (id) => document.getElementById(id);
 const signer = new OpenSigner();
 let certificates = [];
 
+// What each document type needs from the form.
+const DOCTYPE_UI = {
+  pdf: {
+    accept: "application/pdf,.pdf",
+    hint: "The signature lands inside the PDF. Pick a profile below.",
+    needsCert: true, profiles: "all",
+  },
+  cades: {
+    accept: "",
+    hint: "Any file type; the result is a detached .p7s signed by your token. Profiles: B-B or B-T.",
+    needsCert: true, profiles: "bt",
+  },
+  xades: {
+    accept: ".xml,text/xml,application/xml",
+    hint: "Signed on the server with its P12 key (set P12_PATH); the token and extension stay out of this path.",
+    needsCert: false, profiles: "none",
+  },
+};
+
 el("list").addEventListener("click", listCertificates);
 el("sign").addEventListener("click", signDocument);
+el("doctype").addEventListener("change", applyDoctype);
+applyDoctype();
+
+// Remember the PIN for this tab's session only (cleared when the tab closes).
+// A real integration should think before persisting a PIN anywhere.
+el("pin").value = sessionStorage.getItem("opensigner-pin") || "";
+el("pin").addEventListener("input", () => {
+  sessionStorage.setItem("opensigner-pin", el("pin").value);
+});
+
+function applyDoctype() {
+  const kind = el("doctype").value;
+  const ui = DOCTYPE_UI[kind];
+  el("file").setAttribute("accept", ui.accept);
+  el("doctype-hint").textContent = ui.hint;
+  el("cert-fieldset").style.opacity = ui.needsCert ? "" : "0.45";
+  for (const option of el("profile").options) {
+    const isBt = option.value === "B-B" || option.value === "B-T";
+    option.disabled = ui.profiles === "bt" ? !isBt : false;
+  }
+  if (ui.profiles === "bt" && !["B-B", "B-T"].includes(el("profile").value)) {
+    el("profile").value = "B-T";
+  }
+  el("profile").disabled = ui.profiles === "none";
+  el("visible").disabled = kind !== "pdf";
+  el("sign").disabled = ui.needsCert && certificates.length === 0;
+}
 
 async function listCertificates() {
   el("list").disabled = true;
@@ -87,40 +133,63 @@ function commonName(subject) {
   return match ? match[1] : subject || "Unknown signer";
 }
 
-// The full signing flow: start session, sign the hash on the token, complete.
+// The full signing flow. PDF and CAdES run the token dance (start, sign the
+// hash on the token, complete); XAdES is one server call with the P12 key.
 async function signDocument() {
+  const kind = el("doctype").value;
   const file = el("file").files[0];
-  if (!file) return setStatus("error", "Choose a PDF first.");
+  if (!file) return setStatus("error", "Choose a file first.");
   const cert = certificates[el("cert").value];
-  if (!cert) return setStatus("error", "List certificates and pick one first.");
+  if (DOCTYPE_UI[kind].needsCert && !cert) {
+    return setStatus("error", "List certificates and pick one first.");
+  }
 
   el("sign").disabled = true;
   try {
-    setStatus("info", "Uploading document and preparing the signature...");
     const options = { profile: el("profile").value };
-    if (el("visible").checked) {
+    if (el("tsa").value) options.tsa = el("tsa").value;
+
+    if (kind === "xades") {
+      setStatus("info", "Signing on the server...");
+      const done = await post("/api/xades/sign-server-side", {
+        document: await fileToBase64(file), options: {},
+      });
+      return setStatus("success", "Signed. ", {
+        href: serverUrl() + done.download_url, text: "Download the signed XML",
+      });
+    }
+
+    const base = kind === "cades" ? "/api/cades" : "/api";
+    if (kind === "pdf" && el("visible").checked) {
       options.appearance = { page: 0, box: [72, 72, 272, 122] }; // bottom-left, PDF points
     }
-    const session = await post("/api/signatures", {
+
+    setStatus("info", "Uploading document and preparing the signature...");
+    const session = await post(`${base}/signatures`, {
       document: await fileToBase64(file),
       certificate: cert.certificate,
       options,
     });
+    const pdfaNote = session.pdfa_note ? `\n${session.pdfa_note}` : "";
 
-    setStatus("info", "Waiting for the token. Enter your PIN in the prompt...");
+    const pin = el("pin").value;
+    setStatus("info", (pin ? "Waiting for the token..."
+                           : "Waiting for the token. Enter your PIN in the prompt...") + pdfaNote);
     const { signatures } = await signer.signHash({
       thumbprint: cert.thumbprint,
       hashes: [session.to_sign_hash],
       digestAlgorithm: session.digest_algorithm,
+      pin,
     });
 
     setStatus("info", "Embedding the signature...");
-    const done = await post(`/api/signatures/${session.session_id}/complete`, {
+    const done = await post(`${base}/signatures/${session.session_id}/complete`, {
       signature: signatures[0],
     });
 
     const url = serverUrl() + done.download_url;
-    setStatus("success", "Signed. ", { href: url, text: "Download the signed PDF" });
+    const label = kind === "cades" ? "Download the .p7s signature" : "Download the signed PDF";
+    setStatus("success", `Signed.${pdfaNote} `, { href: url, text: label });
   } catch (e) {
     showError(e);
   } finally {
