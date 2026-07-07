@@ -3,6 +3,7 @@ VendorPythonClient/
 VendorSamples/
 vendor-extension-dump/
 .DS_Store
+vendor-setup.pkg
 
 # python
 .venv/
@@ -23,3 +24,7 @@ server/documents/
 .pytest_cache/
 node_modules/
 spike/spike_signed.pdf
+
+# local reference material (not ours, not shipped)
+vendor_extracted/
+vendor_toc.xml

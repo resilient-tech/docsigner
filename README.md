@@ -35,7 +35,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
 
-Standards: PAdES baseline profiles per ETSI EN 319 142-1. All 4 profiles work in both flows, token sessions and server-side signing. B-T needs `TSA_URL`; B-LT and B-LTA need `TSA_URL` and `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
+Standards: PAdES baseline profiles per ETSI EN 319 142-1, plus CCA-LTV and CCA-LTA per CCA India's Electronic Signature Application Integration Guidelines (PKCS#7 with revocation data in the pdfRevocationInfoArchival signed attribute, ESAIG 1.19). All profiles work in both flows, token sessions and server-side signing. B-T and CCA-LTA need `TSA_URL`; the LTV profiles also need `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
 
 ## Run the server
 
@@ -46,35 +46,42 @@ python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ./core -e ./server
 cp .env.example .env             # Windows: copy .env.example .env
-python -m signer_server          # http://localhost:8000
+python -m signer_server          # http://127.0.0.1:8001, override with PORT in .env
 ```
 
 `.env` is read from the directory you launch the server in. Run `python -m signer_server` from the repo root so it picks up the `.env` you just copied.
 
-### Trust anchors for B-LT / B-LTA
+### Trust anchors for the LTV profiles
 
-`TRUST_DIR` points at a folder of PEM or DER certificates. For the LTV profiles it must hold the full chain of the signers you expect: the root plus every issuing intermediate.
+`TRUST_DIR` points at a folder of PEM or DER certificates, read recursively. The repo ships one at `trust/`, organised by country and purpose, and a script that downloads everything in it from the CAs' own repositories:
 
-For Indian DSC tokens that means the CCA India root and your CA's sub-CA chain. Capricorn, for example, publishes both on its repository page; download them into the folder:
+```bash
+python scripts/fetch_trust_roots.py
+```
 
 ```
 trust/
-  cca-india-2022.pem
-  capricorn-ca-2022.pem
-  capricorn-sub-ca-individual.pem
+  in/       CCA India roots (anchor every licensed Indian CA) + Capricorn intermediates
+  br/       ICP-Brasil roots
+  us/       US Federal PKI root
+  tsa/      roots for the timestamp authority in TSA_URL (DigiCert)
+  archive/  expired root generations, skipped by the loader; move one up to
+            validate documents signed under it
 ```
 
-While completing a B-LT or B-LTA signature the server fetches revocation data from the CA. OCSP is tried first (a response is 1 to 2 KB; Capricorn serves it at http://ocsp.certificate.digital), with CRLs as the fallback (multi-MB files under http://www.certificate.digital/crl/). If neither endpoint answers, completion fails with an `INTERNAL` error: a B-LT signature without revocation data would be an empty claim.
+Only self-signed certificates act as trust anchors; intermediates found in the folder speed up chain building but are optional, since missing ones are fetched over the certificates' AIA links. The EU is the one region a folder of files cannot cover: its trust arrives as signed per-country XML lists (EUTL, ETSI TS 119 612) and needs a parser, which this repo does not have yet.
+
+While completing a B-LT or B-LTA signature the server fetches revocation data from the CA. OCSP is preferred (a response is 1 to 2 KB); CRLs are embedded only for certificates without a good OCSP response, since Indian CA CRLs run to megabytes. If no revocation source answers, completion fails with an `INTERNAL` error: an LTV signature without revocation data would be an empty claim.
 
 ## Try the demo
 
-With the server running, serve the demo folder (browsers block `file://` fetch):
+With the server running, serve the repo root (the demo imports `js/opensigner.js` from its sibling folder, and browsers block `file://` fetch):
 
 ```bash
-python3 -m http.server 8080 --directory demo
+python3 -m http.server 8080
 ```
 
-Open http://localhost:8080. To sign with a token you also need the extension and the host installed (next 2 sections). Server-side signing needs neither.
+Open http://localhost:8080/demo/. To sign with a token you also need the extension and the host installed (next 2 sections). Server-side signing needs neither.
 
 ## Install the extension (development)
 
@@ -111,7 +118,11 @@ The installer copies the binary and writes the native messaging manifests for Ch
 
 ### Token support
 
-Any device with a PKCS#11 driver. Known module paths ship for OpenSC, ePass2003, WatchData ProxKey, SafeNet eToken, and eMudhra tokens. Yours somewhere else? Point the env var at it:
+Two discovery paths, merged into one certificate list:
+
+**OS certificate store** (macOS and Windows). Most token drivers register the token's certificate with the Keychain or the Windows `MY` store on install, and the host reads those directly — no driver path needed. Signing routes back through the same OS API (Keychain / CNG), which forwards it to the token; the OS shows its own PIN dialog. Linux has no universal OS store, so there PKCS#11 is the only path.
+
+**PKCS#11 drivers.** Any device with a PKCS#11 driver. Known module paths ship for OpenSC, ePass2003, WatchData ProxKey, SafeNet eToken, and eMudhra tokens. Yours somewhere else? Point the env var at it:
 
 ```bash
 export OPENSIGNER_PKCS11_MODULES=/path/to/your/pkcs11.so
@@ -145,7 +156,7 @@ or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.
 ```bash
 pip install -e ./core -e ./server -e ./host   # if not already installed
 pip install -r requirements-dev.txt           # pytest + test-only deps
-pytest core/tests server/tests host/tests     # 72 tests
+pytest core/tests server/tests host/tests     # 87 tests
 cd js && node --test                          # 10 tests
 ```
 
