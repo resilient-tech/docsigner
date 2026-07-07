@@ -10,6 +10,7 @@ import pytest
 from helpers_core import sign_hash
 from helpers_ltv import make_test_pki
 from pyhanko.pdf_utils.reader import PdfFileReader
+from pyhanko.sign.validation.dss import DocumentSecurityStore
 from pyhanko_certvalidator import ValidationContext
 
 from signer_core import SignerError, SigningSession, validate
@@ -53,9 +54,15 @@ def test_cca_ltv_embeds_revinfo_signed_attr(pki, blank_pdf, dummy_timestamper):
         pki, blank_pdf, "CCA-LTV", None, _offline_context(pki, dummy_timestamper)
     )
 
-    emb = PdfFileReader(io.BytesIO(signed_pdf), strict=False).embedded_signatures[0]
+    reader = PdfFileReader(io.BytesIO(signed_pdf), strict=False)
+    emb = reader.embedded_signatures[0]
     assert str(emb.sig_object["/SubFilter"]) == "/adbe.pkcs7.detached"
     assert REVINFO_OID in _signed_attr_oids(emb)
+
+    # A DSS mirrors the signed-attribute revocation so Adobe shows the file as
+    # LTV enabled; the CRL from the offline PKI carries over.
+    dss = DocumentSecurityStore.read_dss(reader)
+    assert dss.crls, "the DSS must carry the chain's revocation data"
 
     report = validate(signed_pdf, None)[0]
     assert report["valid"] and report["intact"]

@@ -79,6 +79,40 @@ async def async_augment(
     return output.getvalue()
 
 
+def dss_from_embedded_revinfo(pdf_bytes: bytes) -> bytes:
+    """Copy a signature's pdfRevocationInfoArchival attribute into a DSS.
+
+    CCA signatures carry revocation in that signed attribute (ESAIG 1.19), but
+    Adobe's "LTV enabled" badge reads the document security store. This mirrors
+    the same OCSP responses, CRLs, and certificates into a DSS with no network
+    round trip, so the reliable revocation gathered at signing time is reused
+    rather than re-fetched through a flaky OCSP responder.
+    """
+    reader = PdfFileReader(io.BytesIO(pdf_bytes), strict=False)
+    embedded_sig = reader.embedded_regular_signatures[-1]
+    revinfo = _embedded_revinfo(embedded_sig)
+    if revinfo is None:
+        return pdf_bytes
+    ocsps = list(revinfo["ocsp"]) if "ocsp" in revinfo else []
+    crls = list(revinfo["crl"]) if "crl" in revinfo else []
+    signed_data = embedded_sig.signed_data
+    certs = [c.chosen for c in signed_data["certificates"] if c.name == "certificate"]
+
+    output = io.BytesIO(pdf_bytes)
+    DocumentSecurityStore.add_dss(
+        output, embedded_sig.pkcs7_content.hex().encode("ascii"),
+        certs=certs, ocsps=ocsps, crls=crls, force_write=True,
+    )
+    return output.getvalue()
+
+
+def _embedded_revinfo(embedded_sig):
+    for attr in embedded_sig.signer_info["signed_attrs"]:
+        if attr["type"].dotted == "1.2.840.113583.1.1.8":
+            return attr["values"][0]
+    return None
+
+
 def _filtered_offline_context(validation_context, paths) -> ValidationContext:
     """A non-fetching context holding only the revinfo the DSS should carry.
 

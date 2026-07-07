@@ -108,10 +108,8 @@
       <option value="digicert">DigiCert</option>
       <option value="sectigo">Sectigo</option>
       <option value="certum">Certum</option>
-      <option value="entrust">Entrust</option>
-      <option value="ssl-com">SSL.com</option>
     </select>
-    <p class="hint">Used by profiles that timestamp. For B-LT/B-LTA the chosen TSA's root must be in TRUST_DIR (trust/tsa/).</p>
+    <p class="hint">Used by profiles that timestamp. These three ship their roots in trust/tsa/, so the timestamp validates for the LTV profiles too. Entrust and SSL.com are in the API registry but gate their root downloads, so drop those roots in by hand before using them for LTV.</p>
     <div class="inline" id="visible-row">
       <input type="checkbox" id="visible">
       <label for="visible" style="margin:0">Visible signature box on page 1</label>

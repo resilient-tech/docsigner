@@ -35,7 +35,12 @@ from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from .appearance import build_appearance
 from .errors import SignerError
-from .ltv import _ocsp_good_serials, _serials_below_anchor, async_augment
+from .ltv import (
+    _ocsp_good_serials,
+    _serials_below_anchor,
+    async_augment,
+    dss_from_embedded_revinfo,
+)
 from .profiles import Profile, build_metadata, check_requirements, parse_digest_algorithm
 
 # Placeholder for the yet-unknown signature value; fits RSA-4096.
@@ -299,6 +304,13 @@ async def _complete(state, signature, timestamper, validation_context):
             archive_timestamp=profile is Profile.B_LTA,
             md_algorithm=state.digest_algorithm,
         )
+    elif profile.adobe_revinfo:
+        # The signed pdfRevocationInfoArchival attribute satisfies CCA ESAIG,
+        # but Adobe's "LTV enabled" badge reads the document security store.
+        # Mirror that same revocation into a DSS (reusing what start() already
+        # gathered, no re-fetch) so the file reads as LTV everywhere while
+        # staying CCA-compliant.
+        signed_pdf = dss_from_embedded_revinfo(signed_pdf)
     return signed_pdf
 
 
