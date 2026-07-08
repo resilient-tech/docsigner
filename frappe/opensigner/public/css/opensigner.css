@@ -1,0 +1,44 @@
+@font-face {
+	font-family: "Great Vibes";
+	src: url("/assets/opensigner/fonts/GreatVibes.woff2") format("woff2");
+	font-display: swap;
+}
+
+.opensigner-cert {
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md);
+	padding: 10px 12px;
+	margin-bottom: 8px;
+	cursor: pointer;
+}
+
+.opensigner-cert.selected {
+	border-color: var(--primary);
+	box-shadow: 0 0 0 1px var(--primary);
+}
+
+.opensigner-cert-subject {
+	font-weight: 600;
+}
+
+.opensigner-cert-meta {
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+}
+
+.opensigner-preview-label {
+	margin-top: 12px;
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+}
+
+.opensigner-preview {
+	font-family: "Great Vibes", cursive;
+	font-size: 34px;
+	color: #14315d;
+	padding: 4px 8px;
+}
+
+.opensigner-preview.bold {
+	text-shadow: 0.4px 0 currentColor, -0.4px 0 currentColor;
+}
