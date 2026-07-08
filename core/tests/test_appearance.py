@@ -106,7 +106,8 @@ def test_appearance_text_substitution_in_composed_stamp():
 
 
 def test_handwritten_font_choice_accepted():
-    for font in ("dancing-script", "caveat", "sacramento", "allura", "alex-brush"):
+    for font in ("dancing-script", "caveat", "sacramento", "allura", "alex-brush",
+                 "nanum-pen-script", "cedarville-cursive", "cookie", "bad-script"):
         style, _ = build_appearance(
             {"style": "handwritten", "position": "bottom-right", "font": font},
             "Sig1", writer=_writer(), signer_name="Smit Vora",
@@ -122,3 +123,15 @@ def test_unknown_handwritten_font_rejected():
         )
     assert err.value.code == "DOCUMENT_INVALID"
     assert "comic-sans" not in err.value.message  # lists the allowed set instead
+
+
+def test_negative_page_resolves_to_last():
+    # helpers_core's blank PDF has one page: -1 must resolve to index 0.
+    _, spec = build_appearance({"position": "bottom-right", "page": -1}, "Sig1", writer=_writer())
+    assert spec.on_page == 0
+
+
+def test_page_before_first_rejected():
+    with pytest.raises(SignerError) as err:
+        build_appearance({"position": "bottom-right", "page": -2}, "Sig1", writer=_writer())
+    assert err.value.code == "DOCUMENT_INVALID"

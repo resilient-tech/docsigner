@@ -24,6 +24,10 @@ SCRIPT_FONTS = {
     "sacramento": _FONT_DIR / "Sacramento-Regular.ttf",
     "allura": _FONT_DIR / "Allura-Regular.ttf",
     "alex-brush": _FONT_DIR / "AlexBrush-Regular.ttf",
+    "nanum-pen-script": _FONT_DIR / "NanumPenScript-Regular.ttf",
+    "cedarville-cursive": _FONT_DIR / "CedarvilleCursive-Regular.ttf",
+    "cookie": _FONT_DIR / "Cookie-Regular.ttf",
+    "bad-script": _FONT_DIR / "BadScript-Regular.ttf",
 }
 DEFAULT_SCRIPT_FONT = "great-vibes"
 TEXT_FONT = _FONT_DIR / "Poppins-Regular.ttf"
@@ -54,6 +58,12 @@ def build_appearance(appearance, field_name: str, writer=None, reason: str | Non
         return None, None
 
     page = int(appearance.get("page", 0))
+    if page < 0:
+        # -1 = last page, python-style. Resolved here so both the box
+        # computation and the field spec see a concrete index.
+        page = _page_count(writer) + page
+        if page < 0:
+            raise SignerError("DOCUMENT_INVALID", "appearance.page is before the first page")
     box = _resolve_box(appearance, writer, page)
     spec = SigFieldSpec(
         sig_field_name=field_name,
@@ -243,6 +253,15 @@ def _resolve_box(appearance, writer, page):
     bx = (left, left + width) if "left" in position else (right - width, right)
     by = (bottom, bottom + height) if "bottom" in position else (top - height, top)
     return [bx[0], by[0], bx[1], by[1]]
+
+
+def _page_count(writer) -> int:
+    if writer is None:
+        raise SignerError("INTERNAL", "a negative appearance.page needs the document to be loaded")
+    try:
+        return int(writer.root["/Pages"]["/Count"])
+    except Exception:
+        raise SignerError("DOCUMENT_INVALID", "could not read the document's page count") from None
 
 
 def _media_box(writer, page):

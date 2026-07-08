@@ -8,7 +8,11 @@ version = "0.1.0"
 description = "OpenSigner native messaging host: PKCS#11 token signing for the browser extension"
 requires-python = ">=3.9"
 dependencies = [
-    "python-pkcs11",
+    # >=0.8: lib.reinitialize(), which pkcs11_ops.load_library needs so a
+    # long-lived host rescans tokens like a fresh process. Without it the
+    # first scan's slot state is cached forever and a replugged token reads
+    # as "no token found" until the host process dies.
+    "python-pkcs11>=0.8",
     "asn1crypto",
 ]
 
