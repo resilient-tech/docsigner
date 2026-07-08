@@ -1,0 +1,117 @@
+{
+ "doctype": "DocType",
+ "name": "OpenSigner Settings",
+ "module": "OpenSigner",
+ "issingle": 1,
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "defaults_section",
+  "default_profile",
+  "tsa",
+  "tsa_url",
+  "defaults_column",
+  "trust_dir",
+  "verify_base_url",
+  "server_key_section",
+  "p12_file",
+  "p12_password",
+  "handwritten_section",
+  "handwritten_capitalize",
+  "handwritten_bold"
+ ],
+ "fields": [
+  {
+   "fieldname": "defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Signing Defaults"
+  },
+  {
+   "fieldname": "default_profile",
+   "fieldtype": "Select",
+   "label": "Default Signature Profile",
+   "options": "B-B\nB-T\nB-LT\nB-LTA\nCCA-LTV\nCCA-LTA",
+   "default": "CCA-LTV",
+   "description": "Used when a Print Format leaves its profile blank. LTV/LTA profiles need Trust Anchor Directory; timestamped profiles need a TSA."
+  },
+  {
+   "fieldname": "tsa",
+   "fieldtype": "Select",
+   "label": "Timestamp Authority",
+   "options": "\ndigicert\nsectigo\ncertum\nentrust\nssl-com",
+   "description": "A registry TSA; blank uses the Custom TSA URL below, if any"
+  },
+  {
+   "fieldname": "tsa_url",
+   "fieldtype": "Data",
+   "label": "Custom TSA URL",
+   "depends_on": "eval:!doc.tsa",
+   "description": "RFC 3161 endpoint; used only when no registry TSA is picked"
+  },
+  {
+   "fieldname": "defaults_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "trust_dir",
+   "fieldtype": "Data",
+   "label": "Trust Anchor Directory",
+   "description": "Server path to a folder of CA certificates (the OpenSigner repo ships one under trust/). Needed for LTV profiles and for the verify page to report trusted signatures."
+  },
+  {
+   "fieldname": "verify_base_url",
+   "fieldtype": "Data",
+   "label": "Verification Base URL",
+   "description": "Base URL printed inside stamp QR codes; blank uses this site's URL"
+  },
+  {
+   "fieldname": "server_key_section",
+   "fieldtype": "Section Break",
+   "label": "Server-Held Key"
+  },
+  {
+   "fieldname": "p12_file",
+   "fieldtype": "Attach",
+   "label": "PKCS#12 Key File (.p12/.pfx)",
+   "description": "Used by Server Key print formats and auto-sign. Stored as a private file."
+  },
+  {
+   "fieldname": "p12_password",
+   "fieldtype": "Password",
+   "label": "PKCS#12 Password"
+  },
+  {
+   "fieldname": "handwritten_section",
+   "fieldtype": "Section Break",
+   "label": "Handwritten Stamp Defaults"
+  },
+  {
+   "fieldname": "handwritten_capitalize",
+   "fieldtype": "Check",
+   "label": "Capitalize Signer Name",
+   "default": "1"
+  },
+  {
+   "fieldname": "handwritten_bold",
+   "fieldtype": "Check",
+   "label": "Bold Signer Name"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  }
+ ],
+ "owner": "Administrator",
+ "modified": "2026-07-08 00:00:00.000000",
+ "modified_by": "Administrator",
+ "creation": "2026-07-08 00:00:00.000000",
+ "idx": 0,
+ "index_web_pages_for_search": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
