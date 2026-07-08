@@ -6,7 +6,7 @@ import secrets
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
 
-from .appearance import build_appearance
+from .appearance import build_appearance, cert_common_name
 from .errors import SignerError
 from .profiles import Profile, build_metadata, check_requirements
 
@@ -43,7 +43,9 @@ def sign_with_p12(
 
     field_name = options.get("field_name") or f"Signature-{secrets.token_hex(4)}"
     stamp_style, field_spec = build_appearance(
-        options.get("appearance"), field_name, writer=writer, reason=options.get("reason")
+        options.get("appearance"), field_name, writer=writer,
+        reason=options.get("reason"),
+        signer_name=cert_common_name(signer.signing_cert),
     )
     pdf_signer = signers.PdfSigner(
         build_metadata(options, profile, field_name, validation_context),

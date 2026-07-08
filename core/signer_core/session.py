@@ -33,7 +33,7 @@ from pyhanko.sign.signers.pdf_signer import PdfTBSDocument
 from pyhanko_certvalidator import CertificateValidator
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
-from .appearance import build_appearance
+from .appearance import build_appearance, cert_common_name
 from .errors import SignerError
 from .ltv import _select_revinfo, async_augment, dss_from_embedded_revinfo
 from .profiles import Profile, build_metadata, check_requirements, parse_digest_algorithm
@@ -153,7 +153,8 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
 
     field_name = options.get("field_name") or f"Signature-{secrets.token_hex(4)}"
     stamp_style, field_spec = build_appearance(
-        options.get("appearance"), field_name, writer=writer, reason=options.get("reason")
+        options.get("appearance"), field_name, writer=writer,
+        reason=options.get("reason"), signer_name=cert_common_name(signer_cert),
     )
 
     # CCA profiles (ESAIG 1.19): revocation for the signer chain, and the TSA

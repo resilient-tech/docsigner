@@ -39,13 +39,20 @@ Request:
       "position": "bottom-left | bottom-right | top-left | top-right (alternative to box)",
       "size": [200, 50],
       "text": "Signed by {signer}\n{ts} (optional, this is the default; {reason} is also substituted)",
-      "image": "<b64 PNG, optional>"
+      "image": "<b64 PNG, optional>",
+      "style": "handwritten (optional; omit for the plain text stamp)",
+      "name": "optional display name for the handwritten style; default = signer certificate CN",
+      "capitalize": true,
+      "bold": false,
+      "qr_url": "optional URL; renders a QR panel at the stamp's right edge"
     }
   }
 }
 ```
 
 `appearance` absent = invisible signature. `box` is PDF points, `[x1, y1, x2, y2]`, origin bottom-left. Instead of `box`, a `position` corner preset may be given: the server computes the box from the actual page dimensions (24 pt margin), using `size` (width, height in points; default `[200, 50]`). When both are present, `box` wins.
+
+`style: "handwritten"` draws the name in a bundled script font (Great Vibes) above the detail lines, ink-navy on transparent — a modern "wet signature" look with no image upload. `capitalize` (default true) uppercases each word's first letter; `bold` (default false) thickens the strokes. `qr_url` composes a full-height QR panel at the right edge of the stamp box and works with any style; `{signer}`/`{ts}`/`{reason}` substitution in `text` still applies. Both features render server-side into the stamp background; the plain text stamp without `qr_url` is unchanged.
 
 Response 200:
 
@@ -343,3 +350,7 @@ All rejections are `OpenSignerError` with `.code` from the codes above. Nothing 
 - Thumbprint: SHA-1 over the DER certificate, lowercase hex, no separators (matches what users see in Windows cert manager).
 - Timestamps in JSON: ISO 8601 UTC.
 - Component versions are independent; `protocolVersion` guards compatibility.
+
+## 7. Changelog
+
+- **2026-07-07** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` (`handwritten`), `appearance.name`, `appearance.capitalize`, `appearance.bold`, `appearance.qr_url`. Native messaging and page bridge untouched.

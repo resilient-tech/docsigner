@@ -52,3 +52,54 @@ def test_reason_substituted_into_text():
     )
     assert "Approved" in style.stamp_text
     assert "%(signer)s" in style.stamp_text  # pyHanko placeholders survive
+
+
+# --- composed stamps: handwritten style and QR panel ---
+
+
+def test_handwritten_composes_background_and_no_text():
+    style, spec = build_appearance(
+        {"style": "handwritten", "position": "bottom-right"},
+        "Sig1", writer=_writer(), signer_name="Smit Vora",
+    )
+    assert style.stamp_text == ""
+    assert style.background is not None
+    assert style.border_width == 0
+    assert spec.box == (388.0, 24.0, 588.0, 74.0)
+
+
+def test_handwritten_needs_a_name():
+    with pytest.raises(SignerError) as err:
+        build_appearance(
+            {"style": "handwritten", "position": "bottom-right"},
+            "Sig1", writer=_writer(),
+        )
+    assert err.value.code == "DOCUMENT_INVALID"
+
+
+def test_qr_url_composes_even_without_handwritten_style():
+    style, _ = build_appearance(
+        {"position": "bottom-left", "qr_url": "https://example.com/os_verify?code=x"},
+        "Sig1", writer=_writer(), signer_name="Smit Vora",
+    )
+    assert style.stamp_text == ""
+    assert style.background is not None
+
+
+def test_qr_box_too_narrow_rejected():
+    # A square box leaves no room left of the full-height QR panel.
+    with pytest.raises(SignerError) as err:
+        build_appearance(
+            {"box": [0, 0, 50, 50], "qr_url": "https://example.com"},
+            "Sig1", writer=_writer(), signer_name="X",
+        )
+    assert err.value.code == "DOCUMENT_INVALID"
+
+
+def test_appearance_text_substitution_in_composed_stamp():
+    # {signer}/{ts}/{reason} substitution happens at compose time, not pyHanko's.
+    style, _ = build_appearance(
+        {"position": "top-right", "qr_url": "https://e.co", "text": "By {signer}\n{reason}"},
+        "Sig1", writer=_writer(), reason="Approved", signer_name="Smit Vora",
+    )
+    assert style.background is not None

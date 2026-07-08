@@ -12,7 +12,12 @@ dependencies = [
     "cryptography",
     # XAdES assembly (xades.py); pyHanko covers PAdES and CAdES but not XML.
     "signxml>=5",
+    # QR panel in composed stamps (appearance.qr_url).
+    "qrcode>=7",
 ]
 
 [tool.setuptools.packages.find]
 include = ["signer_core*"]
+
+[tool.setuptools.package-data]
+signer_core = ["fonts/*"]
