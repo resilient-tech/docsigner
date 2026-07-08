@@ -31,6 +31,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
 | `host/` | `opensigner-host`, the native messaging app that talks to tokens |
 | `demo/` | A working demo page, also the integration example |
+| `frappe/` | `opensigner`, the Frappe/ERPNext app: sign print formats from the desk (see its README) |
 | `spike/` | Phase 0 proof scripts, kept as executable documentation |
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
