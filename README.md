@@ -31,10 +31,11 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
 | `host/` | `opensigner-host`, the native messaging app that talks to tokens |
 | `demo/` | A working demo page, also the integration example |
-| `frappe/` | `opensigner`, the Frappe/ERPNext app: sign print formats from the desk (see its README) |
 | `spike/` | Phase 0 proof scripts, kept as executable documentation |
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
+
+The Frappe/ERPNext app lives in its own repo, `opensigner_integration`: sign print formats from the desk, bulk one-PIN signing, auto-sign on submit, QR verification e-copies. It embeds `core/` as a pip dependency; its build plan and live-test checklist are in `plan/` here.
 
 Standards: PAdES baseline profiles per ETSI EN 319 142-1, plus CCA-LTV and CCA-LTA per CCA India's Electronic Signature Application Integration Guidelines (PKCS#7 with revocation data in the pdfRevocationInfoArchival signed attribute, ESAIG 1.19). All PDF profiles work in both flows, token sessions and server-side signing. Beyond PDF: detached CAdES-BES (.p7s) over any file in both flows, and enveloped XAdES-B over XML with the server-held key. Timestamps come from `TSA_URL` or a per-request pick from the built-in registry (DigiCert, Sectigo, Certum, Entrust, SSL.com). PDF/A input is detected and reported so an invisible signature can keep conformance intact. The LTV profiles need `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
 
