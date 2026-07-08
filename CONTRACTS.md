@@ -42,6 +42,7 @@ Request:
       "image": "<b64 PNG, optional>",
       "style": "handwritten (optional; omit for the plain text stamp)",
       "name": "optional display name for the handwritten style; default = signer certificate CN",
+      "font": "great-vibes (default) | dancing-script | caveat | sacramento | allura | alex-brush",
       "capitalize": true,
       "bold": false,
       "qr_url": "optional URL; renders a QR panel at the stamp's right edge"
@@ -353,4 +354,5 @@ All rejections are `OpenSignerError` with `.code` from the codes above. Nothing 
 
 ## 7. Changelog
 
+- **2026-07-08** — additive: `appearance.font` picks the handwritten script from six bundled OFL fonts (default `great-vibes`). `protocolVersion` stays 1.
 - **2026-07-07** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` (`handwritten`), `appearance.name`, `appearance.capitalize`, `appearance.bold`, `appearance.qr_url`. Native messaging and page bridge untouched.

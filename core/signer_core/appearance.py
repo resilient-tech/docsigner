@@ -16,7 +16,16 @@ DEFAULT_SIZE = (200.0, 50.0)
 POSITIONS = ("bottom-left", "bottom-right", "top-left", "top-right")
 
 _FONT_DIR = Path(__file__).parent / "fonts"
-SCRIPT_FONT = _FONT_DIR / "GreatVibes-Regular.ttf"
+# appearance.font values; all OFL, bundled (see fonts/README.md).
+SCRIPT_FONTS = {
+    "great-vibes": _FONT_DIR / "GreatVibes-Regular.ttf",
+    "dancing-script": _FONT_DIR / "DancingScript-Regular.ttf",
+    "caveat": _FONT_DIR / "Caveat-Regular.ttf",
+    "sacramento": _FONT_DIR / "Sacramento-Regular.ttf",
+    "allura": _FONT_DIR / "Allura-Regular.ttf",
+    "alex-brush": _FONT_DIR / "AlexBrush-Regular.ttf",
+}
+DEFAULT_SCRIPT_FONT = "great-vibes"
 TEXT_FONT = _FONT_DIR / "Poppins-Regular.ttf"
 _INK = (20, 49, 93)  # navy
 _GREY = (95, 99, 108)
@@ -134,7 +143,13 @@ def _composed_stamp(appearance, box, signer_name, reason):
             )
         if appearance.get("capitalize", True):
             name = " ".join(w[:1].upper() + w[1:] for w in name.split())
-        font, bbox = _fit_text(draw, name, SCRIPT_FONT, text_w, top_h - pad)
+        font_name = appearance.get("font") or DEFAULT_SCRIPT_FONT
+        if font_name not in SCRIPT_FONTS:
+            raise SignerError(
+                "DOCUMENT_INVALID",
+                "appearance.font must be one of: " + ", ".join(sorted(SCRIPT_FONTS)),
+            )
+        font, bbox = _fit_text(draw, name, SCRIPT_FONTS[font_name], text_w, top_h - pad)
         stroke = max(1, font.size // 28) if appearance.get("bold") else 0
         draw.text((pad - bbox[0], y - bbox[1]), name, font=font, fill=_INK,
                   stroke_width=stroke, stroke_fill=_INK)

@@ -103,3 +103,22 @@ def test_appearance_text_substitution_in_composed_stamp():
         "Sig1", writer=_writer(), reason="Approved", signer_name="Smit Vora",
     )
     assert style.background is not None
+
+
+def test_handwritten_font_choice_accepted():
+    for font in ("dancing-script", "caveat", "sacramento", "allura", "alex-brush"):
+        style, _ = build_appearance(
+            {"style": "handwritten", "position": "bottom-right", "font": font},
+            "Sig1", writer=_writer(), signer_name="Smit Vora",
+        )
+        assert style.background is not None
+
+
+def test_unknown_handwritten_font_rejected():
+    with pytest.raises(SignerError) as err:
+        build_appearance(
+            {"style": "handwritten", "position": "bottom-right", "font": "comic-sans"},
+            "Sig1", writer=_writer(), signer_name="X",
+        )
+    assert err.value.code == "DOCUMENT_INVALID"
+    assert "comic-sans" not in err.value.message  # lists the allowed set instead
