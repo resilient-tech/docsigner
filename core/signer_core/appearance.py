@@ -36,6 +36,11 @@ _GREY = (95, 99, 108)
 _PX_PER_PT = 4  # compose at 4x so the stamp stays crisp in print
 
 
+def title_case(name: str) -> str:
+    """ALL-CAPS certificate CNs as readable handwriting: RAHUL SHARMA -> Rahul Sharma."""
+    return " ".join(w[:1].upper() + w[1:].lower() for w in name.split())
+
+
 def cert_common_name(cert) -> str:
     """CN from an asn1crypto certificate, falling back to the full subject."""
     try:
@@ -152,7 +157,7 @@ def _composed_stamp(appearance, box, signer_name, reason):
                 "appearance.style handwritten needs a name or a signer certificate",
             )
         if appearance.get("capitalize", True):
-            name = " ".join(w[:1].upper() + w[1:] for w in name.split())
+            name = title_case(name)
         font_name = appearance.get("font") or DEFAULT_SCRIPT_FONT
         if font_name not in SCRIPT_FONTS:
             raise SignerError(

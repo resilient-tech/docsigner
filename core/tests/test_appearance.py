@@ -54,6 +54,14 @@ def test_reason_substituted_into_text():
     assert "%(signer)s" in style.stamp_text  # pyHanko placeholders survive
 
 
+def test_title_case_lowers_all_caps_names():
+    from signer_core.appearance import title_case
+
+    assert title_case("RAHUL SHARMA") == "Rahul Sharma"
+    assert title_case("rahul sharma") == "Rahul Sharma"
+    assert title_case("Rahul Sharma") == "Rahul Sharma"
+
+
 # --- composed stamps: handwritten style and QR panel ---
 
 
