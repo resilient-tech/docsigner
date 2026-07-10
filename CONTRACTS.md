@@ -387,6 +387,7 @@ All rejections are `OpenSignerError` with `.code` from the codes above. Nothing 
 
 ## 7. Changelog
 
+- **2026-07-10** — no wire change: the desk sign dialog now uses §1 `options.reason` and §2 page-supplied `pin`; Signature Log and the verify page carry the reason. `protocolVersion` stays 1.
 - **2026-07-08 (b)** — additive, `protocolVersion` stays 1: `listCertificates` result carries `diagnostics` (scan counters, plus optional `stuckModules` and `competingProcesses`); `getVersion` gains `logPath`; signer-js `listCertificates()` now resolves to `{certificates, readers, diagnostics}` instead of a bare array.
 - **2026-07-08** — additive: `appearance.font` picks the handwritten script from ten bundled OFL fonts (default `great-vibes`); `appearance.page` accepts -1 for the last page. `protocolVersion` stays 1.
 - **2026-07-07** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` (`handwritten`), `appearance.name`, `appearance.capitalize`, `appearance.bold`, `appearance.qr_url`. Native messaging and page bridge untouched.
