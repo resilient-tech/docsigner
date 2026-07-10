@@ -51,13 +51,27 @@ test("init times out with EXTENSION_NOT_INSTALLED when nobody answers", async ()
   });
 });
 
-test("listCertificates round trip returns the array", async (t) => {
+test("listCertificates round trip returns certificates and readers", async (t) => {
   const cert = { thumbprint: "ab12", subject: "CN=Test", certificate: "aGk=" };
   t.after(fakeExtension((command) =>
     command === "listCertificates" ? { result: { certificates: [cert] } } : null
   ));
   const signer = new OpenSigner();
-  assert.deepEqual(await signer.listCertificates(), [cert]);
+  assert.deepEqual(await signer.listCertificates(),
+    { certificates: [cert], readers: [], diagnostics: null });
+});
+
+test("listCertificates passes readers and diagnostics through", async (t) => {
+  const reader = { name: "WD ProxKey 0", token: "WatchData ProxKey", driverFound: false };
+  const diagnostics = { modulesConfigured: 0, modulesLoaded: 0, tokens: 0,
+    pkcs11Certificates: 0, osStoreCertificates: 0 };
+  t.after(fakeExtension((command) =>
+    command === "listCertificates"
+      ? { result: { certificates: [], readers: [reader], diagnostics } } : null
+  ));
+  const signer = new OpenSigner();
+  assert.deepEqual(await signer.listCertificates(),
+    { certificates: [], readers: [reader], diagnostics });
 });
 
 test("errors propagate with code and message intact", async (t) => {

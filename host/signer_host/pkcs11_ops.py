@@ -4,6 +4,7 @@ import base64
 import hashlib
 import logging
 import os
+import threading
 import time
 from datetime import timezone
 
@@ -18,6 +19,12 @@ from .errors import HostError
 log = logging.getLogger(__name__)
 
 DIGEST_ALGORITHMS = ("sha256", "sha384", "sha512")
+
+# A hung driver call (stuck C_Initialize, dead USB state) must not cost the
+# browser its 120 s native timeout. ponytail: flat per-module budget; the
+# abandoned thread stays alive holding the module — the process-level fix is
+# the user replugging or the host restarting on reconnect.
+SCAN_TIMEOUT_SECONDS = 20
 
 # Successful PINs, cached per token label so a batch of separate signHash
 # calls costs one prompt. Memory-only: the cache lives exactly as long as the
@@ -203,15 +210,42 @@ def _map_error(exc):
     return HostError("INTERNAL", "PKCS#11 error: %s" % type(exc).__name__)
 
 
-def list_certificates():
-    """Scan all configured modules and return contract-shaped certificate entries.
+def _with_timeout(fn, seconds):
+    """Run fn on a daemon thread. Raises TimeoutError if it outlives the budget;
+    otherwise returns its result or re-raises its exception."""
+    box = {}
 
-    Broken modules and unreadable tokens are logged and skipped so one bad
-    driver does not hide certificates on a healthy token.
+    def run():
+        try:
+            box["result"] = fn()
+        except Exception as exc:  # re-raised on the caller's thread below
+            box["error"] = exc
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(seconds)
+    if worker.is_alive():
+        raise TimeoutError
+    if "error" in box:
+        raise box["error"]
+    return box["result"]
+
+
+def _scan_module(path, stats):
+    """Contract entries for every certificate on one module's tokens.
+
+    Runs on a watchdog thread; after a timeout its late stats mutations may
+    still land. ponytail: the counters are diagnostics, not billing.
     """
+    try:
+        lib = load_library(path)
+    except Exception as exc:
+        log.warning("cannot load PKCS#11 module %s: %s", path, exc)
+        return []
+    stats["loaded"] += 1
     found = []
-    seen = set()
-    for path, token in _iter_tokens({}):
+    for token in _tokens_on(lib, path):
+        stats["tokens"] += 1
         try:
             with token.open() as session:
                 ders = [
@@ -227,13 +261,49 @@ def list_certificates():
             except Exception as exc:
                 log.warning("skipping unparseable certificate on %s: %s", path, exc)
                 continue
-            if info["thumbprint"] in seen:
-                continue
-            seen.add(info["thumbprint"])
             info["tokenLabel"] = _token_label(token)
             info["moduleName"] = os.path.basename(path)
             info["source"] = "pkcs11"
             found.append(info)
+    return found
+
+
+def list_certificates(stats=None):
+    """Scan all configured modules and return contract-shaped certificate entries.
+
+    Broken modules and unreadable tokens are logged and skipped so one bad
+    driver does not hide certificates on a healthy token. Each module scan
+    runs under SCAN_TIMEOUT_SECONDS; a stuck driver is abandoned and named in
+    ``stats["stuck"]``. ``stats`` (a dict, when given) also receives the
+    configured/loaded/tokens counters, so callers can report WHY a list came
+    back empty.
+    """
+    stats = stats if stats is not None else {}
+    stats.update(configured=0, loaded=0, tokens=0)
+    found = []
+    seen = set()
+    stuck = []
+    for path in modules.discover_modules():
+        stats["configured"] += 1
+        started = time.monotonic()
+        try:
+            infos = _with_timeout(lambda p=path: _scan_module(p, stats),
+                                  SCAN_TIMEOUT_SECONDS)
+        except TimeoutError:
+            stuck.append(os.path.basename(path))
+            log.warning("PKCS#11 module %s still scanning after %ss; abandoned",
+                        path, SCAN_TIMEOUT_SECONDS)
+            continue
+        elapsed = time.monotonic() - started
+        if elapsed > 2:
+            log.info("slow PKCS#11 module %s: %.1fs", path, elapsed)
+        for info in infos:
+            if info["thumbprint"] in seen:
+                continue
+            seen.add(info["thumbprint"])
+            found.append(info)
+    if stuck:
+        stats["stuck"] = stuck
     return found
 
 

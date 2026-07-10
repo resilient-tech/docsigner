@@ -102,10 +102,20 @@ async function listCertificates() {
   setStatus("info", "Looking for certificates...");
   try {
     await signer.init({ timeout: 2000 });
-    certificates = await signer.listCertificates();
+    const listed = await signer.listCertificates();
+    certificates = listed.certificates;
     renderCertificates();
     if (certificates.length === 0) {
-      setStatus("error", "No certificates found. Is your token plugged in?");
+      const reader = (listed.readers || [])[0];
+      if (reader && reader.driverFound === false) {
+        setStatus("error", `Reader "${reader.name}" detected but its PKCS#11 driver is missing.`);
+      } else if (listed.diagnostics && listed.diagnostics.hostWillRestart) {
+        setStatus("error", `Reader "${reader ? reader.name : "token"}" detected but nothing could be read. The token connection has been reset — list again.`);
+      } else if (reader) {
+        setStatus("error", `Reader "${reader.name}" detected but no certificate could be read. Replug the token.`);
+      } else {
+        setStatus("error", "No certificates found. Is your token plugged in?");
+      }
     } else {
       setStatus("info", `Found ${certificates.length} certificate(s).`);
       el("sign").disabled = false;

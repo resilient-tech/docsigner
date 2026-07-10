@@ -27,7 +27,7 @@ def _sign_request(thumbprint="ab", alg="sha256"):
 
 def test_list_merges_and_dedupes_pkcs11_first(monkeypatch):
     monkeypatch.setattr(pkcs11_ops, "list_certificates",
-                        lambda: [_cert("aa", "pkcs11"), _cert("bb", "pkcs11")])
+                        lambda stats=None: [_cert("aa", "pkcs11"), _cert("bb", "pkcs11")])
     monkeypatch.setattr(os_store, "list_certificates",
                         lambda: [_cert("bb", "os-store"), _cert("cc", "os-store")])
     response = protocol.handle_message({"id": "t", "command": "listCertificates", "params": {}})
@@ -37,7 +37,7 @@ def test_list_merges_and_dedupes_pkcs11_first(monkeypatch):
 
 
 def test_list_works_with_empty_os_store(monkeypatch):
-    monkeypatch.setattr(pkcs11_ops, "list_certificates", lambda: [_cert("aa", "pkcs11")])
+    monkeypatch.setattr(pkcs11_ops, "list_certificates", lambda stats=None: [_cert("aa", "pkcs11")])
     monkeypatch.setattr(os_store, "list_certificates", lambda: [])
     response = protocol.handle_message({"id": "t", "command": "listCertificates", "params": {}})
     assert len(response["result"]["certificates"]) == 1

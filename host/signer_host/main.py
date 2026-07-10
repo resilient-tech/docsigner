@@ -49,6 +49,9 @@ def main():
         except (BrokenPipeError, OSError):
             log.warning("browser closed the pipe")
             break
+        if protocol.restart_requested:
+            log.info("exiting after a wedged scan; the extension reconnects on demand")
+            break
     log.info("host stopped")
     return 0
 

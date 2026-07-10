@@ -10,13 +10,22 @@ import json
 import logging
 import time
 
-from . import __version__, notify, os_store, pcsc, pkcs11_ops, update
+from . import __version__, notify, os_store, pcsc, pkcs11_ops, procs, update
 from .errors import HostError
+from .modules import config_dir
 
 log = logging.getLogger(__name__)
 
 PROTOCOL_VERSION = 1
 VERSION = __version__
+
+# Set when a scan looked wedged: module loaded, reader or token present, zero
+# certificates. main exits after the reply so the extension's next request
+# spawns a fresh process (full C_Initialize). WatchData's driver caches its
+# slot state per process; lib.reinitialize() and a replug do not clear it,
+# only a fresh process does (live-tested: extension reload fixed what a
+# replug could not).
+restart_requested = False
 
 
 def handle_raw(payload):
@@ -54,7 +63,8 @@ def _error(message_id, code, text):
 
 
 def _get_version(params):
-    return {"version": VERSION, "protocolVersion": PROTOCOL_VERSION}
+    return {"version": VERSION, "protocolVersion": PROTOCOL_VERSION,
+            "logPath": str(config_dir() / "host.log")}
 
 
 def _check_update(params):
@@ -74,16 +84,40 @@ def _list_certificates(params):
     empty result can be told apart from a host-side one.
     """
     started = time.monotonic()
-    certificates = _safe("pkcs11", pkcs11_ops.list_certificates)
+    stats = {}
+    certificates = _safe("pkcs11", lambda: pkcs11_ops.list_certificates(stats))
+    pkcs11_count = len(certificates)
     seen = {c["thumbprint"] for c in certificates}
-    certificates += [c for c in _safe("os-store", os_store.list_certificates)
-                     if c["thumbprint"] not in seen]
+    os_certs = [c for c in _safe("os-store", os_store.list_certificates)
+                if c["thumbprint"] not in seen]
+    certificates += os_certs
     readers = _safe("pcsc", pcsc.detect_readers)
+    diagnostics = {
+        "modulesConfigured": stats.get("configured", 0),
+        "modulesLoaded": stats.get("loaded", 0),
+        "tokens": stats.get("tokens", 0),
+        "pkcs11Certificates": pkcs11_count,
+        "osStoreCertificates": len(os_certs),
+    }
+    if stats.get("stuck"):
+        diagnostics["stuckModules"] = stats["stuck"]
+    if not pkcs11_count:
+        # Only when the scan came back empty: the ps call is pointless when
+        # the token answered, and this keeps the happy path fast.
+        competing = _safe("procs", procs.competing)
+        if competing:
+            diagnostics["competingProcesses"] = competing
+    if not pkcs11_count and stats.get("loaded") and (readers or stats.get("tokens")):
+        global restart_requested
+        restart_requested = True
+        diagnostics["hostWillRestart"] = True
+        log.warning("wedged scan (driver loaded, device present, 0 certificates);"
+                    " exiting after this reply so the next request gets a fresh process")
     log.info(
-        "listCertificates -> %d certificates, %d readers in %.1fs",
-        len(certificates), len(readers), time.monotonic() - started,
+        "listCertificates -> %d certificates, %d readers, %r in %.1fs",
+        len(certificates), len(readers), diagnostics, time.monotonic() - started,
     )
-    result = {"certificates": certificates}
+    result = {"certificates": certificates, "diagnostics": diagnostics}
     if readers:
         result["readers"] = readers
     return result

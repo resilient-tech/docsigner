@@ -1,12 +1,18 @@
 import base64
 
-from signer_host import pkcs11_ops, protocol
+import pytest
+
+from signer_host import pkcs11_ops, procs, protocol
 from signer_host.errors import HostError
 
 
 def test_get_version_echoes_id():
     response = protocol.handle_message({"id": "a1", "command": "getVersion", "params": {}})
-    assert response == {"id": "a1", "result": {"version": protocol.VERSION, "protocolVersion": 1}}
+    assert response["id"] == "a1"
+    result = response["result"]
+    assert result["version"] == protocol.VERSION
+    assert result["protocolVersion"] == 1
+    assert result["logPath"].endswith("host.log")
 
 
 def test_unknown_command_is_unsupported():
@@ -49,13 +55,85 @@ def test_host_error_code_surfaces(monkeypatch):
 def test_broken_discovery_source_yields_empty_list(monkeypatch):
     """One failing discovery source (here pkcs11) must not error the whole
     listing; protocol._safe logs it and the other sources still answer."""
-    def boom():
+    def boom(stats=None):
         raise ValueError("surprise")
 
     monkeypatch.setattr(pkcs11_ops, "list_certificates", boom)
     response = protocol.handle_message({"id": "a5", "command": "listCertificates", "params": {}})
     assert response["id"] == "a5"
     assert response["result"]["certificates"] == []
+
+
+def test_list_certificates_reports_diagnostics(monkeypatch):
+    """An empty list must come with counters saying where the scan stopped."""
+    def fake_list(stats=None):
+        if stats is not None:
+            stats.update(configured=2, loaded=1, tokens=0)
+        return []
+
+    monkeypatch.setattr(pkcs11_ops, "list_certificates", fake_list)
+    monkeypatch.setattr(procs, "competing", lambda: [])
+    response = protocol.handle_message({"id": "a5b", "command": "listCertificates", "params": {}})
+    assert response["result"]["diagnostics"] == {
+        "modulesConfigured": 2,
+        "modulesLoaded": 1,
+        "tokens": 0,
+        "pkcs11Certificates": 0,
+        "osStoreCertificates": 0,
+    }
+
+
+def test_diagnostics_name_stuck_modules_and_competitors(monkeypatch):
+    def fake_list(stats=None):
+        if stats is not None:
+            stats.update(configured=1, loaded=0, tokens=0, stuck=["wdpkcs.dll"])
+        return []
+
+    monkeypatch.setattr(pkcs11_ops, "list_certificates", fake_list)
+    monkeypatch.setattr(procs, "competing", lambda: ["a competing signing host"])
+    response = protocol.handle_message({"id": "a5c", "command": "listCertificates", "params": {}})
+    diagnostics = response["result"]["diagnostics"]
+    assert diagnostics["stuckModules"] == ["wdpkcs.dll"]
+    assert diagnostics["competingProcesses"] == ["a competing signing host"]
+
+
+def test_wedged_scan_requests_restart(monkeypatch):
+    """Driver loaded, device present, zero certificates: reply, then exit so
+    the next request gets a fresh process (fresh C_Initialize)."""
+    monkeypatch.setattr(protocol, "restart_requested", False)
+
+    def fake_list(stats=None):
+        stats.update(configured=1, loaded=1, tokens=1)
+        return []
+
+    monkeypatch.setattr(pkcs11_ops, "list_certificates", fake_list)
+    monkeypatch.setattr(procs, "competing", lambda: [])
+    response = protocol.handle_message({"id": "a5e", "command": "listCertificates", "params": {}})
+    assert response["result"]["diagnostics"]["hostWillRestart"] is True
+    assert protocol.restart_requested
+
+
+def test_no_restart_when_no_device_seen(monkeypatch):
+    monkeypatch.setattr(protocol, "restart_requested", False)
+
+    def fake_list(stats=None):
+        stats.update(configured=1, loaded=1, tokens=0)
+        return []
+
+    monkeypatch.setattr(pkcs11_ops, "list_certificates", fake_list)
+    monkeypatch.setattr(procs, "competing", lambda: [])
+    response = protocol.handle_message({"id": "a5f", "command": "listCertificates", "params": {}})
+    assert "hostWillRestart" not in response["result"]["diagnostics"]
+    assert not protocol.restart_requested
+
+
+def test_no_process_scan_when_certificates_found(monkeypatch):
+    monkeypatch.setattr(pkcs11_ops, "list_certificates",
+                        lambda stats=None: [{"thumbprint": "aa", "source": "pkcs11"}])
+    monkeypatch.setattr(procs, "competing",
+                        lambda: pytest.fail("must not scan processes on a good listing"))
+    response = protocol.handle_message({"id": "a5d", "command": "listCertificates", "params": {}})
+    assert "competingProcesses" not in response["result"]["diagnostics"]
 
 
 def test_sign_hash_rejects_bad_base64():

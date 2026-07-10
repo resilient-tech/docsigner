@@ -45,13 +45,23 @@ class OpenSigner {
 
   /**
    * List certificates on all connected tokens and smartcards.
-   * @returns {Promise<Array<object>>} certificate descriptors as defined in
-   *   CONTRACTS.md section 2: thumbprint, certificate (b64 DER), subject,
-   *   issuer, validFrom, validTo, keyType, tokenLabel, moduleName.
+   * @returns {Promise<{certificates: Array<object>, readers?: Array<object>}>}
+   *   certificates: descriptors as defined in CONTRACTS.md section 2
+   *   (thumbprint, certificate as b64 DER, subject, issuer, validFrom,
+   *   validTo, keyType, tokenLabel, moduleName).
+   *   readers: smart-card readers the OS sees (name, token, driverFound),
+   *   present when the host detected any — the difference between "no token
+   *   plugged in" and "token present but its driver is missing".
+   *   diagnostics: per-source scan counters (modulesConfigured, modulesLoaded,
+   *   tokens, pkcs11Certificates, osStoreCertificates) explaining empty lists.
    */
   async listCertificates() {
     const result = await this._call("listCertificates", {});
-    return result.certificates || [];
+    return {
+      certificates: result.certificates || [],
+      readers: result.readers || [],
+      diagnostics: result.diagnostics || null,
+    };
   }
 
   /**

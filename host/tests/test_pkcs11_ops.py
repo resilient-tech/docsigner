@@ -251,6 +251,22 @@ def test_list_certificates_survives_broken_module(monkeypatch):
     assert pkcs11_ops.list_certificates() == []
 
 
+def test_list_certificates_abandons_stuck_module(monkeypatch):
+    import time as time_module
+
+    monkeypatch.setattr(modules, "discover_modules", lambda: ["/fake/stuck.so"])
+    monkeypatch.setattr(pkcs11_ops, "SCAN_TIMEOUT_SECONDS", 0.05)
+
+    def hangs(path):
+        time_module.sleep(1)
+
+    monkeypatch.setattr(pkcs11_ops, "load_library", hangs)
+    stats = {}
+    assert pkcs11_ops.list_certificates(stats) == []
+    assert stats["stuck"] == ["stuck.so"]
+    assert stats["configured"] == 1
+
+
 # --- signHash: RSA ---
 
 def test_rsa_signature_verifies_as_pkcs1_v15(fake_env, rsa_key):

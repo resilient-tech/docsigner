@@ -197,7 +197,9 @@ Error codes: `USER_CANCELLED`, `PIN_INCORRECT`, `PIN_LOCKED`, `TOKEN_NOT_FOUND`,
 
 ### getVersion
 
-Result: `{ "version": "0.1.0", "protocolVersion": 1 }`
+Result: `{ "version": "0.1.0", "protocolVersion": 1, "logPath": "~/.config/opensigner/host.log" }`
+
+`logPath` is the absolute path of the host's log file, so support can ask for one file by name.
 
 ### checkUpdate
 
@@ -273,6 +275,35 @@ The result may also carry a `readers` array — connected smart-card readers see
 
 `token` is the model guessed from the reader name (`null` if unrecognised); `driverFound` says whether a matching PKCS#11 module is installed. A reader entry with `driverFound: false` and an empty certificate list means: token plugged in, driver missing. The field is absent when the smart-card service is unavailable or no reader is connected.
 
+The result always carries `diagnostics` — per-source counters that make an empty certificate list explainable without reading the host log:
+
+```json
+{
+  "diagnostics": {
+    "modulesConfigured": 1,
+    "modulesLoaded": 1,
+    "tokens": 1,
+    "pkcs11Certificates": 0,
+    "osStoreCertificates": 0
+  }
+}
+```
+
+Reading it: `modulesConfigured: 0` — no PKCS#11 driver found on disk; `modulesLoaded: 0` with modules configured — a driver exists but would not load; `tokens: 0` with a module loaded — driver up, token absent (or held by another process: a vendor utility, another browser's host, or a competing signing host); `tokens > 0` with `pkcs11Certificates: 0` — the token answered but its certificates could not be read, which usually means a single-session driver lock and a replug clears it.
+
+Two optional fields sharpen the empty-list cases. `stuckModules` (module basenames): drivers that did not answer within the host's per-module scan budget (20 s) and were abandoned — a replug or host restart clears the wedged driver. `competingProcesses` (display names): running programs known to hold a token's single PKCS#11 session (vendor utilities, a competing signing host, another OpenSigner host), checked only when the PKCS#11 scan found nothing:
+
+```json
+{
+  "diagnostics": {
+    "stuckModules": ["wdpkcs.dll"],
+    "competingProcesses": ["a competing signing host"]
+  }
+}
+```
+
+`hostWillRestart: true` means the scan looked wedged (driver loaded, device present, zero certificates) and the host exits after this reply. Some drivers (WatchData) cache slot state per process and neither `C_Initialize` re-runs nor a replug clear it; a fresh process does. The extension reconnects on the next request, so the caller should just retry once.
+
 ### signHash
 
 Params:
@@ -328,7 +359,9 @@ Single file, no dependencies, ES module + IIFE build. Global name `OpenSigner`.
 const signer = new OpenSigner();
 
 await signer.init({ timeout: 2000 });       // rejects: EXTENSION_NOT_INSTALLED
-const certs = await signer.listCertificates();  // array from §2, same fields
+// certificates: array from §2, same fields. readers: PC/SC readers from §2,
+// [] when none — lets pages tell "no token" from "token without a driver".
+const { certificates, readers } = await signer.listCertificates();
 const { signatures } = await signer.signHash({
   thumbprint, hashes: [hash], digestAlgorithm: "sha256"
 });
@@ -354,5 +387,6 @@ All rejections are `OpenSignerError` with `.code` from the codes above. Nothing 
 
 ## 7. Changelog
 
+- **2026-07-08 (b)** — additive, `protocolVersion` stays 1: `listCertificates` result carries `diagnostics` (scan counters, plus optional `stuckModules` and `competingProcesses`); `getVersion` gains `logPath`; signer-js `listCertificates()` now resolves to `{certificates, readers, diagnostics}` instead of a bare array.
 - **2026-07-08** — additive: `appearance.font` picks the handwritten script from ten bundled OFL fonts (default `great-vibes`); `appearance.page` accepts -1 for the last page. `protocolVersion` stays 1.
 - **2026-07-07** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` (`handwritten`), `appearance.name`, `appearance.capitalize`, `appearance.bold`, `appearance.qr_url`. Native messaging and page bridge untouched.
