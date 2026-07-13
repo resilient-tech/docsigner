@@ -1,6 +1,7 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
 pypdfium2>=4
-# The signing engine, reused in-process (pulls pyHanko, cryptography, qrcode).
--e /Users/smitvora/Documents/Projects/document-signer/core
--e /Users/smitvora/Documents/Projects/document-signer/host
+# The signing engine and token host, from the repo (run pip from this backend/
+# directory so the relative paths resolve). Pulls pyHanko, cryptography, qrcode.
+-e ../../core
+-e ../../host
