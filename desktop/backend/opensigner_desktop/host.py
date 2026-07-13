@@ -22,6 +22,10 @@ class TokenError(Exception):
 
 
 def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
+    # ponytail: `sys.executable -m signer_host.cli` works from source and a venv
+    # but NOT in a PyInstaller build (a frozen exe has no -m). Packaging must
+    # either bundle the opensigner-host binary as a sidecar and call it here, or
+    # sign in-process, then verify with a real token. See packaging/*.spec.
     proc = subprocess.run(
         [sys.executable, "-m", "signer_host.cli", *args],
         capture_output=True, text=True, timeout=timeout, env=env,

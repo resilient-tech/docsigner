@@ -1,6 +1,7 @@
 """FastAPI routes. In dev the Vite server proxies /api here; in prod this also
 serves the built frontend from ../frontend/dist."""
 
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -92,6 +93,14 @@ def sign(req: SignRequest) -> dict:
 _fonts = Path(signer_core.__file__).resolve().parent / "fonts"
 app.mount("/fonts", StaticFiles(directory=str(_fonts)), name="fonts")
 
-_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+def _bundle_root() -> Path:
+    # Frozen (PyInstaller) unpacks data under sys._MEIPASS; from source, this
+    # file is desktop/backend/opensigner_desktop/app.py, so parents[2] is desktop/.
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parents[2]
+
+
+_dist = _bundle_root() / "frontend" / "dist"
 if _dist.exists():
     app.mount("/", StaticFiles(directory=str(_dist), html=True), name="ui")
