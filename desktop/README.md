@@ -28,24 +28,29 @@ The handwriting faces are the OFL fonts signer-core embeds into the PDF (bundled
 
 ## Run it
 
-Backend (Python 3.12):
-
-```bash
-cd backend
-python3.12 -m venv .venv
-./.venv/bin/pip install -r requirements.txt
-./.venv/bin/python -m opensigner_desktop      # http://127.0.0.1:8000
-```
-
-Frontend:
+Build the frontend once (the window loads the built UI):
 
 ```bash
 cd frontend
 pnpm install
-pnpm dev                                       # proxies /api to the backend
+pnpm build
 ```
 
-For a single-process build, run `pnpm build` in `frontend/`, then start the backend: it serves `frontend/dist` at `/`.
+Then the app (Python 3.12):
+
+```bash
+cd ../backend
+python3.12 -m venv .venv
+./.venv/bin/pip install -r requirements.txt    # also installs ../../core and ../../host
+./.venv/bin/python -m opensigner_desktop        # opens the native window
+```
+
+To develop the UI, run the backend headless and point Vite at it:
+
+```bash
+./.venv/bin/python -m opensigner_desktop --server   # http://127.0.0.1:8000
+cd ../frontend && pnpm dev                           # proxies /api and /fonts to :8000
+```
 
 Timestamp and trust (for B-T and up) come from `OPENSIGNER_TSA_URL` (default DigiCert) and `OPENSIGNER_TRUST_DIR`. If the OpenSigner repo's `trust/` folder sits nearby it is picked up automatically.
 
