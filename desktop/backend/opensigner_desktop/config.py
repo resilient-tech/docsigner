@@ -1,0 +1,57 @@
+"""Timestamp authority and trust anchors, the same story as the Frappe
+integration: B-T adds an RFC 3161 timestamp; B-LT and the CCA profiles embed
+revocation data gathered against the trust anchors.
+
+Override with OPENSIGNER_TSA_URL and OPENSIGNER_TRUST_DIR. If the OpenSigner
+repo's bundled trust/ store sits nearby it is picked up automatically.
+"""
+
+import logging
+import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+from signer_core import Profile, build_validation_context, make_timestamper
+
+from .store import DATA_DIR
+
+TSA_URL = os.environ.get("OPENSIGNER_TSA_URL") or "http://timestamp.digicert.com"
+LOG_FILE = DATA_DIR / "opensigner-desktop.log"
+
+
+def setup_logging() -> None:
+    """Log to a rotating file so failures (with tracebacks) can be shared."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("opensigner_desktop")
+    logger.setLevel(logging.INFO)
+    if any(isinstance(h, RotatingFileHandler) for h in logger.handlers):
+        return
+    handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logger.addHandler(handler)
+
+
+def _autodetect_trust() -> str | None:
+    env = os.environ.get("OPENSIGNER_TRUST_DIR")
+    if env:
+        return env
+    # desktop/backend/opensigner_desktop/config.py -> parents[3] is the repo root.
+    guess = Path(__file__).resolve().parents[3] / "trust"
+    return str(guess) if guess.exists() else None
+
+
+TRUST_DIR = _autodetect_trust()
+
+
+def context_for(standard: str):
+    """Return (timestamper, validation_context) for a standard; (None, None) for B-B."""
+    profile = Profile.parse(standard)
+    ts = make_timestamper(TSA_URL) if profile.needs_timestamp else None
+    vc = None
+    if profile.needs_revocation_info or profile.adobe_revinfo:
+        vc = build_validation_context(TRUST_DIR, allow_fetching=True, revocation_mode="require")
+    return ts, vc
+
+
+def info() -> dict:
+    return {"tsaUrl": TSA_URL, "trustConfigured": TRUST_DIR is not None, "logPath": str(LOG_FILE)}
