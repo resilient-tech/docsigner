@@ -30,6 +30,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `js/` | `opensigner.js`, the page-side library (single file, no deps) |
 | `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
 | `host/` | `opensigner-host`, the native messaging app that talks to tokens |
+| `desktop/` | `opensigner-desktop`, a local app to batch-sign a folder of PDFs with a placed signature |
 | `demo/` | A working demo page, also the integration example |
 | `spike/` | Phase 0 proof scripts, kept as executable documentation |
 | `CONTRACTS.md` | The frozen protocol between all components |
@@ -74,6 +75,10 @@ trust/
 Only self-signed certificates act as trust anchors; intermediates found in the folder speed up chain building but are optional, since missing ones are fetched over the certificates' AIA links. The EU is the one region a folder of files cannot cover: its trust arrives as signed per-country XML lists (EUTL, ETSI TS 119 612) and needs a parser, which this repo does not have yet.
 
 While completing a B-LT or B-LTA signature the server fetches revocation data from the CA. OCSP is preferred (a response is 1 to 2 KB); CRLs are embedded only for certificates without a good OCSP response, since Indian CA CRLs run to megabytes. If no revocation source answers, completion fails with an `INTERNAL` error: an LTV signature without revocation data would be an empty claim.
+
+## Run the desktop app
+
+`desktop/` is a standalone local app: load a folder, place one signature by dragging it onto the page, and batch-sign every PDF with a token (one PIN for the whole batch) or a server-held key. Nothing is uploaded. It reuses `core/` and `host/`, and picks up the `trust/` store above it automatically. Setup and run steps are in [`desktop/README.md`](desktop/README.md).
 
 ## Try the demo
 
