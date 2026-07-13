@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
+import signer_core
+
 from . import certs, config, picker, render, signing, store
 from .models import Settings, SignRequest
 
@@ -84,6 +86,11 @@ def sign(req: SignRequest) -> dict:
         raise HTTPException(400, "No files to sign.")
     return {"results": signing.sign_files(req)}
 
+
+# Stamp fonts come from signer-core, the single source, so the on-screen
+# preview matches what gets drawn into the PDF. Mount before the SPA catch-all.
+_fonts = Path(signer_core.__file__).resolve().parent / "fonts"
+app.mount("/fonts", StaticFiles(directory=str(_fonts)), name="fonts")
 
 _dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 if _dist.exists():
