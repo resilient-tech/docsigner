@@ -29,7 +29,10 @@ BACKEND = os.path.join(DESKTOP, "backend")
 REPO = os.path.abspath(os.path.join(DESKTOP, ".."))
 FRONTEND_DIST = os.path.join(DESKTOP, "frontend", "dist")
 TRUST = os.path.join(REPO, "trust")
-entry = os.path.join(BACKEND, "opensigner_desktop", "__main__.py")
+# Not opensigner_desktop/__main__.py directly: PyInstaller runs the entry as a
+# top-level script with no package, which breaks that file's relative imports.
+# run_desktop.py starts through the package instead.
+entry = os.path.join(BACKEND, "run_desktop.py")
 ICON = os.path.join(SPECPATH, "OpenSigner.icns")
 
 # signer_core / signer_host are installed editable (PEP 660), which PyInstaller's
