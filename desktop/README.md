@@ -100,13 +100,19 @@ WebKitGTK, present on most desktops.
 
 ### Before you distribute
 
-- **Signing.** Unsigned, macOS Gatekeeper and Windows SmartScreen warn on first launch.
-  For a smooth install, sign and notarize with an Apple Developer ID on macOS and an
-  Authenticode certificate on Windows. Until then, users do right-click → Open once
-  (macOS: `xattr -dr com.apple.quarantine OpenSigner.app`).
+- **Signing.** `build-macos.sh` ad-hoc signs the app so it launches on Apple Silicon,
+  but ad-hoc is not a Developer ID: macOS Gatekeeper and Windows SmartScreen still warn
+  on a *downloaded* copy. For a smooth install, sign and notarize with an Apple Developer
+  ID on macOS and an Authenticode certificate on Windows. Until then, the recipient
+  clears the warning once. On recent macOS the right-click → Open trick is often gone;
+  use System Settings → Privacy & Security → "Open Anyway", or run
+  `xattr -dr com.apple.quarantine OpenSigner.app`.
 - **Token driver.** The DSC vendor's PKCS#11 middleware must be installed on the user's
   machine, the same as for the Frappe flow or the browser extension. It is hardware
   middleware and cannot ride inside the app.
+- **App icon.** The icon is `packaging/OpenSigner.icns` (regenerate it from the logo with
+  `packaging/make-icon.sh`). macOS caches icons hard, so a rebuilt app can still show the
+  old one in Finder or the Dock: `killall Dock Finder`, or move the app once, to refresh.
 
 Verify a build by opening it and signing one PDF with the actual token — that pops the
 token PIN, which only the token holder can enter.

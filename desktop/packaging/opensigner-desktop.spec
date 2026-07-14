@@ -30,6 +30,13 @@ REPO = os.path.abspath(os.path.join(DESKTOP, ".."))
 FRONTEND_DIST = os.path.join(DESKTOP, "frontend", "dist")
 TRUST = os.path.join(REPO, "trust")
 entry = os.path.join(BACKEND, "opensigner_desktop", "__main__.py")
+ICON = os.path.join(SPECPATH, "OpenSigner.icns")
+
+# signer_core / signer_host are installed editable (PEP 660), which PyInstaller's
+# static analysis can't follow. Point pathex at their source so they resolve as
+# ordinary packages.
+CORE = os.path.join(REPO, "core")
+HOST = os.path.join(REPO, "host")
 
 datas = [(FRONTEND_DIST, os.path.join("frontend", "dist"))]
 if os.path.isdir(TRUST):
@@ -55,7 +62,7 @@ for pkg in (
 
 a = Analysis(
     [entry],
-    pathex=[BACKEND],
+    pathex=[BACKEND, CORE, HOST],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -83,7 +90,7 @@ coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="opensigne
 app = BUNDLE(
     coll,
     name="OpenSigner.app",
-    icon=None,
+    icon=ICON if os.path.exists(ICON) else None,
     bundle_identifier="tech.resilient.opensigner",
     info_plist={
         "CFBundleName": "OpenSigner",

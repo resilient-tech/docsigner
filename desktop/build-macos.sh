@@ -20,6 +20,11 @@ echo "==> Packaging .app"
 # writes dist/ and build/ to the current dir, so dist lands in backend/.
 ./.venv/bin/pyinstaller --noconfirm ../packaging/opensigner-desktop.spec
 
+echo "==> Ad-hoc signing"
+# Apple Silicon refuses to launch a bundle without a valid signature. Ad-hoc
+# (-s -) is enough to run locally; use a Developer ID here to distribute.
+codesign --force --deep --sign - dist/OpenSigner.app
+
 echo "==> Packaging .dmg (drag-to-Applications installer)"
 # hdiutil ships with macOS, so no extra dependency. Stage the .app next to an
 # Applications symlink so the mounted disk shows the usual drag target.
