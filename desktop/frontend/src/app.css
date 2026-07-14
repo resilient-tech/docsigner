@@ -54,16 +54,14 @@
   margin-right: 6px;
 }
 .brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: linear-gradient(150deg, var(--green), #37a862);
   color: #06110a;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
 }
 .path-input {
   flex: 1;

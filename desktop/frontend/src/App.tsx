@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon } from 'lucide-react'
+import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature } from 'lucide-react'
 import * as api from './api'
 import type { AppConfig, Identity, PdfFile, Placement, RenderResult, Settings, SignResult } from './types'
 import { PlacementCanvas } from './components/PlacementCanvas'
@@ -142,6 +142,7 @@ export function App() {
     setIncluded(new Set())
     setResults({})
     setSelected(null)
+    setFolderPath('') // full reset to the empty state, not a half-cleared toolbar
   }
 
   function refreshIdentities() {
@@ -253,7 +254,10 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">OS</span> OpenSigner
+          <span className="brand-mark">
+            <Signature size={17} strokeWidth={2.25} />
+          </span>
+          OpenSigner
         </div>
         <div className="topbar-spacer" />
         <button
@@ -288,12 +292,18 @@ export function App() {
           onChange={(e) => setFolderPath(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && loadFolder(folderPath)}
         />
-        {files.length > 0 && (
-          <button className="ic-btn" onClick={refreshFolder} title="Rescan the folder" aria-label="Refresh files">
-            <RefreshCw size={15} />
-          </button>
-        )}
-        {files.length > 0 && <span className="count-pill">{files.length} PDFs</span>}
+        <button
+          className="ic-btn"
+          onClick={refreshFolder}
+          disabled={!folderPath}
+          title="Rescan the folder"
+          aria-label="Refresh files"
+        >
+          <RefreshCw size={15} />
+        </button>
+        <span className="count-pill">
+          {files.length} PDF{files.length === 1 ? '' : 's'}
+        </span>
       </div>
 
       {(error || failedCount > 0) && (
