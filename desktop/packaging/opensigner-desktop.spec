@@ -1,44 +1,62 @@
 # PyInstaller build for the OpenSigner desktop app (FastAPI + pywebview).
 #
-# STARTING POINT, not yet verified end to end. Build and test per OS before
-# release, the same way the host binary is (real-token runs are a manual step):
-#     cd desktop/frontend && pnpm build      # the window loads frontend/dist
-#     cd desktop/backend  && pyinstaller packaging/opensigner-desktop.spec
+#   cd desktop/frontend && pnpm build      # the window loads frontend/dist
+#   cd desktop/backend  && ./.venv/bin/pyinstaller packaging/opensigner-desktop.spec
+#   -> desktop/backend/dist/OpenSigner.app
 #
-# Known open items (each needs a real per-OS run):
-#   1. Token path. host.py runs the signing host as `python -m signer_host.cli`,
-#      which does not exist in a frozen bundle. Decide between bundling the
-#      opensigner-host binary as a sidecar (keeps the fresh-subprocess design)
-#      or signing in-process, then wire it in and test with a token. See host.py.
-#   2. Trust anchors. config.py autodetects the repo trust/ by path, which the
-#      frozen app cannot see. Bundle trust/ (add to datas) and point
-#      OPENSIGNER_TRUST_DIR at it, or LTV profiles will be unavailable (B-B works).
-#   3. Platform GUI deps. pywebview pulls a per-OS backend (pyobjc on macOS,
-#      pythonnet/Edge WebView2 on Windows, GTK/Qt on Linux); add hiddenimports
-#      if collect_all("webview") misses them on your target.
-#   4. macOS: wrap in BUNDLE() for a double-clickable .app; this spec emits a
-#      plain onefile executable.
+# (build-macos.sh does all of this.) Still needs a per-OS run to confirm, and a
+# real-token sign, the same way the host binary is verified before release.
+#
+# Handled here:
+#   - Token path: host.py re-execs the frozen app as `--host-cli`, so signing
+#     still happens in a fresh process (no `python -m` needed). __main__ routes it.
+#   - Trust anchors: repo trust/ is bundled and config.py reads it from _MEIPASS.
+#   - Signing libs (pyHanko, pypdfium2, cryptography, python-pkcs11, …) collected.
+#   - macOS: emits a double-clickable .app via BUNDLE().
+#
+# Still per-OS / manual:
+#   - pywebview's GUI backend (pyobjc on macOS) — add hiddenimports if missing.
+#   - Code signing + notarization for distribution (Developer ID; otherwise
+#     Gatekeeper warns). Sign the .app after this build.
 
 import os
 
-from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-BACKEND = os.path.join(SPECPATH, "..")
-FRONTEND_DIST = os.path.join(BACKEND, "..", "frontend", "dist")
+# This spec lives in desktop/packaging/, so SPECPATH is that folder.
+DESKTOP = os.path.abspath(os.path.join(SPECPATH, ".."))
+BACKEND = os.path.join(DESKTOP, "backend")
+REPO = os.path.abspath(os.path.join(DESKTOP, ".."))
+FRONTEND_DIST = os.path.join(DESKTOP, "frontend", "dist")
+TRUST = os.path.join(REPO, "trust")
 entry = os.path.join(BACKEND, "opensigner_desktop", "__main__.py")
 
 datas = [(FRONTEND_DIST, os.path.join("frontend", "dist"))]
-datas += collect_data_files("signer_core")  # stamp fonts + package data
+if os.path.isdir(TRUST):
+    datas += [(TRUST, "trust")]
 
+binaries = []
 hiddenimports = collect_submodules("uvicorn")
-webview_datas, webview_binaries, webview_hidden = collect_all("webview")
-datas += webview_datas
-hiddenimports += webview_hidden
+
+# Everything the signing path and the window need, with their data files and
+# native libs. Wrapped so an absent optional package doesn't break the build.
+for pkg in (
+    "webview", "pyhanko", "pyhanko_certvalidator", "asn1crypto", "cryptography",
+    "pypdfium2", "pypdfium2_raw", "qrcode", "PIL", "pkcs11", "oscrypto",
+    "signer_core", "signer_host",
+):
+    try:
+        d, b, h = collect_all(pkg)
+        datas += d
+        binaries += b
+        hiddenimports += h
+    except Exception:
+        pass
 
 a = Analysis(
     [entry],
     pathex=[BACKEND],
-    binaries=webview_binaries,
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -52,12 +70,28 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
+    exclude_binaries=True,
     name="opensigner-desktop",
     debug=False,
     strip=False,
     upx=False,
     console=False,  # GUI app; pywebview owns the window
-    disable_windowed_traceback=False,
+)
+
+coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="opensigner-desktop")
+
+app = BUNDLE(
+    coll,
+    name="OpenSigner.app",
+    icon=None,
+    bundle_identifier="tech.resilient.opensigner",
+    info_plist={
+        "CFBundleName": "OpenSigner",
+        "CFBundleDisplayName": "OpenSigner",
+        "CFBundleShortVersionString": "0.1.0",
+        "NSHighResolutionCapable": True,
+        "LSMinimumSystemVersion": "11.0",
+        # The window loads http://127.0.0.1:<port>; allow local networking.
+        "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True},
+    },
 )

@@ -8,6 +8,7 @@ repo's bundled trust/ store sits nearby it is picked up automatically.
 
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -35,6 +36,10 @@ def _autodetect_trust() -> str | None:
     env = os.environ.get("OPENSIGNER_TRUST_DIR")
     if env:
         return env
+    if getattr(sys, "frozen", False):
+        # PyInstaller unpacks bundled trust/ (see the spec's datas) here.
+        bundled = Path(sys._MEIPASS) / "trust"
+        return str(bundled) if bundled.exists() else None
     # desktop/backend/opensigner_desktop/config.py -> parents[3] is the repo root.
     guess = Path(__file__).resolve().parents[3] / "trust"
     return str(guess) if guess.exists() else None

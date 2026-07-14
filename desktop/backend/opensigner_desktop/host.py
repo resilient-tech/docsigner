@@ -21,13 +21,22 @@ class TokenError(Exception):
         self.code = code
 
 
+def _host_argv() -> list[str]:
+    """How to launch the signing host as a fresh process.
+
+    From source `python -m signer_host.cli` works. A PyInstaller build has no
+    `-m`, so the frozen app re-execs itself with a --host-cli switch that
+    __main__ routes into the host CLI. Either way it's a fresh process, which is
+    what keeps the token drivers from wedging.
+    """
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--host-cli"]
+    return [sys.executable, "-m", "signer_host.cli"]
+
+
 def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
-    # ponytail: `sys.executable -m signer_host.cli` works from source and a venv
-    # but NOT in a PyInstaller build (a frozen exe has no -m). Packaging must
-    # either bundle the opensigner-host binary as a sidecar and call it here, or
-    # sign in-process, then verify with a real token. See packaging/*.spec.
     proc = subprocess.run(
-        [sys.executable, "-m", "signer_host.cli", *args],
+        [*_host_argv(), *args],
         capture_output=True, text=True, timeout=timeout, env=env,
     )
     try:
