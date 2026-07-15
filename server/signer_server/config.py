@@ -4,7 +4,6 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 def load_dotenv(path: str = ".env") -> None:
@@ -34,10 +33,10 @@ class Config:
     document_dir: Path
     session_ttl_seconds: int
     document_ttl_seconds: int
-    p12_path: Optional[str]
-    p12_passphrase: Optional[str]
-    tsa_url: Optional[str]
-    trust_dir: Optional[str]
+    p12_path: str | None
+    p12_passphrase: str | None
+    tsa_url: str | None
+    trust_dir: str | None
     max_pdf_mb: int
     strict_ltv: bool
 

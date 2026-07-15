@@ -8,21 +8,25 @@ different standard ladder and stay out until someone needs them.
 """
 
 import asyncio
-import base64
 import dataclasses
 import hashlib
-import json
 from datetime import datetime, timezone
 
 from asn1crypto import cms
-from pyhanko.sign import signers
 from pyhanko.sign.ades.api import CAdESSignedAttrSpec
 from pyhanko.sign.signers.pdf_cms import ExternalSigner, PdfCMSSignedAttributes
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from .errors import SignerError
 from .profiles import Profile, parse_digest_algorithm
-from .session import PLACEHOLDER_SIG_SIZE, _parse_cert, _verify_signature
+from .server_signer import _load_p12_signer
+from .session import (
+    PLACEHOLDER_SIG_SIZE,
+    _decode_state,
+    _encode_state,
+    _parse_cert,
+    _verify_signature,
+)
 
 _CADES_PROFILES = (Profile.B_B, Profile.B_T)
 
@@ -40,20 +44,11 @@ class CadesState:
     tsa_url: str = ""
 
     def to_bytes(self) -> bytes:
-        data = dataclasses.asdict(self)
-        data["kind"] = "cades"
-        for field in _BYTES_FIELDS:
-            data[field] = base64.b64encode(data[field]).decode("ascii")
-        return json.dumps(data).encode("utf-8")
+        return _encode_state(self, _BYTES_FIELDS, kind="cades")
 
     @classmethod
     def from_bytes(cls, raw: bytes) -> "CadesState":
-        data = json.loads(raw.decode("utf-8"))
-        if data.pop("kind", None) != "cades":
-            raise SignerError("SESSION_NOT_FOUND", "no such CAdES session")
-        for field in _BYTES_FIELDS:
-            data[field] = base64.b64decode(data[field])
-        return cls(**data)
+        return cls(**_decode_state(raw, _BYTES_FIELDS, kind="cades"))
 
 
 def _check_profile(options) -> Profile:
@@ -144,16 +139,7 @@ def sign_cades_with_p12(data, p12_path, passphrase, options, *, timestamper=None
     """One-shot detached CAdES with the server-held key."""
     profile = _check_profile(options or {})
     md_algorithm = parse_digest_algorithm(options or {})
-    if isinstance(passphrase, str):
-        passphrase = passphrase.encode("utf-8")
-    try:
-        signer = signers.SimpleSigner.load_pkcs12(p12_path, passphrase=passphrase)
-    except Exception:
-        signer = None
-    if signer is None:
-        raise SignerError(
-            "INTERNAL", "could not load the server signing key (check P12_PATH/P12_PASSPHRASE)"
-        )
+    signer = _load_p12_signer(p12_path, passphrase)
     signature_cms = signer.sign_general_data(
         data,
         md_algorithm,

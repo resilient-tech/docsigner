@@ -9,7 +9,7 @@ from .profiles import Profile
 from .rendering import page_size, placement_box, render_page
 from .server_signer import sign_with_p12
 from .session import SessionState, SigningSession
-from .trust import build_validation_context, load_trust_certs, make_timestamper
+from .trust import build_validation_context, make_timestamper
 from .validation import validate
 
 __all__ = [
@@ -18,7 +18,6 @@ __all__ = [
     "SignerError",
     "SigningSession",
     "build_validation_context",
-    "load_trust_certs",
     "make_timestamper",
     "page_size",
     "placement_box",

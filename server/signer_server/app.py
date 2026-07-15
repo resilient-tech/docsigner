@@ -70,6 +70,15 @@ async def unhandled_error_handler(request: Request, exc: Exception):
     )
 
 
+def _iso_z(dt: datetime) -> str:
+    """RFC 3339 with a literal Z. datetime.isoformat() emits +00:00 instead."""
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _expires_at() -> str:
+    return _iso_z(datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds))
+
+
 def _b64_bytes(payload: dict, field: str, error_code: str) -> bytes:
     value = payload.get(field)
     if not isinstance(value, str) or not value:
@@ -140,12 +149,11 @@ def start_signature(payload: dict = Body(...)):
         strict_ltv=config.strict_ltv,
     )
     session_id = sessions.put(state.to_bytes())
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
     return {
         "session_id": session_id,
         "to_sign_hash": base64.b64encode(to_sign_hash).decode("ascii"),
         "digest_algorithm": digest_algorithm,
-        "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "expires_at": _expires_at(),
         **_pdfa_fields(pdf_bytes, options),
     }
 
@@ -170,7 +178,7 @@ def _audit_record(state: SessionState, signed_pdf: bytes) -> dict:
         "digest_algorithm": state.digest_algorithm,
         "field_name": state.field_name,
         "document_sha256": hashlib.sha256(signed_pdf).hexdigest(),
-        "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "completed_at": _iso_z(datetime.now(timezone.utc)),
     }
 
 
@@ -245,11 +253,10 @@ def start_batch(payload: dict = Body(...)):
             "to_sign_hash": base64.b64encode(to_sign_hash).decode("ascii"),
         })
 
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
     return {
         "sessions": entries,
         "digest_algorithm": digest_algorithm,
-        "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "expires_at": _expires_at(),
     }
 
 
@@ -328,12 +335,11 @@ def start_cades(payload: dict = Body(...)):
         data, cert_der, options, timestamper=_request_timestamper(options)
     )
     session_id = sessions.put(state.to_bytes())
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds)
     return {
         "session_id": session_id,
         "to_sign_hash": base64.b64encode(to_sign_hash).decode("ascii"),
         "digest_algorithm": digest_algorithm,
-        "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "expires_at": _expires_at(),
     }
 
 

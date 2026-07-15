@@ -50,6 +50,30 @@ _HASH_CLASSES = {
 _BYTES_FIELDS = ("prepared_pdf", "document_digest", "signed_attrs_der", "cert_der")
 
 
+def _encode_state(state, bytes_fields: tuple, *, kind: str | None = None) -> bytes:
+    """Serialize a dataclass state to JSON, base64-encoding its bytes fields."""
+    data = dataclasses.asdict(state)
+    if kind:
+        data["kind"] = kind
+    for field in bytes_fields:
+        data[field] = base64.b64encode(data[field]).decode("ascii")
+    return json.dumps(data).encode("utf-8")
+
+
+def _decode_state(raw: bytes, bytes_fields: tuple, *, kind: str | None = None) -> dict:
+    """Inverse of _encode_state: JSON back to a kwargs dict with bytes restored.
+
+    With ``kind`` set, reject a blob of a different kind before touching its
+    fields (a PDF-session blob is not a CAdES session, and vice versa).
+    """
+    data = json.loads(raw.decode("utf-8"))
+    if kind is not None and data.pop("kind", None) != kind:
+        raise SignerError("SESSION_NOT_FOUND", f"no such {kind} session")
+    for field in bytes_fields:
+        data[field] = base64.b64decode(data[field])
+    return data
+
+
 @dataclasses.dataclass
 class SessionState:
     """Everything needed to resume signing once the hash comes back signed."""
@@ -73,17 +97,11 @@ class SessionState:
     chain_certs: list = dataclasses.field(default_factory=list)
 
     def to_bytes(self) -> bytes:
-        data = dataclasses.asdict(self)
-        for field in _BYTES_FIELDS:
-            data[field] = base64.b64encode(data[field]).decode("ascii")
-        return json.dumps(data).encode("utf-8")
+        return _encode_state(self, _BYTES_FIELDS)
 
     @classmethod
     def from_bytes(cls, raw: bytes) -> "SessionState":
-        data = json.loads(raw.decode("utf-8"))
-        for field in _BYTES_FIELDS:
-            data[field] = base64.b64decode(data[field])
-        return cls(**data)
+        return cls(**_decode_state(raw, _BYTES_FIELDS))
 
 
 class SigningSession:
