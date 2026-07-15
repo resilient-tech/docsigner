@@ -35,7 +35,7 @@ a reason** rather than pass hollowly or fail.
 |---|---|---|
 | `test_server_e2e.py` | B-B (all digests, RSA + EC, PDF + CAdES, token + server-side), batch, XAdES, appearance variants, error paths | B-T (reachable TSA); B-LT/B-LTA/CCA-LTV/CCA-LTA (CA-issued cert + reachable OCSP → real DSC) |
 | `test_host_e2e.py` | real host process `getVersion`; list/sign over the wire vs a fake token, PIN `admin@123`, signatures verified against the cert | real DSC: `OPENSIGNER_E2E_REAL_TOKEN=1` + `OPENSIGNER_PKCS11_MODULES` |
-| `test_extension_e2e.py` | manifest / script / icon / iife checks (via the JS suite); bridge event-name contract | browser: `OPENSIGNER_E2E_BROWSER=1` (Chrome + `pip install playwright`, `playwright install chromium`) |
+| `test_extension_e2e.py` | manifest / script / icon checks (via the JS suite); bridge event-name contract | browser: `OPENSIGNER_E2E_BROWSER=1` (Chrome + `pip install playwright`, `playwright install chromium`) |
 | `test_demo_e2e.py` | demo page served, asset graph resolves, demo's server-side PDF/XAdES/CAdES flows validate | — |
 
 Why the LTV/CCA profiles skip offline: they embed revocation data fetched from

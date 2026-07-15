@@ -55,8 +55,7 @@ def test_demo_asset_graph_resolves(demo_base, web):
     demo_js = web.get(f"{demo_base}/demo/demo.js")
     assert demo_js.status_code == 200
     assert 'from "../js/opensigner.js"' in demo_js.text
-    for path in ("/js/opensigner.js", "/js/opensigner.iife.js"):
-        assert web.get(f"{demo_base}{path}").status_code == 200, f"{path} not served"
+    assert web.get(f"{demo_base}/js/opensigner.js").status_code == 200, "opensigner.js not served"
 
 
 def test_demo_default_server_url_is_local(demo_base, web):

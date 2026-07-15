@@ -355,7 +355,7 @@ First `listCertificates` or `signHash` from an unknown origin triggers the exten
 
 ## 4. signer-js public API
 
-Single file, no dependencies, ES module + IIFE build. Global name `OpenSigner`.
+Single ES module file, no dependencies. Load it with `<script type="module">` or a bundler.
 
 ```js
 const signer = new OpenSigner();

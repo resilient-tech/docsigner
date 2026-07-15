@@ -1,8 +1,8 @@
 """Live extension e2e, independent of the server and host.
 
 Runnable anywhere: invokes the extension's own Node test suite (manifest,
-script parse, icons, iife freshness) as a live subprocess, and checks the
-page-bridge event names against CONTRACTS.md.
+script parse, icons) as a live subprocess, and checks the page-bridge event
+names against CONTRACTS.md.
 
 Gated (OPENSIGNER_E2E_BROWSER=1, needs Chrome + `pip install playwright` and
 `playwright install chromium`): loads the unpacked extension in a real browser
@@ -26,7 +26,7 @@ JS_DIR = REPO_ROOT / "js"
 
 def test_extension_node_suite():
     """The extension's own checks, run live. Reuses js/test rather than
-    reimplementing manifest/parse/icon/iife verification."""
+    reimplementing manifest/parse/icon verification."""
     node = shutil.which("node")
     if node is None:
         pytest.skip("node not installed")

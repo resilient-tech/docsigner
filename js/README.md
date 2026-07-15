@@ -6,20 +6,14 @@ certificates and sign hashes. The API and error codes are in
 [`../CONTRACTS.md`](../CONTRACTS.md); `../demo/demo.js` is the full worked
 example.
 
-Two builds of the same code:
-
-- `opensigner.js` is an ES module. Import it in a bundler or with
-  `<script type="module">`.
-- `opensigner.iife.js` is generated from it for a plain `<script>` tag; it
-  attaches `window.OpenSigner` and `window.OpenSignerError`.
+`opensigner.js` is an ES module. Import it in a bundler or straight from a
+`<script type="module">` tag; there is nothing to build.
 
 ## Use it
 
-Script tag:
-
 ```html
-<script src="opensigner.iife.js"></script>
-<script>
+<script type="module">
+  import { OpenSigner } from "./opensigner.js";
   const signer = new OpenSigner();
   await signer.init();
   const certs = await signer.listCertificates();
@@ -31,21 +25,7 @@ Script tag:
 </script>
 ```
 
-ES module:
-
-```js
-import { OpenSigner } from "./opensigner.js";
-```
-
 Signing needs the extension and the native host installed (see the root README).
-
-## Build
-
-`opensigner.iife.js` is generated. Edit `opensigner.js`, then regenerate:
-
-```bash
-npm run build        # or: node build-iife.js
-```
 
 ## Distribute
 

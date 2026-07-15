@@ -1,6 +1,6 @@
 // OpenSigner page library (CONTRACTS.md section 4).
 // Talks to the browser extension over window CustomEvents, nothing else.
-// Zero dependencies. ES module; opensigner.iife.js is generated from this file.
+// Zero dependencies. ES module: load with <script type="module"> or a bundler.
 
 const REQUEST_EVENT = "org.opensigner.request";
 const RESPONSE_EVENT = "org.opensigner.response";

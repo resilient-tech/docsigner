@@ -142,8 +142,8 @@ or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.
 ## Use it from your own page
 
 ```html
-<script src="js/opensigner.iife.js"></script>
-<script>
+<script type="module">
+  import { OpenSigner } from "./js/opensigner.js";
   const signer = new OpenSigner();
   await signer.init();
   const certs = await signer.listCertificates();

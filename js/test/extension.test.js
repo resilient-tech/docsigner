@@ -35,11 +35,3 @@ test("icons exist", () => {
     assert.ok(existsSync(join(extDir, "icons", `icon${size}.png`)), `icon${size}.png missing`);
   }
 });
-
-test("iife build is current", () => {
-  const jsDir = fileURLToPath(new URL("../", import.meta.url));
-  const iife = readFileSync(join(jsDir, "opensigner.iife.js"), "utf8");
-  const src = readFileSync(join(jsDir, "opensigner.js"), "utf8").replaceAll("export class ", "class ");
-  assert.ok(iife.includes(src), "opensigner.iife.js is stale, run: node build-iife.js");
-  assert.ok(iife.includes("window.OpenSigner = OpenSigner"));
-});
