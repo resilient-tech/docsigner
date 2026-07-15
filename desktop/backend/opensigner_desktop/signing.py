@@ -151,10 +151,14 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
             log.exception("prepare failed: %s (standard=%s)", path, req.standard)
             results[path] = {"path": path, "ok": False, "error": _err(exc)}
 
-    # 2. One PIN: sign every hash in a single PKCS#11 session.
+    # 2. One PIN: sign every hash in a single PKCS#11 session, via a fresh
+    #    host subprocess (see host.py). Import lazily: the p12 path never
+    #    touches the host.
     if hashes:
         try:
-            signatures = _token_sign(identity["thumbprint"], hashes, algorithm, req.pin)
+            from . import host
+
+            signatures = host.sign_hashes(identity["thumbprint"], hashes, algorithm, req.pin)
         except Exception as exc:  # noqa: BLE001 - batch sign failed for all prepared files
             log.exception("token sign failed (standard=%s)", req.standard)
             for path, _state in prepared:
@@ -174,10 +178,3 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
                 results[path] = {"path": path, "ok": False, "error": _err(exc)}
 
     return [results[p] for p in req.files if p in results]
-
-
-def _token_sign(thumbprint: str, hashes: list[bytes], algorithm: str, pin: str | None) -> list[bytes]:
-    """One PIN for the whole batch, via a fresh host subprocess (see host.py)."""
-    from . import host
-
-    return host.sign_hashes(thumbprint, hashes, algorithm, pin)
