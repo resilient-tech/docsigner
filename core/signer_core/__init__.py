@@ -6,6 +6,7 @@ signing, PAdES baseline profiles, and signature validation.
 
 from .errors import SignerError
 from .profiles import Profile
+from .rendering import page_size, placement_box, render_page
 from .server_signer import sign_with_p12
 from .session import SessionState, SigningSession
 from .trust import build_validation_context, load_trust_certs, make_timestamper
@@ -19,6 +20,9 @@ __all__ = [
     "build_validation_context",
     "load_trust_certs",
     "make_timestamper",
+    "page_size",
+    "placement_box",
+    "render_page",
     "sign_with_p12",
     "validate",
 ]

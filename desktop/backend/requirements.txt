@@ -1,8 +1,8 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
-pypdfium2>=4
 pywebview>=5          # native desktop window (uses the OS webview)
 # The signing engine and token host, from the repo (run pip from this backend/
 # directory so the relative paths resolve). Pulls pyHanko, cryptography, qrcode.
--e ../../core
+# [render] adds pypdfium2 for PDF preview rasterization (signer_core.rendering).
+-e ../../core[render]
 -e ../../host

@@ -130,7 +130,6 @@ The desktop app reaches the token directly through the host, so it needs no brow
 ```
 backend/opensigner_desktop/
   app.py        FastAPI routes
-  render.py     page image + page size (pypdfium2)
   signing.py    bulk sign via signer-core; placement -> points; appearance mapping
   certs.py      signing identities (.p12); self-signed test key on first run
   store.py      settings + appearance profiles (the "remembered" layer)

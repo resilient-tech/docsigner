@@ -16,6 +16,11 @@ dependencies = [
     "qrcode>=7",
 ]
 
+[project.optional-dependencies]
+# PDF rasterization for placement UIs (rendering.py). Optional so the server and
+# host, which never rasterize, stay light.
+render = ["pypdfium2>=4"]
+
 [tool.setuptools.packages.find]
 include = ["signer_core*"]
 

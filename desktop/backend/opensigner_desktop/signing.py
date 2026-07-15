@@ -15,20 +15,16 @@ import base64
 import logging
 from pathlib import Path
 
-from signer_core import SigningSession, sign_with_p12
+from signer_core import SigningSession, page_size, placement_box, sign_with_p12
 
-from . import certs, config, render, store
+from . import certs, config, store
 from .models import AppearanceProfile, Placement, SignRequest
 
 log = logging.getLogger(__name__)
 
 
 def _box_points(pl: Placement, w_pt: float, h_pt: float) -> list[float]:
-    x1 = pl.fx * w_pt
-    x2 = (pl.fx + pl.fw) * w_pt
-    y_top = h_pt - pl.fy * h_pt
-    y_bot = h_pt - (pl.fy + pl.fh) * h_pt
-    return [round(x1, 1), round(y_bot, 1), round(x2, 1), round(y_top, 1)]
+    return placement_box(pl.fx, pl.fy, pl.fw, pl.fh, w_pt, h_pt)
 
 
 def _appearance(profile: AppearanceProfile, box: list[float], page: int,
@@ -108,7 +104,7 @@ def _sign_p12(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
             results.append({"path": path, "ok": False, "skipped": True, "error": reason})
             continue
         try:
-            w_pt, h_pt, pages = render.page_size(path, req.placement.page)
+            w_pt, h_pt, pages = page_size(path, req.placement.page)
             options = _options(req, _box_points(req.placement, w_pt, h_pt),
                                _resolve_page(req.placement.page, pages))
             signed = sign_with_p12(
@@ -138,7 +134,7 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
             results[path] = {"path": path, "ok": False, "skipped": True, "error": reason}
             continue
         try:
-            w_pt, h_pt, pages = render.page_size(path, req.placement.page)
+            w_pt, h_pt, pages = page_size(path, req.placement.page)
             options = _options(req, _box_points(req.placement, w_pt, h_pt),
                                _resolve_page(req.placement.page, pages))
             state, to_sign, algorithm = SigningSession.start(

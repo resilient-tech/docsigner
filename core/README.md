@@ -39,8 +39,9 @@ signed = SigningSession.complete(state, signature)
 The module map: `session.py` and `server_signer.py` (signing), `profiles.py`
 (PAdES/CAdES profiles), `ltv.py` and `trust.py` and `validation.py` (revocation,
 trust anchors, verification), `appearance.py` (visible stamps), `cades.py` /
-`xades.py` (detached and XML), `pdfa.py` (conformance detection). The signing
-protocol and error codes are frozen in [`../CONTRACTS.md`](../CONTRACTS.md).
+`xades.py` (detached and XML), `pdfa.py` (conformance detection), `rendering.py`
+(page rasterization and placement math, needs the optional `[render]` extra). The
+signing protocol and error codes are frozen in [`../CONTRACTS.md`](../CONTRACTS.md).
 
 ## Fonts
 
