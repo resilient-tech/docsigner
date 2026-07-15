@@ -87,6 +87,22 @@ def load_library(path):
     return lib
 
 
+def _module_tokens(path, stats):
+    """Yield each token on one module's slots, counting loaded modules and
+    tokens into ``stats``. A module that will not load is logged and yields
+    nothing. Shared by the listing scan and the by-thumbprint lookup so both
+    walk modules and slots identically."""
+    try:
+        lib = load_library(path)
+    except Exception as exc:
+        log.warning("cannot load PKCS#11 module %s: %s", path, exc)
+        return
+    stats["loaded"] += 1
+    for token in _tokens_on(lib, path):
+        stats["tokens"] += 1
+        yield token
+
+
 def _iter_tokens(stats):
     """Yield (module_path, token) across all discovered modules.
 
@@ -96,14 +112,7 @@ def _iter_tokens(stats):
     stats.update(configured=0, loaded=0, tokens=0)
     for path in modules.discover_modules():
         stats["configured"] += 1
-        try:
-            lib = load_library(path)
-        except Exception as exc:
-            log.warning("cannot load PKCS#11 module %s: %s", path, exc)
-            continue
-        stats["loaded"] += 1
-        for token in _tokens_on(lib, path):
-            stats["tokens"] += 1
+        for token in _module_tokens(path, stats):
             yield path, token
 
 
@@ -237,15 +246,8 @@ def _scan_module(path, stats):
     Runs on a watchdog thread; after a timeout its late stats mutations may
     still land. ponytail: the counters are diagnostics, not billing.
     """
-    try:
-        lib = load_library(path)
-    except Exception as exc:
-        log.warning("cannot load PKCS#11 module %s: %s", path, exc)
-        return []
-    stats["loaded"] += 1
     found = []
-    for token in _tokens_on(lib, path):
-        stats["tokens"] += 1
+    for token in _module_tokens(path, stats):
         try:
             with token.open() as session:
                 ders = [
