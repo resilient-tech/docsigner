@@ -1,7 +1,8 @@
 import type { AppearanceProfile } from '../types'
 
 // Font key -> the bundled family (same faces signer-core stamps into the PDF).
-const FONT_FAMILY: Record<string, string> = {
+// The keys are the single source of the selectable font list (see ProfileEditor).
+export const FONT_FAMILY: Record<string, string> = {
   'great-vibes': 'Great Vibes',
   'dancing-script': 'Dancing Script',
   caveat: 'Caveat',

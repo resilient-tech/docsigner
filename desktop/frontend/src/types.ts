@@ -65,7 +65,6 @@ export interface SignResult {
   path: string
   ok: boolean
   skipped?: boolean
-  output?: string
   name?: string
   error?: string
 }

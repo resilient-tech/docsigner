@@ -1,19 +1,8 @@
 import { Plus, Trash2, X } from 'lucide-react'
 import type { AppearanceProfile } from '../types'
-import { StampPreview } from './StampPreview'
+import { FONT_FAMILY, StampPreview } from './StampPreview'
 
-const FONTS = [
-  'great-vibes',
-  'dancing-script',
-  'caveat',
-  'sacramento',
-  'allura',
-  'alex-brush',
-  'nanum-pen-script',
-  'cedarville-cursive',
-  'cookie',
-  'bad-script',
-]
+const FONTS = Object.keys(FONT_FAMILY)
 
 const TOGGLES: { key: keyof AppearanceProfile; label: string }[] = [
   { key: 'show_name', label: 'Digitally signed by (name line)' },

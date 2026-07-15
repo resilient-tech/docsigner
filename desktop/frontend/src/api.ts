@@ -33,8 +33,8 @@ export const pickFolder = (): Promise<{ folder: string | null }> =>
 export const pickFiles = (): Promise<{ folder: string | null; files: PdfFile[] }> =>
   fetch('/api/pick-files', { method: 'POST' }).then(jsonOrThrow)
 
-export const getPage = (path: string, index: number, width = 1000): Promise<RenderResult> =>
-  fetch(`/api/page?path=${encodeURIComponent(path)}&index=${index}&width=${width}`).then(jsonOrThrow)
+export const getPage = (path: string, index: number): Promise<RenderResult> =>
+  fetch(`/api/page?path=${encodeURIComponent(path)}&index=${index}&width=1000`).then(jsonOrThrow)
 
 export const sign = (req: SignRequest): Promise<{ results: SignResult[] }> =>
   fetch('/api/sign', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(req) }).then(jsonOrThrow)
