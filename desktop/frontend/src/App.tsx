@@ -26,13 +26,20 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   const persistReady = useRef(false)
 
-  const [theme, setTheme] = useState<'dark' | 'light'>(
-    () => (document.documentElement.getAttribute('data-theme') as 'dark' | 'light') || 'dark',
-  )
+  const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches)
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('opensigner-theme', theme)
-  }, [theme])
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => setSystemDark(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  // "system" follows the OS; a toggle pins light/dark. Theme rides Settings so it
+  // restores on next launch (localStorage isn't reliable across webview rebuilds).
+  const resolvedTheme = settings?.theme === 'system' || !settings ? (systemDark ? 'dark' : 'light') : settings.theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', resolvedTheme)
+  }, [resolvedTheme])
 
   useEffect(() => {
     api.getSettings().then((s) => {
@@ -222,6 +229,7 @@ export function App() {
         location: settings.location,
         suffix: settings.suffix,
         placement,
+        tsa_url: settings.tsa_url,
         pin: pin ?? null,
       })
       setResults((cur) => {
@@ -262,11 +270,11 @@ export function App() {
         <div className="topbar-spacer" />
         <button
           className="ic-btn"
-          onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          onClick={() => patch({ theme: resolvedTheme === 'dark' ? 'light' : 'dark' })}
           title="Toggle light / dark"
           aria-label="Toggle theme"
         >
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
         <button
           className="btn primary sign-btn"
@@ -426,6 +434,9 @@ export function App() {
           standard={settings.standard}
           onStandard={(v) => patch({ standard: v })}
           trustConfigured={cfg?.trustConfigured ?? false}
+          tsaUrl={settings.tsa_url ?? ''}
+          tsaDefault={cfg?.tsaUrl ?? ''}
+          onTsaUrl={(v) => patch({ tsa_url: v || null })}
           reason={settings.reason ?? ''}
           location={settings.location ?? ''}
           onReason={(v) => patch({ reason: v })}

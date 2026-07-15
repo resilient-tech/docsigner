@@ -37,6 +37,8 @@ class SignRequest(BaseModel):
     location: Optional[str] = None
     suffix: str = "_signed"
     placement: Placement = Field(default_factory=Placement)
+    # Override the TSA for timestamped standards; None uses the default.
+    tsa_url: Optional[str] = None
     # Token PIN entered in-app; None falls back to the host's own dialog.
     pin: Optional[str] = None
 
@@ -50,4 +52,7 @@ class Settings(BaseModel):
     reason: Optional[str] = None
     location: Optional[str] = None
     placement: Optional[Placement] = None
+    # "system" follows the OS on first run; the toggle pins "light"/"dark".
+    theme: Literal["system", "light", "dark"] = "system"
+    tsa_url: Optional[str] = None
     profiles: list[AppearanceProfile] = Field(default_factory=list)

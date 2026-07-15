@@ -18,6 +18,9 @@ export function SetupPanel(props: {
   standard: string
   onStandard: (v: string) => void
   trustConfigured: boolean
+  tsaUrl: string
+  tsaDefault: string
+  onTsaUrl: (v: string) => void
   reason: string
   location: string
   onReason: (v: string) => void
@@ -90,6 +93,18 @@ export function SetupPanel(props: {
         </select>
         {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (OPENSIGNER_TRUST_DIR).</span>}
       </div>
+
+      {std?.needsConfig && (
+        <div className="field">
+          <label>Timestamp authority</label>
+          <input
+            className="control"
+            value={props.tsaUrl}
+            placeholder={props.tsaDefault || 'RFC 3161 TSA URL'}
+            onChange={(e) => props.onTsaUrl(e.target.value)}
+          />
+        </div>
+      )}
 
       <div className="field">
         <label>Save as</label>

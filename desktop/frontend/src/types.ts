@@ -27,7 +27,8 @@ export interface Settings {
   reason: string | null
   location: string | null
   placement: Placement | null
-  apply_to_all: boolean
+  theme: 'system' | 'light' | 'dark'
+  tsa_url: string | null
   profiles: AppearanceProfile[]
 }
 
@@ -78,6 +79,7 @@ export interface SignRequest {
   location: string | null
   suffix: string
   placement: Placement
+  tsa_url?: string | null
   pin?: string | null
 }
 

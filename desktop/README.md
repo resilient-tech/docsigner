@@ -49,9 +49,11 @@ To iterate on the UI with hot reload, run the backend headless and point Vite at
 cd ../frontend && pnpm dev                           # proxies /api and /fonts to :8000
 ```
 
-Timestamp and trust (for B-T and up) come from `OPENSIGNER_TSA_URL` (default DigiCert)
-and `OPENSIGNER_TRUST_DIR`. If the OpenSigner repo's `trust/` folder sits nearby it is
-picked up automatically, and the packaged app carries its own copy.
+Timestamp and trust (for B-T and up) default to `OPENSIGNER_TSA_URL` (DigiCert) and
+`OPENSIGNER_TRUST_DIR`. The timestamp authority is also editable in the app for
+timestamped standards; that per-setup value overrides the env default. If the
+OpenSigner repo's `trust/` folder sits nearby it is picked up automatically, and the
+packaged app carries its own copy.
 
 ## Production — build an installable app
 

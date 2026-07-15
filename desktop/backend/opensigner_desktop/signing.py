@@ -94,7 +94,7 @@ def sign_files(req: SignRequest) -> list[dict]:
     identity = certs.find_identity(store.KEYS_DIR, req.identity_id)
     if identity is None:
         return [{"path": p, "ok": False, "error": "signing identity not found"} for p in req.files]
-    ts, vc = config.context_for(req.standard)
+    ts, vc = config.context_for(req.standard, req.tsa_url)
     if identity["kind"] == "token":
         return _sign_token(req, identity, ts, vc)
     return _sign_p12(req, identity, ts, vc)

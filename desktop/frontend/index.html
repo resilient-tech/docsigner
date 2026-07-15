@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenSigner Desktop</title>
+    <script>
+      // Pre-paint the OS theme so the first frame isn't wrong; App refines this
+      // once saved settings load (a pinned light/dark preference wins over this).
+      document.documentElement.setAttribute(
+        'data-theme',
+        matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      )
+    </script>
   </head>
   <body>
     <div id="root"></div>

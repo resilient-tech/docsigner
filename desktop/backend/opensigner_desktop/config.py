@@ -48,10 +48,14 @@ def _autodetect_trust() -> str | None:
 TRUST_DIR = _autodetect_trust()
 
 
-def context_for(standard: str):
-    """Return (timestamper, validation_context) for a standard; (None, None) for B-B."""
+def context_for(standard: str, tsa_url: str | None = None):
+    """Return (timestamper, validation_context) for a standard; (None, None) for B-B.
+
+    tsa_url overrides the default TSA for this batch (the settings-page value);
+    an empty/None value falls back to OPENSIGNER_TSA_URL / the built-in default.
+    """
     profile = Profile.parse(standard)
-    ts = make_timestamper(TSA_URL) if profile.needs_timestamp else None
+    ts = make_timestamper(tsa_url or TSA_URL) if profile.needs_timestamp else None
     vc = None
     if profile.needs_revocation_info or profile.adobe_revinfo:
         vc = build_validation_context(TRUST_DIR, allow_fetching=True, revocation_mode="require")
