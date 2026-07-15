@@ -9,8 +9,9 @@ export interface Placement {
 export interface AppearanceProfile {
   id: string
   name: string
-  style: 'handwritten' | 'text'
+  style: 'handwritten' | 'text' | 'image'
   font: string
+  image?: string | null // base64 / data: URL, used when style === 'image'
   show_name: boolean
   show_date: boolean
   show_reason: boolean

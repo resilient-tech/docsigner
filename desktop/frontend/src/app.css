@@ -692,6 +692,19 @@ input[type='checkbox'] {
 .ef > span {
   font-weight: 600;
 }
+.img-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.img-thumb {
+  max-width: 96px;
+  max-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+}
 .toggles {
   display: flex;
   flex-direction: column;

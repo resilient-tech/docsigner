@@ -18,8 +18,10 @@ class Placement(BaseModel):
 class AppearanceProfile(BaseModel):
     id: str
     name: str
-    style: Literal["handwritten", "text"] = "handwritten"
+    style: Literal["handwritten", "text", "image"] = "handwritten"
     font: str = "great-vibes"
+    # base64 (data: URL ok) of an uploaded signature image; used when style="image".
+    image: Optional[str] = None
     show_name: bool = True
     show_date: bool = True
     show_reason: bool = False

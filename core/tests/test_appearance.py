@@ -143,3 +143,35 @@ def test_page_before_first_rejected():
     with pytest.raises(SignerError) as err:
         build_appearance({"position": "bottom-right", "page": -2}, "Sig1", writer=_writer())
     assert err.value.code == "DOCUMENT_INVALID"
+
+
+def _tiny_png_b64() -> str:
+    import base64
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGBA", (8, 4), (0, 0, 255, 255)).save(buf, "PNG")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def test_image_style_composes_stamp():
+    # style="image" routes through the composed path: the uploaded image becomes
+    # the stamp background, with the detail lines drawn below it.
+    style, spec = build_appearance(
+        {"style": "image", "box": [0, 0, 200, 50], "image": _tiny_png_b64(),
+         "text": "By {signer}"},
+        "Sig1", writer=_writer(), signer_name="Smit Vora",
+    )
+    assert style.background is not None
+    assert spec.box == (0.0, 0.0, 200.0, 50.0)
+
+
+def test_decode_image_accepts_data_url_prefix():
+    # The desktop app stores a browser FileReader data: URL as-is; core strips it.
+    style, _ = build_appearance(
+        {"style": "image", "box": [0, 0, 200, 50],
+         "image": "data:image/png;base64," + _tiny_png_b64()},
+        "Sig1", writer=_writer(), signer_name="Smit Vora",
+    )
+    assert style.background is not None

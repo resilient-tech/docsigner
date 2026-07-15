@@ -33,6 +33,10 @@ def _appearance(profile: AppearanceProfile, box: list[float], page: int,
     if profile.style == "handwritten":
         ap["style"] = "handwritten"
         ap["font"] = profile.font
+    elif profile.style == "image":
+        ap["style"] = "image"
+        if profile.image:
+            ap["image"] = profile.image
     lines = []
     if profile.show_name:
         lines.append("Digitally signed by {signer}")

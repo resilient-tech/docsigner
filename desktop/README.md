@@ -10,7 +10,7 @@ The signing engine is OpenSigner's `signer-core` (pyHanko underneath), reused in
 - Pick which files to sign with checkboxes; the rest are left alone.
 - Place the signature: drag the box to move it, drag a corner to resize. The on-page box shows the signature exactly as it lands (navy ink, scaled to the box), so what you see is what gets signed. One location covers the whole batch.
 - Sign with a DSC token or a server-held key. One login signs the whole batch, so the PIN is asked once for the folder.
-- Appearance the way Acrobat does it: handwritten name (the real bundled fonts), date, reason, location. Saved under a name, editable.
+- Appearance the way Acrobat does it: handwritten name (the real bundled fonts), an uploaded signature image, or plain text, with date, reason, location. Saved under a name, editable.
 - Standards: PAdES B-B, B-T (RFC 3161 timestamp), B-LT (LTV, embedded revocation), and CCA-LTV for India. Timestamp authority and trust anchors are configurable.
 - Bulk sign: signed copies are written beside the originals as `name_signed.pdf`.
 - Responsive from tablet to large screens.

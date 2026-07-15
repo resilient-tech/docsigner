@@ -61,23 +61,37 @@ export function StampPreview({
     )
   }
 
-  const family = FONT_FAMILY[profile.font] ?? 'Great Vibes'
+  // handwritten and image share the layout: the mark fills the top area, detail
+  // lines sit below. Mirrors core's composed stamp.
   const hasLines = lines.length > 0
   const topH = hasLines ? boxH * 0.52 : boxH * 0.88
-  const nameFS = Math.min(topH * 0.9, (boxW - 2 * pad) / (0.46 * Math.max(signerName.length, 3)))
   const lh = hasLines ? Math.min(boxH * 0.16, (boxH - topH - pad) / lines.length) : 0
   const lineFS = lh * 0.76
+  const detail = lines.map((l, i) => (
+    <text key={i} x={pad} y={topH + pad * 0.3 + lh * i + lineFS} fontFamily="'Poppins', sans-serif" fontSize={lineFS} fill="#5f636c">
+      {l}
+    </text>
+  ))
 
+  if (profile.style === 'image') {
+    return (
+      <svg viewBox={view} style={svgStyle} preserveAspectRatio="xMidYMid meet">
+        {profile.image && (
+          <image href={profile.image} x={pad} y={pad} width={boxW - 2 * pad} height={topH - pad} preserveAspectRatio="xMinYMid meet" />
+        )}
+        {detail}
+      </svg>
+    )
+  }
+
+  const family = FONT_FAMILY[profile.font] ?? 'Great Vibes'
+  const nameFS = Math.min(topH * 0.9, (boxW - 2 * pad) / (0.46 * Math.max(signerName.length, 3)))
   return (
     <svg viewBox={view} style={svgStyle} preserveAspectRatio="xMidYMid meet">
       <text x={pad} y={pad + nameFS * 0.82} fontFamily={`'${family}', cursive`} fontSize={nameFS} fill="#14315d">
         {signerName}
       </text>
-      {lines.map((l, i) => (
-        <text key={i} x={pad} y={topH + pad * 0.3 + lh * i + lineFS} fontFamily="'Poppins', sans-serif" fontSize={lineFS} fill="#5f636c">
-          {l}
-        </text>
-      ))}
+      {detail}
     </svg>
   )
 }

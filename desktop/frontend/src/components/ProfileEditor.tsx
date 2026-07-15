@@ -44,6 +44,14 @@ export function ProfileEditor({
   const profile = profiles.find((p) => p.id === selectedId) ?? profiles[0]
   const set = (patch: Partial<AppearanceProfile>) => onChange({ ...profile, ...patch })
 
+  function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => set({ image: String(reader.result) }) // data: URL, stored as-is
+    reader.readAsDataURL(file)
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -81,6 +89,7 @@ export function ProfileEditor({
                 <select className="control" value={profile.style} onChange={(e) => set({ style: e.target.value as AppearanceProfile['style'] })}>
                   <option value="handwritten">Handwritten</option>
                   <option value="text">Text</option>
+                  <option value="image">Image</option>
                 </select>
               </label>
               {profile.style === 'handwritten' && (
@@ -93,6 +102,20 @@ export function ProfileEditor({
                       </option>
                     ))}
                   </select>
+                </label>
+              )}
+              {profile.style === 'image' && (
+                <label className="ef">
+                  <span>Image</span>
+                  <div className="img-row">
+                    {profile.image && <img src={profile.image} alt="signature" className="img-thumb" />}
+                    <input type="file" accept="image/png,image/jpeg" onChange={onPickImage} />
+                    {profile.image && (
+                      <button className="btn ghost sm" onClick={() => set({ image: null })}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </label>
               )}
 

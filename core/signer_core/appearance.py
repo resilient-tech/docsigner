@@ -76,7 +76,9 @@ def build_appearance(appearance, field_name: str, writer=None, reason: str | Non
         box=tuple(float(v) for v in box),
     )
 
-    if appearance.get("style") == "handwritten" or appearance.get("qr_url"):
+    # Composed path: a handwritten name, an uploaded signature image, or a QR
+    # panel all get laid out into one PNG (mark on top, detail lines below).
+    if appearance.get("style") in ("handwritten", "image") or appearance.get("qr_url"):
         from pyhanko.pdf_utils.images import PdfImage
 
         png = _composed_stamp(appearance, box, signer_name, reason)
@@ -109,6 +111,8 @@ def build_appearance(appearance, field_name: str, writer=None, reason: str | Non
 def _decode_image(image_b64):
     from PIL import Image
 
+    if isinstance(image_b64, str) and image_b64.startswith("data:"):
+        image_b64 = image_b64.split(",", 1)[-1]  # strip a data: URL prefix
     try:
         pil_image = Image.open(io.BytesIO(base64.b64decode(image_b64)))
         pil_image.load()

@@ -39,8 +39,8 @@ Request:
       "position": "bottom-left | bottom-right | top-left | top-right (alternative to box)",
       "size": [200, 50],
       "text": "Signed by {signer}\n{ts} (optional, this is the default; {reason} is also substituted)",
-      "image": "<b64 PNG, optional>",
-      "style": "handwritten (optional; omit for the plain text stamp)",
+      "image": "<b64 PNG/JPEG or data: URL, optional>",
+      "style": "handwritten | image (optional; omit for the plain text stamp)",
       "name": "optional display name for the handwritten style; default = signer certificate CN",
       "font": "great-vibes (default) | dancing-script | caveat | sacramento | allura | alex-brush | nanum-pen-script | cedarville-cursive | cookie | bad-script",
       "capitalize": true,
@@ -54,6 +54,8 @@ Request:
 `appearance` absent = invisible signature. `box` is PDF points, `[x1, y1, x2, y2]`, origin bottom-left. Instead of `box`, a `position` corner preset may be given: the server computes the box from the actual page dimensions (24 pt margin), using `size` (width, height in points; default `[200, 50]`). When both are present, `box` wins.
 
 `style: "handwritten"` draws the name in a bundled script font (Great Vibes) above the detail lines, ink-navy on transparent — a modern "wet signature" look with no image upload. `capitalize` (default true) uppercases each word's first letter; `bold` (default false) thickens the strokes. `qr_url` composes a full-height QR panel at the right edge of the stamp box and works with any style; `{signer}`/`{ts}`/`{reason}` substitution in `text` still applies. Both features render server-side into the stamp background; the plain text stamp without `qr_url` is unchanged.
+
+`style: "image"` places the uploaded `image` (raw base64 or a `data:` URL) as the mark in the top area with the detail lines below, the same layout as the handwritten style. Without `style: "image"`, an `image` on a plain text stamp still fills the whole stamp background as before.
 
 Response 200:
 
@@ -387,6 +389,7 @@ All rejections are `OpenSignerError` with `.code` from the codes above. Nothing 
 
 ## 7. Changelog
 
+- **2026-07-15** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` accepts `image`, composing the uploaded `image` (base64 or `data:` URL) as the mark above the detail lines. Existing `handwritten`/text/`image`-background behavior unchanged.
 - **2026-07-10** — no wire change: the desk sign dialog now uses §1 `options.reason` and §2 page-supplied `pin`; Signature Log and the verify page carry the reason. `protocolVersion` stays 1.
 - **2026-07-08 (b)** — additive, `protocolVersion` stays 1: `listCertificates` result carries `diagnostics` (scan counters, plus optional `stuckModules` and `competingProcesses`); `getVersion` gains `logPath`; signer-js `listCertificates()` now resolves to `{certificates, readers, diagnostics}` instead of a bare array.
 - **2026-07-08** — additive: `appearance.font` picks the handwritten script from ten bundled OFL fonts (default `great-vibes`); `appearance.page` accepts -1 for the last page. `protocolVersion` stays 1.
