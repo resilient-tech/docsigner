@@ -5,10 +5,10 @@ signing, PAdES baseline profiles, and signature validation.
 """
 
 from .errors import SignerError
+from .oneshot import sign_with_p12
+from .pdf_sign import SessionState, SigningSession
 from .profiles import Profile
 from .rendering import page_size, placement_box, render_page
-from .server_signer import sign_with_p12
-from .session import SessionState, SigningSession
 from .trust import build_validation_context, make_timestamper
 from .validation import validate
 

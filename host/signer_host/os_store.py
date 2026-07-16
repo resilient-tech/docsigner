@@ -18,8 +18,8 @@ import sys
 
 from asn1crypto import x509
 
+from .certs import DIGEST_ALGORITHMS, cert_info, ecdsa_raw_to_der
 from .errors import HostError
-from .pkcs11_ops import DIGEST_ALGORITHMS, _cert_info, ecdsa_raw_to_der
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _signing_capable(der):
 
 
 def _entry(der, token_label):
-    info = _cert_info(der)
+    info = cert_info(der)
     info["tokenLabel"] = token_label
     info["moduleName"] = "os-store"
     info["source"] = "os-store"
@@ -145,7 +145,7 @@ if sys.platform == "darwin":
         else:
             raise HostError("CERT_NOT_FOUND",
                             "no certificate with thumbprint %s in the Keychain" % thumbprint)
-        key_type = _cert_info(der)["keyType"]
+        key_type = cert_info(der)["keyType"]
         alg_name = _ALGORITHMS.get((key_type, digest_algorithm))
         if alg_name is None:
             raise HostError("UNSUPPORTED", "unsupported key type: %s" % key_type)
@@ -267,7 +267,7 @@ elif sys.platform == "win32":
                 raise HostError("CERT_NOT_FOUND",
                                 "no certificate with thumbprint %s in the Windows store"
                                 % thumbprint)
-            key_type = _cert_info(_der(ctx))["keyType"]
+            key_type = cert_info(_der(ctx))["keyType"]
             if key_type not in ("RSA", "EC"):
                 raise HostError("UNSUPPORTED", "unsupported key type: %s" % key_type)
             key = ctypes.c_void_p()

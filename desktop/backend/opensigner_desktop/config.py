@@ -57,7 +57,7 @@ def context_for(standard: str, tsa_url: str | None = None):
     profile = Profile.parse(standard)
     ts = make_timestamper(tsa_url or TSA_URL) if profile.needs_timestamp else None
     vc = None
-    if profile.needs_revocation_info or profile.adobe_revinfo:
+    if profile.needs_revocation_info or profile.is_cca:
         vc = build_validation_context(TRUST_DIR, allow_fetching=True, revocation_mode="require")
     return ts, vc
 

@@ -1,24 +1,21 @@
 """PKCS#11 operations: certificate listing and hash signing via python-pkcs11."""
 
-import base64
 import hashlib
 import logging
 import os
 import threading
 import time
-from datetime import timezone
 
 import pkcs11
-from asn1crypto import algos, x509
+from asn1crypto import algos
 from pkcs11 import Attribute, Mechanism, ObjectClass
 from pkcs11 import exceptions as p11ex
 
 from . import modules
+from .certs import DIGEST_ALGORITHMS, cert_info, ecdsa_raw_to_der
 from .errors import HostError
 
 log = logging.getLogger(__name__)
-
-DIGEST_ALGORITHMS = ("sha256", "sha384", "sha512")
 
 # A hung driver call (stuck C_Initialize, dead USB state) must not cost the
 # browser its 120 s native timeout. ponytail: flat per-module budget; the
@@ -44,27 +41,6 @@ def _cached_pin(label):
 
 def clear_pin_cache():
     _pin_cache.clear()
-
-# OID friendly-name -> short attribute name, CN first ordering handled in _name_to_string.
-_NAME_SHORT = {
-    "common_name": "CN",
-    "organization_name": "O",
-    "organizational_unit_name": "OU",
-    "country_name": "C",
-    "state_or_province_name": "ST",
-    "locality_name": "L",
-    "email_address": "E",
-    "serial_number": "SERIALNUMBER",
-    "domain_component": "DC",
-    "title": "T",
-    "given_name": "G",
-    "surname": "SN",
-    "pseudonym": "PSEUDONYM",
-    "street_address": "STREET",
-    "postal_code": "POSTALCODE",
-}
-
-_KEY_TYPES = {"rsa": "RSA", "rsassa_pss": "RSA", "ec": "EC"}
 
 
 def load_library(path):
@@ -151,60 +127,10 @@ def _attr(obj, attribute):
     return value or None
 
 
-def _iso_utc(dt):
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _name_to_string(name):
-    """Render an asn1crypto Name as 'CN=..., O=..., C=...' (most specific first)."""
-    parts = []
-    for rdn in reversed(list(name.chosen)):
-        for type_value in rdn:
-            key = type_value["type"].native
-            value = type_value["value"].native
-            if not isinstance(value, str):
-                value = str(value)
-            parts.append("%s=%s" % (_NAME_SHORT.get(key, key), value))
-    return ", ".join(parts)
-
-
-# X.509 key usage flag -> contract field name (mirrors another vendor's KeyUsagesModel,
-# so pages can filter signing certificates on multi-cert tokens).
-_KEY_USAGE_FIELDS = {
-    "digital_signature": "digitalSignature",
-    "non_repudiation": "nonRepudiation",
-    "key_encipherment": "keyEncipherment",
-    "data_encipherment": "dataEncipherment",
-    "key_agreement": "keyAgreement",
-    "key_cert_sign": "keyCertSign",
-    "crl_sign": "crlSign",
-}
-
-
-def _key_usage(cert):
-    """Key usage booleans; all false when the extension is absent or unreadable."""
-    try:
-        usage_set = cert.key_usage_value.native if cert.key_usage_value else set()
-    except Exception:
-        usage_set = set()
-    return {field: flag in usage_set for flag, field in _KEY_USAGE_FIELDS.items()}
-
-
-def _cert_info(der):
-    """Contract fields for one DER certificate (tokenLabel/moduleName added by callers)."""
-    cert = x509.Certificate.load(der)
-    validity = cert["tbs_certificate"]["validity"]
-    algorithm = cert.public_key.algorithm
-    return {
-        "thumbprint": hashlib.sha1(der).hexdigest(),
-        "certificate": base64.b64encode(der).decode("ascii"),
-        "subject": _name_to_string(cert.subject),
-        "issuer": _name_to_string(cert.issuer),
-        "validFrom": _iso_utc(validity["not_before"].native),
-        "validTo": _iso_utc(validity["not_after"].native),
-        "keyType": _KEY_TYPES.get(algorithm, algorithm.upper()),
-        "keyUsage": _key_usage(cert),
-    }
+def _certs_on_token(session):
+    """Yield (object, DER bytes) for every certificate on an open token session."""
+    for obj in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE}):
+        yield obj, bytes(obj[Attribute.VALUE])
 
 
 def _map_error(exc):
@@ -250,16 +176,13 @@ def _scan_module(path, stats):
     for token in _module_tokens(path, stats):
         try:
             with token.open() as session:
-                ders = [
-                    bytes(obj[Attribute.VALUE])
-                    for obj in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE})
-                ]
+                ders = [der for _obj, der in _certs_on_token(session)]
         except Exception as exc:
             log.warning("cannot read certificates from token on %s: %s", path, exc)
             continue
         for der in ders:
             try:
-                info = _cert_info(der)
+                info = cert_info(der)
             except Exception as exc:
                 log.warning("skipping unparseable certificate on %s: %s", path, exc)
                 continue
@@ -315,8 +238,7 @@ def _find_certificate(thumbprint):
     for path, token in _iter_tokens(stats):
         try:
             with token.open() as session:
-                for obj in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE}):
-                    der = bytes(obj[Attribute.VALUE])
+                for obj, der in _certs_on_token(session):
                     if hashlib.sha1(der).hexdigest() == thumbprint:
                         return path, token, der, _attr(obj, Attribute.ID), _attr(obj, Attribute.LABEL)
         except Exception as exc:
@@ -362,16 +284,6 @@ def _sign_ec(key, digest):
     return ecdsa_raw_to_der(bytes(key.sign(digest, mechanism=Mechanism.ECDSA)))
 
 
-def ecdsa_raw_to_der(raw):
-    """Convert a raw r||s ECDSA signature to a DER ECDSA-Sig-Value."""
-    if not raw or len(raw) % 2:
-        raise HostError("INTERNAL", "malformed raw ECDSA signature (%d bytes)" % len(raw))
-    half = len(raw) // 2
-    r = int.from_bytes(raw[:half], "big")
-    s = int.from_bytes(raw[half:], "big")
-    return algos.DSASignature({"r": r, "s": s}).dump()
-
-
 def sign_hashes(thumbprint, hashes, digest_algorithm="sha256", pin_provider=None):
     """Sign raw digests with the private key matching a certificate thumbprint.
 
@@ -384,7 +296,7 @@ def sign_hashes(thumbprint, hashes, digest_algorithm="sha256", pin_provider=None
         raise HostError("INTERNAL", "hashes must be a non-empty list")
 
     path, token, der, cka_id, cka_label = _find_certificate(thumbprint.lower().strip())
-    key_type = _cert_info(der)["keyType"]
+    key_type = cert_info(der)["keyType"]
     if key_type not in ("RSA", "EC"):
         raise HostError("UNSUPPORTED", "unsupported key type: %s" % key_type)
 

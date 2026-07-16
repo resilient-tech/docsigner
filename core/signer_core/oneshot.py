@@ -7,23 +7,9 @@ from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
 
 from .appearance import build_appearance, cert_common_name
+from .cms import load_p12_signer
 from .errors import SignerError
 from .profiles import Profile, build_metadata, check_requirements
-
-
-def _load_p12_signer(p12_path, passphrase):
-    """Load a server-held PKCS#12 key as a pyHanko signer, or raise INTERNAL."""
-    if isinstance(passphrase, str):
-        passphrase = passphrase.encode("utf-8")
-    try:
-        signer = signers.SimpleSigner.load_pkcs12(p12_path, passphrase=passphrase)
-    except Exception:
-        signer = None
-    if signer is None:
-        raise SignerError(
-            "INTERNAL", "could not load the server signing key (check P12_PATH/P12_PASSPHRASE)"
-        )
-    return signer
 
 
 def sign_with_p12(
@@ -39,7 +25,7 @@ def sign_with_p12(
     profile = Profile.parse(options.get("profile"))
     check_requirements(profile, timestamper, validation_context)
 
-    signer = _load_p12_signer(p12_path, passphrase)
+    signer = load_p12_signer(p12_path, passphrase)
 
     try:
         # strict=False: tolerate real-world PDFs with minor xref quirks (see session.py).

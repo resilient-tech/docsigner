@@ -1,4 +1,4 @@
-"""Interrupted signing sessions.
+"""Interrupted PDF signing sessions.
 
 start() prepares the PDF, builds the CMS signed attributes, and returns the
 digest a token must sign. complete() takes the raw signature bytes and embeds
@@ -6,7 +6,7 @@ the finished CMS. The state in between is a plain dataclass that survives a
 trip to disk, so the two calls can happen in different processes.
 
 The pyHanko call sequence mirrors spike/spike_interrupted_signing.py, with
-use_pades=True for production PAdES output.
+use_pades=True for production PAdES output. Shared CMS bricks live in cms.py.
 """
 
 import asyncio
@@ -14,17 +14,11 @@ import base64
 import dataclasses
 import hashlib
 import io
-import json
 import secrets
 from datetime import datetime, timezone
 
 from asn1crypto import cms
 from asn1crypto import x509 as asn1_x509
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
-from cryptography.hazmat.primitives.serialization import load_der_public_key
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
 from pyhanko.sign.signers.pdf_byterange import PreparedByteRangeDigest
@@ -34,44 +28,18 @@ from pyhanko_certvalidator import CertificateValidator
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from .appearance import build_appearance, cert_common_name
+from .cms import (
+    PLACEHOLDER_SIG_SIZE,
+    decode_state,
+    encode_state,
+    parse_cert,
+    verify_signature,
+)
 from .errors import SignerError
 from .ltv import _select_revinfo, async_augment, dss_from_embedded_revinfo
 from .profiles import Profile, build_metadata, check_requirements, parse_digest_algorithm
 
-# Placeholder for the yet-unknown signature value; fits RSA-4096.
-PLACEHOLDER_SIG_SIZE = 512
-
-_HASH_CLASSES = {
-    "sha256": hashes.SHA256,
-    "sha384": hashes.SHA384,
-    "sha512": hashes.SHA512,
-}
-
 _BYTES_FIELDS = ("prepared_pdf", "document_digest", "signed_attrs_der", "cert_der")
-
-
-def _encode_state(state, bytes_fields: tuple, *, kind: str | None = None) -> bytes:
-    """Serialize a dataclass state to JSON, base64-encoding its bytes fields."""
-    data = dataclasses.asdict(state)
-    if kind:
-        data["kind"] = kind
-    for field in bytes_fields:
-        data[field] = base64.b64encode(data[field]).decode("ascii")
-    return json.dumps(data).encode("utf-8")
-
-
-def _decode_state(raw: bytes, bytes_fields: tuple, *, kind: str | None = None) -> dict:
-    """Inverse of _encode_state: JSON back to a kwargs dict with bytes restored.
-
-    With ``kind`` set, reject a blob of a different kind before touching its
-    fields (a PDF-session blob is not a CAdES session, and vice versa).
-    """
-    data = json.loads(raw.decode("utf-8"))
-    if kind is not None and data.pop("kind", None) != kind:
-        raise SignerError("SESSION_NOT_FOUND", f"no such {kind} session")
-    for field in bytes_fields:
-        data[field] = base64.b64decode(data[field])
-    return data
 
 
 @dataclasses.dataclass
@@ -97,11 +65,11 @@ class SessionState:
     chain_certs: list = dataclasses.field(default_factory=list)
 
     def to_bytes(self) -> bytes:
-        return _encode_state(self, _BYTES_FIELDS)
+        return encode_state(self, _BYTES_FIELDS, kind="pdf")
 
     @classmethod
     def from_bytes(cls, raw: bytes) -> "SessionState":
-        return cls(**_decode_state(raw, _BYTES_FIELDS))
+        return cls(**decode_state(raw, _BYTES_FIELDS, kind="pdf"))
 
 
 class SigningSession:
@@ -160,7 +128,7 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
     prepare_profile = Profile.B_T if profile.needs_revocation_info else profile
 
     md_algorithm = parse_digest_algorithm(options)
-    signer_cert = _parse_cert(cert_der)
+    signer_cert = parse_cert(cert_der)
     try:
         # strict=False: real-world PDFs (govt/portal/scanner output) often carry
         # minor xref-stream quirks that strict mode rejects; lenient parsing signs
@@ -183,8 +151,8 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
     attr_settings = None
     bytes_reserved = None
     chain_certs_b64 = []
-    if profile.adobe_revinfo:
-        revinfo, chain_certs = await _gather_adobe_revinfo(
+    if profile.is_cca:
+        revinfo, chain_certs = await _gather_cca_revinfo(
             signer_cert,
             validation_context,
             timestamper if profile.needs_timestamp else None,
@@ -227,7 +195,7 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
         prep_digest.document_digest,
         md_algorithm,
         attr_settings=attr_settings,
-        use_pades=not profile.adobe_revinfo,
+        use_pades=not profile.is_cca,
     )
     signed_attrs_der = signed_attrs.dump()
     to_sign_hash = hashlib.new(md_algorithm, signed_attrs_der).digest()
@@ -248,7 +216,7 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
     return state, to_sign_hash, md_algorithm
 
 
-async def _gather_adobe_revinfo(signer_cert, validation_context, timestamper, strict_ltv):
+async def _gather_cca_revinfo(signer_cert, validation_context, timestamper, strict_ltv):
     """Collect chain revocation data into a RevocationInfoArchival value.
 
     Validating the signer (and, for CCA-LTA, the TSA) against a fetching
@@ -304,21 +272,10 @@ def _chain_certs(paths):
 
 async def _complete(state, signature, timestamper, validation_context, strict_ltv=True):
     profile = Profile(state.profile)
-    if profile.needs_timestamp and timestamper is None:
-        raise SignerError(
-            "PROFILE_UNSUPPORTED",
-            f"profile {profile.value} requires an RFC 3161 timestamp authority"
-            " at completion; none is configured (set TSA_URL)",
-        )
-    if profile.needs_revocation_info and validation_context is None:
-        raise SignerError(
-            "PROFILE_UNSUPPORTED",
-            f"profile {profile.value} requires trust anchors to gather revocation"
-            " data at completion; none are configured (set TRUST_DIR)",
-        )
+    check_requirements(profile, timestamper, validation_context, stage="complete")
 
-    signer_cert = _parse_cert(state.cert_der)
-    _verify_signature(signer_cert, signature, state.signed_attrs_der, state.digest_algorithm)
+    signer_cert = parse_cert(state.cert_der)
+    verify_signature(signer_cert, signature, state.signed_attrs_der, state.digest_algorithm)
 
     # Feed back the exact signed attributes from start(), so the bytes the
     # token signed are the bytes that land in the CMS.
@@ -352,7 +309,7 @@ async def _complete(state, signature, timestamper, validation_context, strict_lt
             md_algorithm=state.digest_algorithm,
             strict_ltv=strict_ltv,
         )
-    elif profile.adobe_revinfo:
+    elif profile.is_cca:
         # The signed pdfRevocationInfoArchival attribute satisfies CCA ESAIG,
         # but Adobe's "LTV enabled" badge reads the document security store.
         # Mirror that same revocation into a DSS (reusing what start() already
@@ -364,36 +321,3 @@ async def _complete(state, signature, timestamper, validation_context, strict_lt
         ]
         signed_pdf = dss_from_embedded_revinfo(signed_pdf, extra_certs=extra_certs)
     return signed_pdf
-
-
-def _parse_cert(cert_der: bytes) -> asn1_x509.Certificate:
-    try:
-        cert = asn1_x509.Certificate.load(cert_der)
-        key_algorithm = cert.public_key.algorithm
-    except Exception:
-        raise SignerError("CERT_INVALID", "certificate is not valid DER") from None
-    if key_algorithm not in ("rsa", "ec"):
-        raise SignerError(
-            "CERT_INVALID",
-            f"unsupported key type {key_algorithm!r}; RSA and EC are supported",
-        )
-    return cert
-
-
-def _verify_signature(signer_cert, signature, signed_attrs_der, md_algorithm):
-    """Reject garbage before it gets baked into the PDF."""
-    public_key = load_der_public_key(signer_cert.public_key.dump())
-    digest = hashlib.new(md_algorithm, signed_attrs_der).digest()
-    prehashed = Prehashed(_HASH_CLASSES[md_algorithm]())
-    try:
-        if isinstance(public_key, rsa.RSAPublicKey):
-            public_key.verify(signature, digest, padding.PKCS1v15(), prehashed)
-        elif isinstance(public_key, ec.EllipticCurvePublicKey):
-            public_key.verify(signature, digest, ec.ECDSA(prehashed))
-        else:
-            raise SignerError("CERT_INVALID", "unsupported key type")
-    except InvalidSignature:
-        raise SignerError(
-            "SIGNATURE_INVALID",
-            "signature does not verify against the supplied certificate",
-        ) from None

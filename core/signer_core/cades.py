@@ -17,16 +17,16 @@ from pyhanko.sign.ades.api import CAdESSignedAttrSpec
 from pyhanko.sign.signers.pdf_cms import ExternalSigner, PdfCMSSignedAttributes
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
-from .errors import SignerError
-from .profiles import Profile, parse_digest_algorithm
-from .server_signer import _load_p12_signer
-from .session import (
+from .cms import (
     PLACEHOLDER_SIG_SIZE,
-    _decode_state,
-    _encode_state,
-    _parse_cert,
-    _verify_signature,
+    decode_state,
+    encode_state,
+    load_p12_signer,
+    parse_cert,
+    verify_signature,
 )
+from .errors import SignerError
+from .profiles import Profile, check_requirements, parse_digest_algorithm
 
 _CADES_PROFILES = (Profile.B_B, Profile.B_T)
 
@@ -44,11 +44,11 @@ class CadesState:
     tsa_url: str = ""
 
     def to_bytes(self) -> bytes:
-        return _encode_state(self, _BYTES_FIELDS, kind="cades")
+        return encode_state(self, _BYTES_FIELDS, kind="cades")
 
     @classmethod
     def from_bytes(cls, raw: bytes) -> "CadesState":
-        return cls(**_decode_state(raw, _BYTES_FIELDS, kind="cades"))
+        return cls(**decode_state(raw, _BYTES_FIELDS, kind="cades"))
 
 
 def _check_profile(options) -> Profile:
@@ -78,13 +78,9 @@ class CadesSession:
 
 async def _start(data, cert_der, options, timestamper):
     profile = _check_profile(options)
-    if profile.needs_timestamp and timestamper is None:
-        raise SignerError(
-            "PROFILE_UNSUPPORTED",
-            "profile B-T requires an RFC 3161 timestamp authority (set TSA_URL)",
-        )
+    check_requirements(profile, timestamper, None)
     md_algorithm = parse_digest_algorithm(options)
-    signer_cert = _parse_cert(cert_der)
+    signer_cert = parse_cert(cert_der)
 
     placeholder = ExternalSigner(
         signing_cert=signer_cert,
@@ -114,13 +110,9 @@ async def _start(data, cert_der, options, timestamper):
 
 async def _complete(state, signature, timestamper):
     profile = Profile(state.profile)
-    if profile.needs_timestamp and timestamper is None:
-        raise SignerError(
-            "PROFILE_UNSUPPORTED",
-            "profile B-T requires an RFC 3161 timestamp authority at completion",
-        )
-    signer_cert = _parse_cert(state.cert_der)
-    _verify_signature(signer_cert, signature, state.signed_attrs_der, state.digest_algorithm)
+    check_requirements(profile, timestamper, None, stage="complete")
+    signer_cert = parse_cert(state.cert_der)
+    verify_signature(signer_cert, signature, state.signed_attrs_der, state.digest_algorithm)
 
     final_signer = ExternalSigner(
         signing_cert=signer_cert,
@@ -139,7 +131,7 @@ def sign_cades_with_p12(data, p12_path, passphrase, options, *, timestamper=None
     """One-shot detached CAdES with the server-held key."""
     profile = _check_profile(options or {})
     md_algorithm = parse_digest_algorithm(options or {})
-    signer = _load_p12_signer(p12_path, passphrase)
+    signer = load_p12_signer(p12_path, passphrase)
     signature_cms = signer.sign_general_data(
         data,
         md_algorithm,
