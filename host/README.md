@@ -6,6 +6,9 @@ PKCS#11 (or the OS certificate store on macOS and Windows). The PIN prompt
 happens here, in a native dialog, so the PIN never touches the browser or the
 network. The desktop app uses the same host.
 
+New here? Read [`../docs/host.md`](../docs/host.md) first — plain words and a
+flow chart of how a request flows.
+
 Two executables, one package:
 
 - `opensigner-host` (`main.py`) speaks the native messaging protocol on

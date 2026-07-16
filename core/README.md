@@ -8,6 +8,9 @@ revocation embedding, PDF/A detection, appearance stamps, and validation.
 It is a library, not an app. The server, host, desktop app, and the Frappe
 integration all import it.
 
+New here? Read [`../docs/core.md`](../docs/core.md) first — plain words and a
+flow chart of how signing works.
+
 ## Install (development)
 
 From the repo root:
