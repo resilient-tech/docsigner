@@ -21,6 +21,9 @@ class TokenError(Exception):
         self.code = code
 
 
+ENV_HOST_BIN = "OPENSIGNER_HOST_BIN"
+
+
 def _host_argv() -> list[str]:
     """How to launch the signing host as a fresh process.
 
@@ -28,7 +31,18 @@ def _host_argv() -> list[str]:
     `-m`, so the frozen app re-execs itself with a --host-cli switch that
     __main__ routes into the host CLI. Either way it's a fresh process, which is
     what keeps the token drivers from wedging.
+
+    OPENSIGNER_HOST_BIN points at a host binary to run instead. It speaks the
+    same CLI (`list`, `sign`, `version`) and prints the same JSON, so this is
+    how the Rust host is exercised against the real app before it replaces the
+    Python one:
+
+        OPENSIGNER_HOST_BIN=../../host-rs/target/release/opensigner-host \\
+            ./.venv/bin/python -m opensigner_desktop --server
     """
+    override = os.environ.get(ENV_HOST_BIN)
+    if override:
+        return [override]
     if getattr(sys, "frozen", False):
         return [sys.executable, "--host-cli"]
     return [sys.executable, "-m", "signer_host.cli"]
