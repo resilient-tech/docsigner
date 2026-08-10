@@ -1,33 +1,75 @@
-# reference material (external repos and installers, studied not shipped)
-learn/
-VendorPythonClient/
-VendorSamples/
-vendor-extension-dump/
-.DS_Store
-vendor-setup.pkg
-
-# python
-.venv/
+# ── Python: byte-compiled ──────────────────────────────────────────
 __pycache__/
-*.pyc
-*.egg-info/
-dist/
-build/
+*.py[cod]
+*$py.class
+*.py~
 
-# secrets & runtime state
+# ── Python: packaging / build artifacts ────────────────────────────
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+*.egg-info/
+.installed.cfg
+MANIFEST
+
+# ── Virtual environments ───────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ── Secrets & runtime state ────────────────────────────────────────
 .env
 e2e/.env.e2e
 e2e/artifacts/
 server/sessions/
 server/documents/
+spike/spike_signed.pdf
+# keep throwaway test keys in the repo, ignore all other .p12
 *.p12
 !*test*.p12
 
-# tooling
-.pytest_cache/
+# ── Dependencies ───────────────────────────────────────────────────
 node_modules/
-spike/spike_signed.pdf
+jspm_packages/
 
-# local reference material (not ours, not shipped)
+# ── Tooling & caches ───────────────────────────────────────────────
+.pytest_cache/
+tags
+*.comp.js
+.wnf-lang-status
+*debug.log
+.aider*
+
+# ── IDEs & editors ─────────────────────────────────────────────────
+.vscode/
+.vs/
+.idea/
+.kdev4/
+*.kdev4
+.helix/
+*.swp
+
+# ── OS files ───────────────────────────────────────────────────────
+.DS_Store
+
+# ── Reference material (external repos/installers: studied, not shipped) ──
+learn/
+VendorPythonClient/
+VendorSamples/
+vendor-extension-dump/
+vendor-setup.pkg
 vendor_extracted/
 vendor_toc.xml
