@@ -161,6 +161,9 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
             signatures = host.sign_hashes(identity["thumbprint"], hashes, algorithm, req.pin)
         except Exception as exc:  # noqa: BLE001 - batch sign failed for all prepared files
             log.exception("token sign failed (standard=%s)", req.standard)
+            # The cached identity may name a token that has since been
+            # unplugged; drop it so the next look re-reads the device.
+            certs.invalidate_token_cache()
             for path, _state in prepared:
                 results[path] = {"path": path, "ok": False, "error": _err(exc)}
             prepared = []

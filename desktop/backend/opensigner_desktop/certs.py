@@ -4,6 +4,8 @@ the app works without a token; plug a token in and its certificates appear.
 """
 
 import datetime
+import threading
+import time
 from pathlib import Path
 
 from cryptography import x509
@@ -79,7 +81,39 @@ def _cn(name: x509.Name) -> str:
 
 # ---- DSC token certificates (via the native host) -------------------------
 
+# One scan costs a host subprocess plus a PKCS#11 walk that slow drivers drag
+# out for seconds, and both list_identities and find_identity need one, so a
+# single sign used to pay for two. Cache the found set briefly.
+#
+# Only non-empty results are cached: someone who just plugged a token in must
+# see it on the next look, and an empty scan is exactly the case where they
+# are about to. A stale entry after an unplug costs one failed sign, which
+# invalidates the cache and reports TOKEN_NOT_FOUND.
+_TOKEN_CACHE_TTL_SECONDS = 30
+_token_cache: tuple[float, list[dict]] | None = None
+_token_lock = threading.Lock()
+
+
 def _token_identities() -> list[dict]:
+    """Token identities, cached briefly. The lock also collapses the concurrent
+    calls FastAPI's threadpool allows into one scan."""
+    global _token_cache
+    with _token_lock:
+        if _token_cache is not None and _token_cache[0] > time.monotonic():
+            return _token_cache[1]
+        found = _scan_token_identities()
+        _token_cache = (time.monotonic() + _TOKEN_CACHE_TTL_SECONDS, found) if found else None
+        return found
+
+
+def invalidate_token_cache() -> None:
+    """Drop the cached scan, so the next look re-reads the device."""
+    global _token_cache
+    with _token_lock:
+        _token_cache = None
+
+
+def _scan_token_identities() -> list[dict]:
     from . import host
 
     out: list[dict] = []
