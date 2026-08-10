@@ -10,6 +10,7 @@ mod framing;
 mod logging;
 mod modules;
 mod pcsc_readers;
+mod pkcs11;
 mod procs;
 
 use std::io::{self, Read, Write};
