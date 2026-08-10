@@ -2,8 +2,24 @@ import base64
 
 import pytest
 
-from signer_host import pkcs11_ops, procs, protocol
+from signer_host import os_store, pcsc, pkcs11_ops, procs, protocol
 from signer_host.errors import HostError
+
+
+@pytest.fixture(autouse=True)
+def no_real_hardware(monkeypatch):
+    """Keep the dispatch tests off this machine's actual devices.
+
+    protocol._list_certificates merges three sources. Tests stub the PKCS#11
+    one, but the reader scan and the OS store answer from real hardware: with
+    a DSC token plugged in, an empty-scan test sees a device and asserts
+    against diagnostics that now carry hostWillRestart and a live keychain
+    count. That passes in CI, which has no token, and fails on the desk where
+    the hardware testing happens. Stub both; a test that wants readers or
+    store entries overrides this.
+    """
+    monkeypatch.setattr(pcsc, "detect_readers", lambda: [])
+    monkeypatch.setattr(os_store, "list_certificates", lambda: [])
 
 
 def test_get_version_echoes_id():

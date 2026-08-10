@@ -49,6 +49,21 @@ To iterate on the UI with hot reload, run the backend headless and point Vite at
 cd ../frontend && pnpm dev                           # proxies /api and /fonts to :8000
 ```
 
+Backend tests (token cache, host seam) need only `cryptography`:
+
+```bash
+./.venv/bin/python -m pytest tests -q
+```
+
+`OPENSIGNER_HOST_BIN` points the app at a different signing host. It has to speak
+the same CLI (`list`, `sign`, `version`) and print the same JSON, which is how the
+Rust host in `host-rs/` is run against the real app:
+
+```bash
+OPENSIGNER_HOST_BIN=../../host-rs/target/release/opensigner-host \
+    ./.venv/bin/python -m opensigner_desktop --server
+```
+
 Timestamp and trust (for B-T and up) default to `OPENSIGNER_TSA_URL` (DigiCert) and
 `OPENSIGNER_TRUST_DIR`. The timestamp authority is also editable in the app for
 timestamped standards; that per-setup value overrides the env default. If the
