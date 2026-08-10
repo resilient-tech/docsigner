@@ -26,7 +26,8 @@ fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
     // silently. PowerShell is present on every supported Windows and is the
     // ID Microsoft's own samples use for unregistered senders.
     #[cfg(target_os = "windows")]
-    notification.app_id("{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe");
+    notification
+        .app_id("{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe");
     notification.show().map(|_| ())
 }
 
@@ -55,7 +56,10 @@ mod tests {
 
     #[test]
     fn a_short_thumbprint_does_not_panic() {
-        assert_eq!(signed_message(1, "ab"), "Signed 1 hash with certificate ab…");
+        assert_eq!(
+            signed_message(1, "ab"),
+            "Signed 1 hash with certificate ab…"
+        );
         assert_eq!(signed_message(1, ""), "Signed 1 hash with certificate …");
     }
 

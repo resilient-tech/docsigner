@@ -141,8 +141,14 @@ mod tests {
 
     #[test]
     fn maps_subcommands_to_protocol_commands() {
-        assert_eq!(build_request(&args(&["version"])).unwrap()["command"], "getVersion");
-        assert_eq!(build_request(&args(&["list"])).unwrap()["command"], "listCertificates");
+        assert_eq!(
+            build_request(&args(&["version"])).unwrap()["command"],
+            "getVersion"
+        );
+        assert_eq!(
+            build_request(&args(&["list"])).unwrap()["command"],
+            "listCertificates"
+        );
         assert_eq!(
             build_request(&args(&["check-update"])).unwrap()["command"],
             "checkUpdate"

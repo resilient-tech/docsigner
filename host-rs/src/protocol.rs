@@ -60,7 +60,9 @@ pub fn handle_message(message: &Value, state: &State) -> Value {
         "checkUpdate" => Ok(json!(update::check_update())),
         "listCertificates" => Ok(list_certificates(state)),
         "signHash" => sign_hash(&params),
-        other => Err(HostError::unsupported(format!("unknown command: {other:?}"))),
+        other => Err(HostError::unsupported(format!(
+            "unknown command: {other:?}"
+        ))),
     };
 
     match outcome {

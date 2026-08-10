@@ -23,14 +23,20 @@ const KNOWN: &[(&[&str], &str, &[&str])] = &[
     (
         &["epass", "feitian", "hypersecu", "fs usb", "ft usb"],
         "Feitian ePass2003 / Hypersecu HYP2003",
-        &["eps2003", "ep3003", "castle", "hyperpki", "es2003", "shuttle"],
+        &[
+            "eps2003", "ep3003", "castle", "hyperpki", "es2003", "shuttle",
+        ],
     ),
     (
         &["aks ifdh", "safenet", "aladdin", "etoken"],
         "SafeNet eToken",
         &["etpkcs11", "etoken"],
     ),
-    (&["longmai", "cryptoid"], "Longmai mToken CryptoID", &["cryptoid"]),
+    (
+        &["longmai", "cryptoid"],
+        "Longmai mToken CryptoID",
+        &["cryptoid"],
+    ),
     (&["trustkey", "trust key"], "TrustKey", &["trustkey"]),
     (&["bit4id"], "Bit4id tokenME", &["bit4"]),
     (&["innait", "precision"], "Precision InnaITKey", &["innait"]),

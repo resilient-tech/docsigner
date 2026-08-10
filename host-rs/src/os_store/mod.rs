@@ -86,8 +86,12 @@ mod tests {
 
     #[test]
     fn signing_an_unknown_thumbprint_reports_cert_not_found() {
-        let error = sign_hashes("00".repeat(20).as_str(), &[vec![0u8; 32]], DigestAlg::Sha256)
-            .expect_err("an all-zero thumbprint is not in any store");
+        let error = sign_hashes(
+            "00".repeat(20).as_str(),
+            &[vec![0u8; 32]],
+            DigestAlg::Sha256,
+        )
+        .expect_err("an all-zero thumbprint is not in any store");
         assert_eq!(error.code, crate::error::Code::CertNotFound);
         assert!(error.allows_os_store_fallback());
     }

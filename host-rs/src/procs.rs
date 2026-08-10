@@ -47,11 +47,15 @@ pub fn competing() -> Vec<String> {
 /// (pid, lowercased process name) for every visible process; empty on failure.
 fn process_list() -> Vec<(u32, String)> {
     #[cfg(target_os = "windows")]
-    let output = Command::new("tasklist").args(["/fo", "csv", "/nh"]).output();
+    let output = Command::new("tasklist")
+        .args(["/fo", "csv", "/nh"])
+        .output();
     #[cfg(not(target_os = "windows"))]
     let output = Command::new("ps").args(["-A", "-o", "pid=,comm="]).output();
 
-    let Ok(output) = output else { return Vec::new() };
+    let Ok(output) = output else {
+        return Vec::new();
+    };
     let text = String::from_utf8_lossy(&output.stdout);
 
     #[cfg(target_os = "windows")]
@@ -69,8 +73,12 @@ fn parse_ps(text: &str) -> Vec<(u32, String)> {
     let mut rows = Vec::new();
     for line in text.lines() {
         let line = line.trim();
-        let Some((pid, name)) = line.split_once(' ') else { continue };
-        let Ok(pid) = pid.trim().parse::<u32>() else { continue };
+        let Some((pid, name)) = line.split_once(' ') else {
+            continue;
+        };
+        let Ok(pid) = pid.trim().parse::<u32>() else {
+            continue;
+        };
         let name = name.trim();
         if name.is_empty() {
             continue;
@@ -91,7 +99,9 @@ fn parse_tasklist(text: &str) -> Vec<(u32, String)> {
             continue;
         }
         let name = parts[0].trim_matches('"');
-        let Ok(pid) = parts[1].trim_matches('"').parse::<u32>() else { continue };
+        let Ok(pid) = parts[1].trim_matches('"').parse::<u32>() else {
+            continue;
+        };
         rows.push((pid, name.to_lowercase()));
     }
     rows

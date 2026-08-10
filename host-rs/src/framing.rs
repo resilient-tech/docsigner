@@ -51,8 +51,8 @@ pub fn write_frame(stream: &mut impl Write, payload: &[u8]) -> io::Result<()> {
 
 /// Serialize and write one JSON message as a frame.
 pub fn write_message(stream: &mut impl Write, value: &impl serde::Serialize) -> io::Result<()> {
-    let payload = serde_json::to_vec(value)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let payload =
+        serde_json::to_vec(value).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     write_frame(stream, &payload)
 }
 

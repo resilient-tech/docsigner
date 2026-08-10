@@ -27,21 +27,6 @@ pub enum Code {
     Internal,
 }
 
-impl Code {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Code::UserCancelled => "USER_CANCELLED",
-            Code::PinIncorrect => "PIN_INCORRECT",
-            Code::PinLocked => "PIN_LOCKED",
-            Code::TokenNotFound => "TOKEN_NOT_FOUND",
-            Code::CertNotFound => "CERT_NOT_FOUND",
-            Code::ModuleError => "MODULE_ERROR",
-            Code::Unsupported => "UNSUPPORTED",
-            Code::Internal => "INTERNAL",
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct HostError {
     pub code: Code,
@@ -50,7 +35,10 @@ pub struct HostError {
 
 impl HostError {
     pub fn new(code: Code, message: impl Into<String>) -> Self {
-        HostError { code, message: message.into() }
+        HostError {
+            code,
+            message: message.into(),
+        }
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
@@ -75,7 +63,10 @@ impl HostError {
     /// through. A wrong or locked PIN, or a cancelled dialog, is the user's
     /// answer and must surface as-is.
     pub fn allows_os_store_fallback(&self) -> bool {
-        matches!(self.code, Code::TokenNotFound | Code::CertNotFound | Code::ModuleError)
+        matches!(
+            self.code,
+            Code::TokenNotFound | Code::CertNotFound | Code::ModuleError
+        )
     }
 }
 

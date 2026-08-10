@@ -6,7 +6,7 @@
 //! the per-module watchdog.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -58,7 +58,10 @@ fn cached_pin(label: &str) -> Option<String> {
 
 fn remember_pin(label: &str, pin: &str) {
     if let Ok(mut cache) = pin_cache().lock() {
-        cache.insert(label.to_string(), (pin.to_string(), Instant::now() + PIN_CACHE_TTL));
+        cache.insert(
+            label.to_string(),
+            (pin.to_string(), Instant::now() + PIN_CACHE_TTL),
+        );
     }
 }
 
@@ -163,7 +166,11 @@ fn scan_module(path: &Path) -> ModuleScan {
         Ok(context) => context,
         Err(e) => {
             log::warn!("cannot load PKCS#11 module {}: {e}", path.display());
-            return ModuleScan { certificates: Vec::new(), loaded: false, tokens: 0 };
+            return ModuleScan {
+                certificates: Vec::new(),
+                loaded: false,
+                tokens: 0,
+            };
         }
     };
     let module_name = modules::basename(path);
@@ -191,7 +198,11 @@ fn scan_module(path: &Path) -> ModuleScan {
             }
         }
     }
-    ModuleScan { certificates, loaded: true, tokens: tokens.len() }
+    ModuleScan {
+        certificates,
+        loaded: true,
+        tokens: tokens.len(),
+    }
 }
 
 /// Scan all configured modules and return contract-shaped certificate entries.
@@ -235,7 +246,11 @@ pub fn list_certificates(stats: &mut ScanStats) -> Vec<CertInfo> {
 
         let elapsed = started.elapsed();
         if elapsed > Duration::from_secs(2) {
-            log::info!("slow PKCS#11 module {}: {:.1}s", path.display(), elapsed.as_secs_f32());
+            log::info!(
+                "slow PKCS#11 module {}: {:.1}s",
+                path.display(),
+                elapsed.as_secs_f32()
+            );
         }
         for info in scan.certificates {
             if seen.insert(info.thumbprint.clone()) {
@@ -319,7 +334,14 @@ fn find_certificate(thumbprint: &str) -> Result<Located> {
                 }
                 let (cka_id, cka_label) = key_hints(&session, handle);
                 drop(session);
-                return Ok(Located { context, slot, label, der, cka_id, cka_label });
+                return Ok(Located {
+                    context,
+                    slot,
+                    label,
+                    der,
+                    cka_id,
+                    cka_label,
+                });
             }
         }
     }
@@ -425,10 +447,14 @@ pub fn sign_hashes(
 
     let session = login(&located, pin_provider)?;
 
-    let key = find_private_key(&session, located.cka_id.as_ref(), located.cka_label.as_ref())
-        .ok_or_else(|| {
-            HostError::cert_not_found("certificate found but its private key is not on the token")
-        })?;
+    let key = find_private_key(
+        &session,
+        located.cka_id.as_ref(),
+        located.cka_label.as_ref(),
+    )
+    .ok_or_else(|| {
+        HostError::cert_not_found("certificate found but its private key is not on the token")
+    })?;
 
     digests
         .iter()
@@ -503,11 +529,6 @@ fn sign_one(
     }
 }
 
-/// Module paths this scan would try, for diagnostics.
-pub fn configured_modules() -> Vec<PathBuf> {
-    modules::discover_modules()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -575,7 +596,10 @@ mod tests {
         let mut stats = ScanStats::default();
         let found = list_certificates(&mut stats);
 
-        assert!(stats.loaded <= stats.configured, "cannot load more than configured");
+        assert!(
+            stats.loaded <= stats.configured,
+            "cannot load more than configured"
+        );
         if stats.configured == 0 {
             assert_eq!(found.len(), 0, "no driver on disk means no certificates");
         }
@@ -587,7 +611,11 @@ mod tests {
         let before = thumbprints.len();
         thumbprints.sort_unstable();
         thumbprints.dedup();
-        assert_eq!(before, thumbprints.len(), "the scan must deduplicate by thumbprint");
+        assert_eq!(
+            before,
+            thumbprints.len(),
+            "the scan must deduplicate by thumbprint"
+        );
 
         for info in &found {
             assert_eq!(info.thumbprint.len(), 40, "SHA-1 hex is 40 characters");
@@ -603,7 +631,10 @@ mod tests {
         let error = sign_hashes("deadbeef", &[vec![0u8; 32]], DigestAlg::Sha256, &provider)
             .expect_err("no token is present in CI");
         assert!(
-            matches!(error.code, Code::TokenNotFound | Code::CertNotFound | Code::ModuleError),
+            matches!(
+                error.code,
+                Code::TokenNotFound | Code::CertNotFound | Code::ModuleError
+            ),
             "got {:?}",
             error.code
         );

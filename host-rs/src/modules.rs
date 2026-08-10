@@ -62,7 +62,9 @@ fn well_known() -> Vec<PathBuf> {
     }
 
     for var in ["ProgramFiles", "ProgramFiles(x86)"] {
-        let Ok(base) = std::env::var(var) else { continue };
+        let Ok(base) = std::env::var(var) else {
+            continue;
+        };
         let base = Path::new(&base);
         paths.push(base.join(r"OpenSC Project\OpenSC\pkcs11\opensc-pkcs11.dll"));
         paths.push(base.join(r"HYP\HYP PKI Manager\pkcs11hw.dll"));
@@ -187,12 +189,18 @@ fn config_modules() -> Vec<PathBuf> {
 /// Expand a leading `~` the way Python's `os.path.expanduser` does, so a
 /// config file written for the Python host keeps working.
 fn expand_user(path: PathBuf) -> PathBuf {
-    let Some(text) = path.to_str() else { return path };
+    let Some(text) = path.to_str() else {
+        return path;
+    };
     let Some(rest) = text.strip_prefix('~') else {
         return path;
     };
-    let Some(home) = dirs::home_dir() else { return path };
-    let rest = rest.trim_start_matches(std::path::MAIN_SEPARATOR).trim_start_matches('/');
+    let Some(home) = dirs::home_dir() else {
+        return path;
+    };
+    let rest = rest
+        .trim_start_matches(std::path::MAIN_SEPARATOR)
+        .trim_start_matches('/');
     if rest.is_empty() {
         home
     } else {
@@ -250,7 +258,11 @@ mod tests {
     #[test]
     fn well_known_paths_are_absolute_and_nonempty() {
         let paths = well_known();
-        assert!(paths.len() > 10, "expected a real driver list, got {}", paths.len());
+        assert!(
+            paths.len() > 10,
+            "expected a real driver list, got {}",
+            paths.len()
+        );
         for path in &paths {
             assert!(path.is_absolute(), "{path:?} should be absolute");
         }
@@ -262,14 +274,22 @@ mod tests {
         file.write_all(b"not really a module").unwrap();
         let real = file.path().to_path_buf();
 
-        temp_env(ENV_VAR, Some(&format!("/nonexistent/a.so{}{}", path_sep(), real.display())), || {
-            let found = discover_modules();
-            assert_eq!(found.first(), Some(&real), "existing env path should lead");
-            assert!(
-                !found.iter().any(|p| p.ends_with("a.so")),
-                "a path that is not on disk must be dropped"
-            );
-        });
+        temp_env(
+            ENV_VAR,
+            Some(&format!(
+                "/nonexistent/a.so{}{}",
+                path_sep(),
+                real.display()
+            )),
+            || {
+                let found = discover_modules();
+                assert_eq!(found.first(), Some(&real), "existing env path should lead");
+                assert!(
+                    !found.iter().any(|p| p.ends_with("a.so")),
+                    "a path that is not on disk must be dropped"
+                );
+            },
+        );
     }
 
     #[test]
@@ -285,7 +305,10 @@ mod tests {
     fn expand_user_resolves_a_leading_tilde() {
         let home = dirs::home_dir().unwrap();
         assert_eq!(expand_user(PathBuf::from("~/x.so")), home.join("x.so"));
-        assert_eq!(expand_user(PathBuf::from("/abs/x.so")), PathBuf::from("/abs/x.so"));
+        assert_eq!(
+            expand_user(PathBuf::from("/abs/x.so")),
+            PathBuf::from("/abs/x.so")
+        );
     }
 
     #[test]

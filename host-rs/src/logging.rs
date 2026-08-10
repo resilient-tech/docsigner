@@ -131,7 +131,11 @@ fn build_sink() -> Sink {
     if std::fs::create_dir_all(&directory).is_err() {
         return Sink::Stderr;
     }
-    match OpenOptions::new().create(true).append(true).open(log_path()) {
+    match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path())
+    {
         Ok(file) => Sink::File(Mutex::new(file)),
         Err(_) => Sink::Stderr,
     }

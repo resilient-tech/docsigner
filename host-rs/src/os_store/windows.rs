@@ -17,9 +17,9 @@ use windows::Win32::Security::Cryptography::{
     CertCloseStore, CertEnumCertificatesInStore, CertFreeCertificateContext,
     CertGetCertificateContextProperty, CertOpenSystemStoreW, CryptAcquireCertificatePrivateKey,
     NCryptFreeObject, NCryptSignHash, BCRYPT_PKCS1_PADDING_INFO, BCRYPT_SHA256_ALGORITHM,
-    BCRYPT_SHA384_ALGORITHM, BCRYPT_SHA512_ALGORITHM, CERT_CONTEXT,
-    CERT_KEY_PROV_INFO_PROP_ID, CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG, NCRYPT_FLAGS,
-    NCRYPT_KEY_HANDLE, NCRYPT_PAD_PKCS1_FLAG, NCRYPT_SILENT_FLAG,
+    BCRYPT_SHA384_ALGORITHM, BCRYPT_SHA512_ALGORITHM, CERT_CONTEXT, CERT_KEY_PROV_INFO_PROP_ID,
+    CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG, NCRYPT_FLAGS, NCRYPT_KEY_HANDLE, NCRYPT_PAD_PKCS1_FLAG,
+    NCRYPT_SILENT_FLAG,
 };
 
 use crate::certs::{self, DigestAlg, KeyType, Source};
@@ -33,8 +33,9 @@ struct Store(HANDLE);
 impl Store {
     fn open() -> Result<Self> {
         // SAFETY: a null provider with a store name opens the current user's store.
-        let handle = unsafe { CertOpenSystemStoreW(HANDLE::default(), w_my()) }
-            .map_err(|e| HostError::internal(format!("cannot open the Windows certificate store: {e}")))?;
+        let handle = unsafe { CertOpenSystemStoreW(HANDLE::default(), w_my()) }.map_err(|e| {
+            HostError::internal(format!("cannot open the Windows certificate store: {e}"))
+        })?;
         Ok(Store(handle))
     }
 }
@@ -67,13 +68,7 @@ unsafe fn context_der(context: *const CERT_CONTEXT) -> Vec<u8> {
 /// SAFETY: `context` must be a live CERT_CONTEXT from the enumeration.
 unsafe fn has_private_key(context: *const CERT_CONTEXT) -> bool {
     let mut size = 0u32;
-    CertGetCertificateContextProperty(
-        context,
-        CERT_KEY_PROV_INFO_PROP_ID,
-        None,
-        &mut size,
-    )
-    .is_ok()
+    CertGetCertificateContextProperty(context, CERT_KEY_PROV_INFO_PROP_ID, None, &mut size).is_ok()
 }
 
 /// Walk the store, handing each context to `visit`. Stops early when `visit`

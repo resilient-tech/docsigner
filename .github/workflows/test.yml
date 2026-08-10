@@ -37,3 +37,55 @@ jobs:
       - name: Test signer-js + extension checks
         working-directory: js
         run: node --test
+
+  # The Rust host is built on all three platforms because its OS-store backends
+  # are behind cfg gates: os_store/windows.rs and os_store/macos.rs never see a
+  # compiler on Linux, so a Linux-only job would wave through code that does not
+  # build. The tests need no token and pass on a bare runner.
+  rust-host:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: host-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host-rs
+      # pcsc links against libpcsclite, which is not on the Ubuntu image.
+      - name: Install PC/SC headers
+        if: matrix.name == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test
+      - name: Release build
+        run: cargo build --release
+      - name: Report binary size
+        shell: bash
+        run: |
+          binary=target/release/opensigner-host
+          [ "${{ matrix.name }}" = "windows" ] && binary="$binary.exe"
+          ls -l "$binary"
+          echo "### ${{ matrix.name }}: $(du -h "$binary" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opensigner-host-${{ matrix.name }}
+          path: host-rs/target/release/opensigner-host${{ matrix.name == 'windows' && '.exe' || '' }}
+          if-no-files-found: error

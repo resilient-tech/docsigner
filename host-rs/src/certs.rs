@@ -16,6 +16,9 @@ use x509_cert::Certificate;
 
 use crate::error::{Code, HostError, Result};
 
+/// The digest algorithms CONTRACTS.md section 2 allows. `DigestAlg::parse` is
+/// the gate; this list exists so the test can walk it.
+#[cfg(test)]
 pub const DIGEST_ALGORITHMS: [&str; 3] = ["sha256", "sha384", "sha512"];
 
 /// OID -> rendered name, so the subject string is byte-identical to what the
@@ -181,7 +184,12 @@ pub fn thumbprint(der: &[u8]) -> String {
 
 /// Contract fields for one DER certificate. `token_label`, `module_name` and
 /// `source` are filled in by the backend that found it.
-pub fn cert_info(der: &[u8], token_label: &str, module_name: &str, source: Source) -> Result<CertInfo> {
+pub fn cert_info(
+    der: &[u8],
+    token_label: &str,
+    module_name: &str,
+    source: Source,
+) -> Result<CertInfo> {
     let cert = parse(der)?;
     let tbs = &cert.tbs_certificate;
     Ok(CertInfo {
@@ -282,17 +290,23 @@ fn key_type(cert: &Certificate) -> Result<KeyType> {
     match oid.as_str() {
         OID_RSA_ENCRYPTION | OID_RSASSA_PSS => Ok(KeyType::Rsa),
         OID_EC_PUBLIC_KEY => Ok(KeyType::Ec),
-        other => Err(HostError::unsupported(format!("unsupported key type: {other}"))),
+        other => Err(HostError::unsupported(format!(
+            "unsupported key type: {other}"
+        ))),
     }
 }
 
 /// Key-usage booleans; all false when the extension is absent or unreadable,
 /// matching certs.py.
 pub fn key_usage(cert: &Certificate) -> KeyUsageFlags {
-    let usage = cert.tbs_certificate.get::<KeyUsage>().ok().flatten().map(|(_, u)| u);
-    let has = |flag: x509_cert::ext::pkix::KeyUsages| {
-        usage.as_ref().is_some_and(|u| u.0.contains(flag))
-    };
+    let usage = cert
+        .tbs_certificate
+        .get::<KeyUsage>()
+        .ok()
+        .flatten()
+        .map(|(_, u)| u);
+    let has =
+        |flag: x509_cert::ext::pkix::KeyUsages| usage.as_ref().is_some_and(|u| u.0.contains(flag));
     use x509_cert::ext::pkix::KeyUsages as U;
     KeyUsageFlags {
         digital_signature: has(U::DigitalSignature),
@@ -372,10 +386,10 @@ pub fn ecdsa_raw_to_der(raw: &[u8]) -> Result<Vec<u8>> {
     let half = raw.len() / 2;
     // UintRef applies the DER INTEGER rules for us: leading zeros stripped, one
     // zero byte prepended when the high bit would make the value read negative.
-    let r = UintRef::new(&raw[..half])
-        .map_err(|e| HostError::internal(format!("bad ECDSA r: {e}")))?;
-    let s = UintRef::new(&raw[half..])
-        .map_err(|e| HostError::internal(format!("bad ECDSA s: {e}")))?;
+    let r =
+        UintRef::new(&raw[..half]).map_err(|e| HostError::internal(format!("bad ECDSA r: {e}")))?;
+    let s =
+        UintRef::new(&raw[half..]).map_err(|e| HostError::internal(format!("bad ECDSA s: {e}")))?;
 
     let mut body = Vec::new();
     r.encode_to_vec(&mut body)
