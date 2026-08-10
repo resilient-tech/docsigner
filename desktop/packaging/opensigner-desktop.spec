@@ -81,6 +81,21 @@ _DEAD_WEIGHT = (
     "libavif", "libsharpyuv", "libwebp", "liblcms2",
 )
 
+# Two bigger cuts were measured and rejected, so nobody re-derives them:
+#
+#   pdf.js for the preview, dropping pypdfium2 (6.5 MB). It does not come off:
+#   signing.py calls signer_core.page_size() per file to turn the fractional
+#   placement into PDF points, and that is pypdfium2. Adding pdf.js would put
+#   ~1.5 MB on top for a net loss, and push whole PDFs into the webview where
+#   today a ~5-50 KB JPEG crosses. Scanned invoices run 10-50 MB.
+#
+#   pywebview js_api, dropping FastAPI and uvicorn. Worth ~1 MB, not the ~8 it
+#   looks like: those are pure Python and PyInstaller compresses them into the
+#   PYZ. Only pydantic_core is real weight (4 MB) and it stays, because
+#   hand-rolling validation of signing request bodies is a bad trade. The cost
+#   is rewriting app.py, api.ts and the frontend error handling, and losing the
+#   --server + `pnpm dev` hot-reload loop permanently.
+
 
 def _wanted(entry):
     name = entry[0].replace("\\", "/")
