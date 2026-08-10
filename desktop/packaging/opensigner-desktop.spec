@@ -20,6 +20,7 @@
 #     Gatekeeper warns). Sign the .app after this build.
 
 import os
+import sys
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
@@ -63,6 +64,47 @@ for pkg in (
     except Exception:
         pass
 
+# Weight this app never uses. collect_all() above hands PyInstaller explicit
+# binary lists, which `excludes` does not filter, so drop them by name here.
+#
+#   lxml            only signer_core.xades imports it, and this app signs PDFs.
+#                   Verified: no lxml module loads across signer_core's signing,
+#                   validation, rendering, LTV and PDF/A paths, or pyHanko's
+#                   signers and validation.
+#   PIL codecs      _avif, _webp and _imagingcms are separate extension modules
+#                   with their own dylibs. The core _imaging.so links tiff,
+#                   jpeg, openjp2, z and xcb, so those have to stay; freetype
+#                   and harfbuzz stay too, they draw the handwritten stamp.
+_DEAD_WEIGHT = (
+    "lxml",
+    "PIL/_avif", "PIL/_webp", "PIL/_imagingcms",
+    "libavif", "libsharpyuv", "libwebp", "liblcms2",
+)
+
+
+def _wanted(entry):
+    name = entry[0].replace("\\", "/")
+    return not any(dead in name for dead in _DEAD_WEIGHT)
+
+
+datas = [d for d in datas if _wanted(d)]
+binaries = [b for b in binaries if _wanted(b)]
+hiddenimports = [h for h in hiddenimports if not h.startswith("lxml")]
+
+excludes = ["lxml", "PIL._avif", "PIL._webp", "PIL._imagingcms"]
+
+# requirements.txt asks for plain uvicorn, but a venv built before that change
+# still has the [standard] extras. uvicorn falls back to asyncio and h11 when
+# they are missing, so exclude them here and the trim holds either way.
+excludes += ["uvloop", "watchfiles", "httptools", "websockets"]
+
+# ponytail: tkinter is the PIN dialog on Windows and Linux (host pin.py falls
+# back to it when the caller supplies no PIN); macOS uses osascript, so it is
+# dead weight there only. Drop the platform check once the Rust host owns the
+# dialog on every OS, and this becomes unconditional.
+if sys.platform == "darwin":
+    excludes += ["tkinter", "PIL.ImageTk", "PIL._imagingtk"]
+
 a = Analysis(
     [entry],
     pathex=[BACKEND, CORE, HOST],
@@ -71,7 +113,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=[],
+    excludes=excludes,
     noarchive=False,
 )
 
@@ -83,12 +125,15 @@ exe = EXE(
     exclude_binaries=True,
     name="opensigner-desktop",
     debug=False,
-    strip=False,
+    strip=True,
     upx=False,
     console=False,  # GUI app; pywebview owns the window
 )
 
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="opensigner-desktop")
+# strip: symbols only, and build-macos.sh signs after this, so the signature is
+# applied to the stripped binaries. upx stays off: it breaks macOS code signing
+# and trips Windows antivirus.
+coll = COLLECT(exe, a.binaries, a.datas, strip=True, upx=False, name="opensigner-desktop")
 
 app = BUNDLE(
     coll,
