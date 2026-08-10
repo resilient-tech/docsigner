@@ -567,13 +567,34 @@ mod tests {
         assert!(map_rv(RvError::DeviceRemoved).allows_os_store_fallback());
     }
 
+    /// Runs against whatever the machine has: no driver, a driver with no
+    /// token, or a real token. The invariants hold in all three cases, so this
+    /// is meaningful in CI and on a developer's desk with a DSC plugged in.
     #[test]
-    fn listing_with_no_modules_installed_is_empty_not_an_error() {
-        // A dev machine has no DSC driver; the scan must still be well-behaved.
+    fn a_scan_always_reports_self_consistent_stats() {
         let mut stats = ScanStats::default();
         let found = list_certificates(&mut stats);
-        assert_eq!(found.len(), 0);
-        assert_eq!(stats.loaded, 0);
+
+        assert!(stats.loaded <= stats.configured, "cannot load more than configured");
+        if stats.configured == 0 {
+            assert_eq!(found.len(), 0, "no driver on disk means no certificates");
+        }
+        if !found.is_empty() {
+            assert!(stats.tokens > 0, "certificates imply a token answered");
+        }
+
+        let mut thumbprints: Vec<&str> = found.iter().map(|c| c.thumbprint.as_str()).collect();
+        let before = thumbprints.len();
+        thumbprints.sort_unstable();
+        thumbprints.dedup();
+        assert_eq!(before, thumbprints.len(), "the scan must deduplicate by thumbprint");
+
+        for info in &found {
+            assert_eq!(info.thumbprint.len(), 40, "SHA-1 hex is 40 characters");
+            assert!(!info.certificate.is_empty());
+            assert!(info.subject.contains('='), "subject should render as RDNs");
+            assert!(info.valid_to.ends_with('Z'));
+        }
     }
 
     #[test]

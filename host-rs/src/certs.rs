@@ -18,10 +18,20 @@ use crate::error::{Code, HostError, Result};
 
 pub const DIGEST_ALGORITHMS: [&str; 3] = ["sha256", "sha384", "sha512"];
 
-/// OID -> short name, matching certs.py `_NAME_SHORT` so the rendered subject
-/// string is byte-identical to what the Python host produced. Anything absent
-/// falls back to the dotted OID, which is what RFC 4514 does.
-const NAME_SHORT: [(&str, &str); 15] = [
+/// OID -> rendered name, so the subject string is byte-identical to what the
+/// Python host produced. This string is shown to users in the certificate
+/// picker, so parity matters more than elegance here.
+///
+/// The first block is certs.py `_NAME_SHORT`. The second is the fallback
+/// certs.py inherited from asn1crypto, whose `.native` yields a snake_case
+/// friendly name for anything the short table misses; those spellings are
+/// reproduced exactly. Real Indian DSCs carry `telephone_number`, so the
+/// fallback is a live path, not a theoretical one.
+///
+/// Anything in neither block renders as a dotted OID, which is what RFC 4514
+/// does and what asn1crypto falls back to for genuinely unknown attributes.
+const NAME_SHORT: [(&str, &str); 25] = [
+    // certs.py _NAME_SHORT
     ("2.5.4.3", "CN"),
     ("2.5.4.10", "O"),
     ("2.5.4.11", "OU"),
@@ -37,6 +47,17 @@ const NAME_SHORT: [(&str, &str); 15] = [
     ("2.5.4.65", "PSEUDONYM"),
     ("2.5.4.9", "STREET"),
     ("2.5.4.17", "POSTALCODE"),
+    // asn1crypto friendly names, snake_case, as certs.py emitted them
+    ("2.5.4.20", "telephone_number"),
+    ("1.2.840.113549.1.9.2", "unstructured_name"),
+    ("1.2.840.113549.1.9.8", "unstructured_address"),
+    ("2.5.4.41", "name"),
+    ("2.5.4.15", "business_category"),
+    ("2.5.4.16", "postal_address"),
+    ("2.5.4.43", "initials"),
+    ("2.5.4.44", "generation_qualifier"),
+    ("2.5.4.46", "dn_qualifier"),
+    ("2.5.4.13", "description"),
 ];
 
 const OID_RSA_ENCRYPTION: &str = "1.2.840.113549.1.1.1";
