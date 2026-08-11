@@ -15,6 +15,9 @@ use crate::{notify, os_store, pcsc_readers, pin, pkcs11, procs, update};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
+/// Longest origin worth showing: 253 for a DNS name, plus scheme and port.
+const MAX_ORIGIN_LEN: usize = 300;
+
 #[derive(Debug, Default)]
 pub struct State {
     /// Set when a scan looked wedged: module loaded, reader or token present,
@@ -220,6 +223,24 @@ fn clean_origin(value: Option<&Value>) -> Result<Option<String>> {
     };
 
     let reject = || HostError::internal(format!("{origin:?} is not a bare web origin"));
+
+    // A DNS name maxes out at 253 characters, plus "https://" and ":65535".
+    // Anything longer is not a real origin and would only run off the edge of
+    // the dialog, pushing the part that matters out of sight.
+    if origin.len() > MAX_ORIGIN_LEN {
+        return Err(reject());
+    }
+
+    // ASCII only. Browsers hand `sender.origin` over as punycode, so a
+    // non-ASCII origin did not come from one. Refusing it closes two ways of
+    // dressing up as another site in the dialog that the checks below cannot
+    // see: homograph letters (Cyrillic "е" for "e") and bidi overrides like
+    // U+202E, which reverse how everything after them renders. Neither counts
+    // as a control character, so `is_control` alone lets both through.
+    if !origin.is_ascii() {
+        return Err(reject());
+    }
+
     let (scheme, rest) = origin.split_once("://").ok_or_else(&reject)?;
     if rest.is_empty()
         || rest.contains(['/', '?', '#', '@', '\\', ' '])
@@ -386,6 +407,56 @@ mod tests {
             json!(42),
         ] {
             assert!(clean_origin(Some(&bad)).is_err(), "{bad} should be refused");
+        }
+    }
+
+    /// The origin is the only text in the PIN dialog that names who is asking,
+    /// so it has to be text that cannot pretend to be a different site.
+    /// `is_control` does not catch either of these: both are ordinary
+    /// printable characters as far as Rust is concerned.
+    #[test]
+    fn an_origin_cannot_disguise_itself_in_the_dialog() {
+        // U+202E reverses how everything after it renders.
+        let bidi = "https://example.com\u{202E}liave.knab-evil";
+        assert!(
+            clean_origin(Some(&json!(bidi))).is_err(),
+            "a bidi override must not reach the dialog"
+        );
+
+        // Cyrillic "е" for Latin "e": identical on screen, different domain.
+        let homograph = "https://\u{0435}xample.com";
+        assert!(
+            clean_origin(Some(&json!(homograph))).is_err(),
+            "a homograph must not reach the dialog"
+        );
+
+        // Browsers hand sender.origin over already punycoded, so the real
+        // article still passes.
+        assert_eq!(
+            clean_origin(Some(&json!("https://xn--xample-9uf.com"))).unwrap(),
+            Some("https://xn--xample-9uf.com".to_string())
+        );
+    }
+
+    #[test]
+    fn an_absurdly_long_origin_is_refused() {
+        let long = format!("https://{}.com", "a".repeat(MAX_ORIGIN_LEN));
+        assert!(clean_origin(Some(&json!(long))).is_err());
+
+        // A long-but-plausible one still passes, so the cap is not in the way.
+        let plausible = format!("https://{}.example.com", "a".repeat(60));
+        assert_eq!(
+            clean_origin(Some(&json!(plausible))).unwrap(),
+            Some(plausible)
+        );
+    }
+
+    /// Browsers lowercase the scheme in sender.origin, so an uppercase one did
+    /// not come from a browser. Pinned because it is easy to "fix" by accident.
+    #[test]
+    fn the_scheme_is_matched_exactly() {
+        for bad in ["HTTPS://example.com", "Https://example.com"] {
+            assert!(clean_origin(Some(&json!(bad))).is_err(), "{bad}");
         }
     }
 
