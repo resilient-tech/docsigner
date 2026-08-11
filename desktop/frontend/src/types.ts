@@ -32,6 +32,14 @@ export interface Settings {
   profiles: AppearanceProfile[]
 }
 
+/** A selectable handwriting face. The slug is both the stored value and the
+ *  CSS family name; `custom` marks the ones the user uploaded and may remove. */
+export interface FontOption {
+  slug: string
+  label: string
+  custom: boolean
+}
+
 export interface Identity {
   id: string
   kind: 'token' | 'p12'

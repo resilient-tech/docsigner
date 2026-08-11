@@ -1,4 +1,4 @@
-import type { AppConfig, IdentitiesResult, PdfFile, RenderResult, Settings, SignRequest, SignResult } from './types'
+import type { AppConfig, FontOption, IdentitiesResult, PdfFile, RenderResult, Settings, SignRequest, SignResult } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
@@ -39,3 +39,11 @@ export const getPage = (path: string, index: number): Promise<RenderResult> =>
 
 export const sign = (req: SignRequest): Promise<{ results: SignResult[] }> =>
   fetch('/api/sign', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(req) }).then(jsonOrThrow)
+
+export const getFonts = (): Promise<FontOption[]> => fetch('/api/fonts').then(jsonOrThrow)
+
+export const addFont = (filename: string, data: string): Promise<{ slug: string; fonts: FontOption[] }> =>
+  fetch('/api/fonts', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ filename, data }) }).then(jsonOrThrow)
+
+export const deleteFont = (slug: string): Promise<{ fonts: FontOption[] }> =>
+  fetch(`/api/fonts/${encodeURIComponent(slug)}`, { method: 'DELETE' }).then(jsonOrThrow)

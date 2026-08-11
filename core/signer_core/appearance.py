@@ -1,4 +1,4 @@
-"""Signature appearance built from the contract's `appearance` object."""
+"""The visible stamp: what it says, how it looks, where it lands."""
 
 import base64
 import io
@@ -16,33 +16,51 @@ DEFAULT_SIZE = (200.0, 50.0)
 POSITIONS = ("bottom-left", "bottom-right", "top-left", "top-right")
 
 _FONT_DIR = Path(__file__).parent / "fonts"
-# appearance.font values; all OFL, bundled (see fonts/README.md).
+# The five handwriting styles we ship, one per personality. A longer list is a
+# longer scroll for the same decision, and every extra face is ~50 KB in the
+# bundle. Names match the Frappe app's, so a saved style means the same thing
+# in both. Licence details in fonts/README.md.
 SCRIPT_FONTS = {
-    "great-vibes": _FONT_DIR / "GreatVibes-Regular.ttf",
-    "dancing-script": _FONT_DIR / "DancingScript-Regular.ttf",
-    "caveat": _FONT_DIR / "Caveat-Regular.ttf",
-    "sacramento": _FONT_DIR / "Sacramento-Regular.ttf",
-    "allura": _FONT_DIR / "Allura-Regular.ttf",
-    "alex-brush": _FONT_DIR / "AlexBrush-Regular.ttf",
-    "nanum-pen-script": _FONT_DIR / "NanumPenScript-Regular.ttf",
-    "cedarville-cursive": _FONT_DIR / "CedarvilleCursive-Regular.ttf",
-    "cookie": _FONT_DIR / "Cookie-Regular.ttf",
-    "bad-script": _FONT_DIR / "BadScript-Regular.ttf",
+    "great-vibes": _FONT_DIR / "GreatVibes-Regular.ttf",          # calligraphy
+    "caveat": _FONT_DIR / "Caveat-Regular.ttf",                   # casual
+    "nanum-pen-script": _FONT_DIR / "NanumPenScript-Regular.ttf",  # pen
+    "cookie": _FONT_DIR / "Cookie-Regular.ttf",                   # brush
+    "bad-script": _FONT_DIR / "BadScript-Regular.ttf",            # neat script
 }
 DEFAULT_SCRIPT_FONT = "great-vibes"
 TEXT_FONT = _FONT_DIR / "Poppins-Regular.ttf"
+FONT_SUFFIXES = (".ttf", ".otf")
 _INK = (20, 49, 93)  # navy
 _GREY = (95, 99, 108)
 _PX_PER_PT = 4  # compose at 4x so the stamp stays crisp in print
 
 
+def register_fonts(directory) -> list[str]:
+    """Add your own fonts to the list. Each file's name becomes its slug.
+
+    A missing folder is fine, so this is safe to call at startup either way.
+
+    The list stays a list on purpose. In the server the font name arrives from
+    an HTTP request, and a name that could be a path would let a caller read any
+    file on the box. Only in-process code decides which folder is readable. The
+    desktop app calls this once; the server never does.
+    """
+    added = []
+    for path in sorted(Path(directory).glob("*")):
+        if path.suffix.lower() not in FONT_SUFFIXES or not path.is_file():
+            continue
+        SCRIPT_FONTS[path.stem] = path
+        added.append(path.stem)
+    return added
+
+
 def title_case(name: str) -> str:
-    """ALL-CAPS certificate CNs as readable handwriting: RAHUL SHARMA -> Rahul Sharma."""
+    """RAHUL SHARMA -> Rahul Sharma. DSC names arrive shouting."""
     return " ".join(w[:1].upper() + w[1:].lower() for w in name.split())
 
 
 def cert_common_name(cert) -> str:
-    """CN from an asn1crypto certificate, falling back to the full subject."""
+    """The person's name off the certificate. Falls back to the whole subject."""
     try:
         return cert.subject.native.get("common_name") or cert.subject.human_friendly
     except Exception:
@@ -51,13 +69,10 @@ def cert_common_name(cert) -> str:
 
 def build_appearance(appearance, field_name: str, writer=None, reason: str | None = None,
                      signer_name: str | None = None):
-    """Return (stamp_style, new_field_spec); (None, None) means invisible.
+    """Work out what the stamp looks like and where it goes.
 
-    `writer` (the PDF being signed) is needed only when the appearance uses a
-    `position` corner preset instead of an explicit `box`. `reason` fills the
-    {reason} placeholder in the stamp text. `signer_name` (usually the
-    certificate CN) feeds the handwritten style and {signer} substitution in
-    composed stamps.
+    Both None means no visible stamp at all. `writer` is only needed when the
+    caller asked for a corner rather than an exact box.
     """
     if not appearance:
         return None, None
@@ -90,7 +105,7 @@ def build_appearance(appearance, field_name: str, writer=None, reason: str | Non
 
     text = appearance.get("text") or DEFAULT_TEXT
     text = text.replace("{reason}", reason or "")
-    # pyHanko interpolates %(signer)s / %(ts)s; the contract uses {signer} / {ts}.
+    # We offer {signer} and {ts}; pyHanko wants its own spelling. Translate.
     stamp_text = (
         text.replace("%", "%%")
         .replace("{signer}", "%(signer)s")
@@ -124,8 +139,10 @@ def _decode_image(image_b64):
 
 
 def _composed_stamp(appearance, box, signer_name, reason):
-    """One PNG carrying the whole stamp: handwritten name or image, detail
-    lines, and an optional QR — full layout control, no font surprises."""
+    """Draw the whole stamp ourselves as one image: name, details, maybe a QR.
+
+    Our own layout, our own fonts, so nothing surprises us at signing time.
+    """
     from PIL import Image, ImageDraw, ImageFont
 
     w_pt = float(box[2]) - float(box[0])
@@ -207,7 +224,7 @@ def _detail_lines(appearance, signer_name, reason, handwritten):
 
 
 def _fit_text(draw, text, font_path, max_w, max_h):
-    """Largest font size (descending 10% steps) whose rendering fits the box."""
+    """Biggest size that still fits the box. Shrink 10% at a time until it does."""
     from PIL import ImageFont
 
     size = max(8, max_h)
@@ -236,7 +253,7 @@ def _qr_image(url, height_px):
 
 
 def _resolve_box(appearance, writer, page):
-    """The explicit box, or one computed from a corner preset and the real page size."""
+    """The box the caller gave, or one worked out from a corner and the page size."""
     box = appearance.get("box")
     if box is not None:
         if not (isinstance(box, (list, tuple)) and len(box) == 4):
@@ -274,7 +291,7 @@ def _page_count(writer) -> int:
 
 
 def _media_box(writer, page):
-    """The page's MediaBox (inherited if needed) as 4 floats."""
+    """How big the page actually is."""
     if writer is None:
         raise SignerError("INTERNAL", "appearance.position needs the document to be loaded")
     try:

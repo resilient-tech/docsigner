@@ -1,6 +1,7 @@
 """Corner presets resolved against the real page size, and {reason} in the stamp."""
 
 import io
+import shutil
 
 import pytest
 from helpers_core import make_blank_pdf
@@ -114,13 +115,45 @@ def test_appearance_text_substitution_in_composed_stamp():
 
 
 def test_handwritten_font_choice_accepted():
-    for font in ("dancing-script", "caveat", "sacramento", "allura", "alex-brush",
-                 "nanum-pen-script", "cedarville-cursive", "cookie", "bad-script"):
+    """Every bundled slug renders. Reads SCRIPT_FONTS rather than a copy of it,
+    so dropping or adding a face cannot leave this list stale."""
+    from signer_core.appearance import SCRIPT_FONTS
+
+    assert len(SCRIPT_FONTS) == 5, "five hands, one per personality"
+    for font in SCRIPT_FONTS:
         style, _ = build_appearance(
             {"style": "handwritten", "position": "bottom-right", "font": font},
             "Sig1", writer=_writer(), signer_name="Smit Vora",
         )
         assert style.background is not None
+
+
+def test_register_fonts_adds_a_users_own_face(tmp_path):
+    """A registered directory extends the whitelist; the file's stem is the slug.
+
+    Uses a copy of a bundled face as the "uploaded" font, so this checks the
+    registration path rather than PIL's tolerance for a synthetic file.
+    """
+    from signer_core.appearance import SCRIPT_FONTS, register_fonts
+
+    shutil.copy(SCRIPT_FONTS["caveat"], tmp_path / "my-own-hand.ttf")
+    (tmp_path / "notes.txt").write_text("not a font")
+
+    try:
+        assert register_fonts(tmp_path) == ["my-own-hand"]
+        style, _ = build_appearance(
+            {"style": "handwritten", "position": "bottom-right", "font": "my-own-hand"},
+            "Sig1", writer=_writer(), signer_name="Smit Vora",
+        )
+        assert style.background is not None
+    finally:
+        SCRIPT_FONTS.pop("my-own-hand", None)
+
+
+def test_register_fonts_tolerates_a_missing_directory(tmp_path):
+    from signer_core.appearance import register_fonts
+
+    assert register_fonts(tmp_path / "never-created") == []
 
 
 def test_unknown_handwritten_font_rejected():

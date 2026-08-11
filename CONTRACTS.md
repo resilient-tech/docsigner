@@ -43,7 +43,7 @@ Request:
       "image": "<b64 PNG/JPEG or data: URL, optional>",
       "style": "handwritten | image (optional; omit for the plain text stamp)",
       "name": "optional display name for the handwritten style; default = signer certificate CN",
-      "font": "great-vibes (default) | dancing-script | caveat | sacramento | allura | alex-brush | nanum-pen-script | cedarville-cursive | cookie | bad-script",
+      "font": "great-vibes (default) | caveat | nanum-pen-script | cookie | bad-script",
       "capitalize": true,
       "bold": false,
       "qr_url": "optional URL; renders a QR panel at the stamp's right edge"
@@ -395,6 +395,7 @@ All rejections are `DocSignerError` with `.code` from the codes above. Nothing e
 
 ## 7. Changelog
 
+- **2026-08-11 (c)** — narrowing, REST appearance only, `protocolVersion` stays 1: `appearance.font` drops to five hands (`great-vibes`, `caveat`, `nanum-pen-script`, `cookie`, `bad-script`), one per signing personality and matching the OpenSigner Frappe app's options. `dancing-script`, `sacramento`, `allura`, `alex-brush` and `cedarville-cursive` are gone and now raise `DOCUMENT_INVALID` naming the five that remain. An app that wants another hand registers its own directory with `signer_core.appearance.register_fonts()`; the desktop app exposes that as an upload. The server registers nothing, so its set stays the five.
 - **2026-08-11 (b)** — additive, REST only: `options.policy` embeds a signature policy identifier (ICP-Brasil AD-RB/RT/RC/RA), needs `POLICY_DIR`. `protocolVersion` stays 1.
 - **2026-08-11** — additive, `protocolVersion` stays 1: `signHash` params accept `origin`. The extension fills it from `sender.origin`; the host validates it and shows it in the PIN dialog and the signing notification. Callers that omit it get the previous prompt wording.
 - **2026-07-15** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` accepts `image`, composing the uploaded `image` (base64 or `data:` URL) as the mark above the detail lines. Existing `handwritten`/text/`image`-background behavior unchanged.

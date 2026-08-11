@@ -1,19 +1,20 @@
-"""FastAPI routes. In dev the Vite server proxies /api here; in prod this also
-serves the built frontend from ../frontend/dist."""
+"""The routes the window talks to. In a real build it also serves the UI."""
 
 import sys
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import signer_core
 
-from . import certs, config, picker, signing, store
-from .models import Settings, SignRequest
+from . import certs, config, fonts, picker, signing, store
+from .models import FontUpload, Settings, SignRequest
 
 app = FastAPI(title="DocSigner Desktop")
 config.setup_logging()
+fonts.load()  # the user's uploaded faces, before the first stamp is drawn
 
 
 @app.get("/api/health")
@@ -28,10 +29,9 @@ def get_config() -> dict:
 
 @app.get("/api/identities")
 def identities() -> dict:
-    """Signing identities, plus a hint when a token is present but unusable.
+    """Who can sign, plus a hint when a token is there but unusable.
 
-    Both come from one scan, so the list and the explanation for it being empty
-    cannot disagree.
+    One scan feeds both, so the list and the reason it is empty always agree.
     """
     return {
         "identities": certs.list_identities(store.KEYS_DIR),
@@ -96,14 +96,43 @@ def sign(req: SignRequest) -> dict:
     return {"results": signing.sign_files(req)}
 
 
-# Stamp fonts come from signer-core, the single source, so the on-screen
-# preview matches what gets drawn into the PDF. Mount before the SPA catch-all.
-_fonts = Path(signer_core.__file__).resolve().parent / "fonts"
-app.mount("/fonts", StaticFiles(directory=str(_fonts)), name="fonts")
+# ---- stamp fonts -----------------------------------------------------------
+# The preview loads the same font files that go into the PDF, so what is on
+# screen is what gets signed. A slug is looked up in a list, never used as a path.
+
+@app.get("/api/fonts")
+def list_fonts() -> list[dict]:
+    return fonts.listing()
+
+
+@app.post("/api/fonts")
+def add_font(upload: FontUpload) -> dict:
+    try:
+        slug = fonts.save(upload.filename, upload.data)
+    except fonts.FontError as exc:
+        raise HTTPException(400, str(exc)) from None
+    return {"slug": slug, "fonts": fonts.listing()}
+
+
+@app.delete("/api/fonts/{slug}")
+def remove_font(slug: str) -> dict:
+    try:
+        fonts.delete(slug)
+    except fonts.FontError as exc:
+        raise HTTPException(400, str(exc)) from None
+    return {"fonts": fonts.listing()}
+
+
+@app.get("/font-file/{slug}")
+def font_file(slug: str) -> FileResponse:
+    path = fonts.path_for(slug)
+    if path is None or not Path(path).is_file():
+        raise HTTPException(404, "No such font.")
+    return FileResponse(str(path), media_type="font/ttf")
+
 
 def _bundle_root() -> Path:
-    # Frozen (PyInstaller) unpacks data under sys._MEIPASS; from source, this
-    # file is desktop/backend/docsigner_desktop/app.py, so parents[2] is desktop/.
+    # Packaged builds unpack elsewhere, so ask before assuming the source tree.
     if getattr(sys, "frozen", False):
         return Path(sys._MEIPASS)
     return Path(__file__).resolve().parents[2]

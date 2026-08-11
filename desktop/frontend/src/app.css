@@ -731,6 +731,11 @@ input[type='checkbox'] {
   gap: 10px;
   flex-wrap: wrap;
 }
+/* A rejected upload, said next to the control that rejected it. */
+.field-error {
+  color: var(--red);
+  font-weight: 600;
+}
 .img-thumb {
   max-width: 96px;
   max-height: 40px;

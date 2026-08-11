@@ -1,8 +1,7 @@
-import { Plus, Trash2, X } from 'lucide-react'
-import type { AppearanceProfile } from '../types'
-import { FONT_FAMILY, StampPreview } from './StampPreview'
-
-const FONTS = Object.keys(FONT_FAMILY)
+import { useState } from 'react'
+import { Plus, Trash2, Upload, X } from 'lucide-react'
+import type { AppearanceProfile, FontOption } from '../types'
+import { StampPreview } from './StampPreview'
 
 const TOGGLES: { key: keyof AppearanceProfile; label: string }[] = [
   { key: 'show_name', label: 'Digitally signed by (name line)' },
@@ -15,23 +14,31 @@ export function ProfileEditor({
   profiles,
   selectedId,
   signerName,
+  fonts,
   onSelect,
   onChange,
   onAdd,
   onDelete,
+  onUploadFont,
+  onDeleteFont,
   onClose,
 }: {
   profiles: AppearanceProfile[]
   selectedId: string
   signerName: string
+  fonts: FontOption[]
   onSelect: (id: string) => void
   onChange: (p: AppearanceProfile) => void
   onAdd: () => void
   onDelete: (id: string) => void
+  onUploadFont: (filename: string, data: string) => Promise<string>
+  onDeleteFont: (slug: string) => Promise<void>
   onClose: () => void
 }) {
   const profile = profiles.find((p) => p.id === selectedId) ?? profiles[0]
   const set = (patch: Partial<AppearanceProfile>) => onChange({ ...profile, ...patch })
+  const [fontError, setFontError] = useState<string | null>(null)
+  const selectedFont = fonts.find((f) => f.slug === profile.font)
 
   function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -39,6 +46,29 @@ export function ProfileEditor({
     const reader = new FileReader()
     reader.onload = () => set({ image: String(reader.result) }) // data: URL, stored as-is
     reader.readAsDataURL(file)
+  }
+
+  // Upload through a file input rather than a native dialog: the webview gives
+  // us one for free on every platform, and the base64 body matches how the
+  // signature image above is already posted.
+  function onPickFont(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = '' // so picking the same file twice still fires
+    setFontError(null)
+    const reader = new FileReader()
+    reader.onload = () => {
+      onUploadFont(file.name, String(reader.result))
+        .then((slug) => set({ font: slug })) // select what was just added
+        .catch((err) => setFontError(err instanceof Error ? err.message : String(err)))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function removeFont(slug: string) {
+    onDeleteFont(slug)
+      .then(() => set({ font: 'great-vibes' }))
+      .catch((err) => setFontError(err instanceof Error ? err.message : String(err)))
   }
 
   return (
@@ -84,13 +114,25 @@ export function ProfileEditor({
               {profile.style === 'handwritten' && (
                 <label className="ef">
                   <span>Font</span>
-                  <select className="control" value={profile.font} onChange={(e) => set({ font: e.target.value })}>
-                    {FONTS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="img-row">
+                    <select className="control" value={profile.font} onChange={(e) => set({ font: e.target.value })}>
+                      {fonts.map((f) => (
+                        <option key={f.slug} value={f.slug} style={{ fontFamily: `'${f.slug}', cursive` }}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="btn ghost sm">
+                      <Upload size={13} /> Add your own
+                      <input type="file" accept=".ttf,.otf,font/ttf,font/otf" onChange={onPickFont} hidden />
+                    </label>
+                    {selectedFont?.custom && (
+                      <button className="btn ghost sm danger" onClick={() => removeFont(selectedFont.slug)}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {fontError && <span className="field-error">{fontError}</span>}
                 </label>
               )}
               {profile.style === 'image' && (

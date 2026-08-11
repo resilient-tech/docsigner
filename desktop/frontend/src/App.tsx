@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature } from 'lucide-react'
 import * as api from './api'
-import type { AppConfig, Identity, PdfFile, Placement, RenderResult, Settings, SignResult, TokenHint } from './types'
+import type { AppConfig, FontOption, Identity, PdfFile, Placement, RenderResult, Settings, SignResult, TokenHint } from './types'
 import { PlacementCanvas } from './components/PlacementCanvas'
 import { SetupPanel } from './components/SetupPanel'
 import { ProfileEditor } from './components/ProfileEditor'
 import { PinDialog } from './components/PinDialog'
-import { StampPreview } from './components/StampPreview'
+import { StampPreview, fontFaceCss } from './components/StampPreview'
 
 const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, fh: 0.1 }
 
@@ -15,6 +15,7 @@ export function App() {
   const [identities, setIdentities] = useState<Identity[]>([])
   const [tokenHint, setTokenHint] = useState<TokenHint | null>(null)
   const [cfg, setCfg] = useState<AppConfig | null>(null)
+  const [fonts, setFonts] = useState<FontOption[]>([])
   const [folderPath, setFolderPath] = useState('')
   const [files, setFiles] = useState<PdfFile[]>([])
   const [included, setIncluded] = useState<Set<string>>(new Set())
@@ -50,6 +51,7 @@ export function App() {
     })
     loadIdentities()
     api.getConfig().then(setCfg)
+    api.getFonts().then(setFonts)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -268,6 +270,10 @@ export function App() {
 
   return (
     <div className="app">
+      {/* Faces are served from signer-core's own files, and the list grows when
+          the user uploads one, so the rules are built here rather than in a
+          stylesheet that cannot know a new slug. */}
+      <style>{fontFaceCss(fonts.map((f) => f.slug))}</style>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">
@@ -460,6 +466,9 @@ export function App() {
           profiles={settings.profiles}
           selectedId={currentProfile.id}
           signerName={signerName}
+          fonts={fonts}
+          onUploadFont={(filename, data) => api.addFont(filename, data).then((r) => (setFonts(r.fonts), r.slug))}
+          onDeleteFont={(slug) => api.deleteFont(slug).then((r) => setFonts(r.fonts))}
           onSelect={(id) => patch({ profile_id: id })}
           onChange={(p) => patch({ profiles: settings.profiles.map((x) => (x.id === p.id ? p : x)) })}
           onAdd={() => {

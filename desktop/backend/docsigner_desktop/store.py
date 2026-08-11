@@ -1,5 +1,4 @@
-"""Local settings + appearance profiles, persisted so the app remembers the
-last-used setup between launches."""
+"""Settings and saved stamp styles, so the app remembers between launches."""
 
 import os
 from pathlib import Path
@@ -9,6 +8,7 @@ from .models import AppearanceProfile, Settings
 DATA_DIR = Path(os.environ.get("DOCSIGNER_DATA", str(Path.home() / ".config" / "docsigner-desktop")))
 SETTINGS_FILE = DATA_DIR / "settings.json"
 KEYS_DIR = DATA_DIR / "signing-keys"
+FONTS_DIR = DATA_DIR / "fonts"  # handwriting faces the user uploaded (see fonts.py)
 
 DEFAULT_PROFILES = [
     AppearanceProfile(id="handwritten-date", name="Handwritten + Date", style="handwritten",

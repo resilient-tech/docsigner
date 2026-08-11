@@ -1,18 +1,21 @@
 import type { AppearanceProfile } from '../types'
 
-// Font key -> the bundled family (same faces signer-core stamps into the PDF).
-// The keys are the single source of the selectable font list (see ProfileEditor).
-export const FONT_FAMILY: Record<string, string> = {
-  'great-vibes': 'Great Vibes',
-  'dancing-script': 'Dancing Script',
-  caveat: 'Caveat',
-  sacramento: 'Sacramento',
-  allura: 'Allura',
-  'alex-brush': 'Alex Brush',
-  'nanum-pen-script': 'Nanum Pen Script',
-  'cedarville-cursive': 'Cedarville Cursive',
-  cookie: 'Cookie',
-  'bad-script': 'Bad Script',
+// Font slugs double as CSS family names: fontFaceCss() registers each face
+// under its own slug, so a font the user just uploaded needs no name mapping.
+
+/** signer-core's face for the detail lines under the signature. */
+export const DETAIL_FONT = 'poppins'
+
+/**
+ * `@font-face` rules for the detail font plus every listed hand, served by the
+ * backend from the very files signer-core stamps into the PDF. Injected as one
+ * <style> element rather than a stylesheet, because the list grows when the user
+ * uploads a font and a static stylesheet cannot know the new slug.
+ */
+export function fontFaceCss(slugs: string[]): string {
+  return [DETAIL_FONT, ...slugs]
+    .map((s) => `@font-face{font-family:'${s}';src:url('/font-file/${s}');font-display:swap}`)
+    .join('\n')
 }
 
 /**
@@ -54,7 +57,7 @@ export function StampPreview({
     return (
       <svg viewBox={view} style={svgStyle} preserveAspectRatio="xMidYMid meet">
         {lines.map((l, i) => (
-          <text key={i} x={pad} y={pad + lh * i + fs} fontFamily="'Poppins', sans-serif" fontSize={fs} fill="#2a2f38">
+          <text key={i} x={pad} y={pad + lh * i + fs} fontFamily={`'${DETAIL_FONT}', sans-serif`} fontSize={fs} fill="#2a2f38">
             {l}
           </text>
         ))}
@@ -69,7 +72,7 @@ export function StampPreview({
   const lh = hasLines ? Math.min(boxH * 0.16, (boxH - topH - pad) / lines.length) : 0
   const lineFS = lh * 0.76
   const detail = lines.map((l, i) => (
-    <text key={i} x={pad} y={topH + pad * 0.3 + lh * i + lineFS} fontFamily="'Poppins', sans-serif" fontSize={lineFS} fill="#5f636c">
+    <text key={i} x={pad} y={topH + pad * 0.3 + lh * i + lineFS} fontFamily={`'${DETAIL_FONT}', sans-serif`} fontSize={lineFS} fill="#5f636c">
       {l}
     </text>
   ))
@@ -85,11 +88,10 @@ export function StampPreview({
     )
   }
 
-  const family = FONT_FAMILY[profile.font] ?? 'Great Vibes'
   const nameFS = Math.min(topH * 0.9, (boxW - 2 * pad) / (0.46 * Math.max(signerName.length, 3)))
   return (
     <svg viewBox={view} style={svgStyle} preserveAspectRatio="xMidYMid meet">
-      <text x={pad} y={pad + nameFS * 0.82} fontFamily={`'${family}', cursive`} fontSize={nameFS} fill="#14315d">
+      <text x={pad} y={pad + nameFS * 0.82} fontFamily={`'${profile.font}', cursive`} fontSize={nameFS} fill="#14315d">
         {signerName}
       </text>
       {detail}

@@ -1,6 +1,8 @@
-"""Request/response shapes. Placement is fractional (0..1) with a top-left
-origin, so one placement applies cleanly to pages of different sizes; the
-signer converts it to PDF points per file."""
+"""Request and reply shapes.
+
+The stamp's position is kept as a fraction of the page, not as points. That is
+what lets one placement fit every page size in a batch.
+"""
 
 from typing import Literal, Optional
 
@@ -26,6 +28,13 @@ class AppearanceProfile(BaseModel):
     show_date: bool = True
     show_reason: bool = False
     show_location: bool = False
+
+
+class FontUpload(BaseModel):
+    """A font the user uploaded. Named after its file."""
+
+    filename: str
+    data: str
 
 
 class SignRequest(BaseModel):
