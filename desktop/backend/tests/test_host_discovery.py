@@ -43,7 +43,7 @@ def test_from_source_finds_the_cargo_build(monkeypatch):
     # release before debug: a stale debug build must not shadow a fresh release.
     assert "release" in str(candidates[0])
     assert "debug" in str(candidates[1])
-    assert candidates[0].parents[2].name == "host-rs"
+    assert candidates[0].parents[2].name == "host"
 
 
 def test_a_missing_binary_is_a_setup_error_not_a_token_error(monkeypatch):

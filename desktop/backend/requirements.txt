@@ -9,6 +9,6 @@ pywebview>=5          # native desktop window (uses the OS webview)
 # [render] adds pypdfium2 for PDF preview rasterization (docsigner_core.rendering).
 -e ../../core[render]
 
-# The token host is not a Python package: it is host-rs, a Rust binary built
-# with `cargo build --release --manifest-path ../../host-rs/Cargo.toml`. That
+# The token host is not a Python package: it is host, a Rust binary built
+# with `cargo build --release --manifest-path ../../host/Cargo.toml`. That
 # is also why python-pkcs11 no longer appears anywhere in this app.

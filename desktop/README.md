@@ -50,7 +50,7 @@ The host binary has to speak the same CLI (`list`, `sign`, `version`) and print
 the same JSON. That's how the Rust host is exercised against the real app:
 
 ```bash
-DOCSIGNER_HOST_BIN=../../host-rs/target/release/docsigner-host \
+DOCSIGNER_HOST_BIN=../../host/target/release/docsigner-host \
     ./.venv/bin/python -m docsigner_desktop --server
 ```
 

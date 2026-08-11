@@ -53,7 +53,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: host-rs
+          workspaces: host
       - name: Install PC/SC headers
         run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
       - name: Install
@@ -61,7 +61,7 @@ jobs:
       # The tests locate this themselves and fail rather than skip when CI is
       # set, so a build that never happened cannot pass as green.
       - name: Build the host
-        run: cargo build --release --manifest-path host-rs/Cargo.toml
+        run: cargo build --release --manifest-path host/Cargo.toml
       - name: Test the host over its real wire protocol
         run: pytest e2e/test_host_e2e.py e2e/test_update_feed_e2e.py -q
 
@@ -83,7 +83,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: host-rs
+        working-directory: host
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -91,7 +91,7 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: host-rs
+          workspaces: host
       # pcsc links against libpcsclite, which is not on the Ubuntu image.
       - name: Install PC/SC headers
         if: matrix.name == 'linux'
@@ -114,5 +114,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: docsigner-host-${{ matrix.name }}
-          path: host-rs/target/release/docsigner-host${{ matrix.name == 'windows' && '.exe' || '' }}
+          path: host/target/release/docsigner-host${{ matrix.name == 'windows' && '.exe' || '' }}
           if-no-files-found: error

@@ -8,7 +8,7 @@
 # real-token sign, the same way the host binary is verified before release.
 #
 # Handled here:
-#   - Token path: the host-rs binary rides along as a sidecar and host.py finds
+#   - Token path: the host binary rides along as a sidecar and host.py finds
 #     it beside the executable. Still a fresh process per call, which is what
 #     keeps the token drivers from wedging.
 #   - Trust anchors: repo trust/ is bundled and config.py reads it from _MEIPASS.
@@ -45,11 +45,11 @@ CORE = os.path.join(REPO, "core")
 # The token host is a separate Rust binary, ~1 MB, carried as a sidecar.
 # host.py looks for it in _MEIPASS and beside the executable, in that order.
 HOST_BINARY_NAME = "docsigner-host.exe" if sys.platform == "win32" else "docsigner-host"
-HOST_BINARY = os.path.join(REPO, "host-rs", "target", "release", HOST_BINARY_NAME)
+HOST_BINARY = os.path.join(REPO, "host", "target", "release", HOST_BINARY_NAME)
 if not os.path.isfile(HOST_BINARY):
     raise SystemExit(
         "the host binary is missing: %s\n"
-        "Build it first:  cargo build --release --manifest-path host-rs/Cargo.toml"
+        "Build it first:  cargo build --release --manifest-path host/Cargo.toml"
         % HOST_BINARY
     )
 

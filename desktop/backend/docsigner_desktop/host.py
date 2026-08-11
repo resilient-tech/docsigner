@@ -39,7 +39,7 @@ def _candidates() -> list[Path]:
 
     # Running from source: wherever cargo built it.
     repo = here.parents[3]
-    target = repo / "host-rs" / "target"
+    target = repo / "host" / "target"
     return [target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME]
 
 
@@ -56,7 +56,7 @@ def host_binary() -> str:
         return found
     raise HostNotFound(
         "the docsigner-host binary was not found. Build it with "
-        "`cargo build --release --manifest-path host-rs/Cargo.toml`, or set "
+        "`cargo build --release --manifest-path host/Cargo.toml`, or set "
         f"{ENV_HOST_BIN} to its path."
     )
 

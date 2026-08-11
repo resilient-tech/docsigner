@@ -49,14 +49,14 @@ def host_binary() -> Path:
     override = os.environ.get("DOCSIGNER_HOST_BIN")
     if override:
         return Path(override)
-    target = REPO_ROOT / "host-rs" / "target"
+    target = REPO_ROOT / "host" / "target"
     for candidate in (target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME):
         if candidate.is_file():
             return candidate
 
     message = (
-        f"{BINARY_NAME} not found under host-rs/target. Build it with:\n"
-        "  cargo build --release --manifest-path host-rs/Cargo.toml"
+        f"{BINARY_NAME} not found under host/target. Build it with:\n"
+        "  cargo build --release --manifest-path host/Cargo.toml"
     )
     if os.environ.get("CI") or os.environ.get("DOCSIGNER_E2E_REQUIRE_HOST"):
         pytest.fail(message)

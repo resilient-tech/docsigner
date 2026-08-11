@@ -18,7 +18,7 @@ token plugged in, the server running from the repo root.
 
 - [ ] `pytest core/tests server/tests` green
 - [ ] `PYTHONPATH=desktop/backend pytest desktop/backend/tests` green
-- [ ] `cargo test --manifest-path host-rs/Cargo.toml` green
+- [ ] `cargo test --manifest-path host/Cargo.toml` green
 - [ ] `cd js && node --test` green
 - [ ] `python scripts/export_openapi.py` leaves `server/openapi.json` unchanged
 

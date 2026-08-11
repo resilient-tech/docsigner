@@ -21,7 +21,7 @@ pip install -e ./core -e ./server -r requirements-dev.txt -q
 
 # The host is a Rust binary; the host e2e skips itself if it is not built.
 if command -v cargo >/dev/null 2>&1; then
-  cargo build --release --manifest-path host-rs/Cargo.toml -q
+  cargo build --release --manifest-path host/Cargo.toml -q
 fi
 
 exec python -m pytest e2e/ -ra "$@"

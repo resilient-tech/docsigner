@@ -6,7 +6,7 @@
 #   pytest core/tests server/tests
 #   PYTHONPATH=desktop/backend pytest desktop/backend/tests
 #
-# The token host is not Python: it is host-rs, tested with `cargo test`.
+# The token host is not Python: it is host, tested with `cargo test`.
 
 pytest
 httpx        # FastAPI's TestClient needs it for server/tests

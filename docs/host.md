@@ -54,7 +54,7 @@ flowchart TD
 
 ## Module map (where things live)
 
-In `host-rs/src/`:
+In `host/src/`:
 
 - `main.rs` — the stdin/stdout loop the browser launches. With arguments, the CLI instead.
 - `cli.rs` — the same commands from a terminal. Also how the desktop app calls this.
@@ -81,12 +81,12 @@ The host is a Rust binary of about 1 MB, with no runtime to install. Build it
 and try it against your own token:
 
 ```bash
-cargo build --release --manifest-path host-rs/Cargo.toml
+cargo build --release --manifest-path host/Cargo.toml
 ```
 
 ```bash
-host-rs/target/release/docsigner-host list      # certs on your token
-host-rs/target/release/docsigner-host version
+host/target/release/docsigner-host list      # certs on your token
+host/target/release/docsigner-host version
 ```
 
 Sign a base64 hash from the terminal:
@@ -107,4 +107,4 @@ docsigner-host sign \
 `certs::cert_info(...)`, and `protocol.rs` will merge yours in.
 
 Packaging and registering it with browsers is in the
-[host README](../host-rs/README.md).
+[host README](../host/README.md).

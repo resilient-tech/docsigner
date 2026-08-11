@@ -10,7 +10,7 @@ Files: `manifest.json`, `background.js` (native messaging relay), `content.js`
 `icons/` (generated from `../assets/icon.svg` by `../scripts/make_assets.py`).
 
 This extension does nothing on its own. The native host must be installed and
-registered with this extension's ID (see [`../host-rs/README.md`](../host-rs/README.md)).
+registered with this extension's ID (see [`../host/README.md`](../host/README.md)).
 
 Why the hops are shaped this way, and what each one is allowed to do:
 [`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain).

@@ -56,7 +56,7 @@ python3 -m http.server 8080      # then open http://localhost:8080/demo/
 
 Server-side signing works right there. To sign with a token you also need the
 extension ([`extension/README.md`](extension/README.md)) and the native host
-([`host-rs/README.md`](host-rs/README.md)) installed.
+([`host/README.md`](host/README.md)) installed.
 
 Prefer a desktop app to a browser? [`desktop/README.md`](desktop/README.md)
 batch-signs a folder with no server and no extension.
@@ -67,7 +67,7 @@ batch-signs a folder with no server and no extension.
 |---|---|---|
 | `core/` | `docsigner-core`, the Python signing library (pyHanko underneath) | [docs/core.md](docs/core.md) |
 | `server/` | `docsigner-server`, the HTTP API + `server/openapi.json` | [docs/server.md](docs/server.md) |
-| `host-rs/` | `docsigner-host`, the native binary that talks to tokens (Rust, ~1 MB) | [docs/host.md](docs/host.md) |
+| `host/` | `docsigner-host`, the native binary that talks to tokens (Rust, ~1 MB) | [docs/host.md](docs/host.md) |
 | `desktop/` | `docsigner-desktop`, batch-sign a folder locally | [docs/desktop.md](docs/desktop.md) |
 | `extension/` | WebExtension (MV3) for Chrome, Edge, Brave, Firefox | [extension/README.md](extension/README.md) |
 | `js/` | `docsigner.js`, the page-side library (one file, no deps) | [js/README.md](js/README.md) |
@@ -100,7 +100,7 @@ pip install -e ./core -e ./server
 pip install -r requirements-dev.txt
 pytest core/tests server/tests
 PYTHONPATH=desktop/backend pytest desktop/backend/tests
-cargo test --manifest-path host-rs/Cargo.toml
+cargo test --manifest-path host/Cargo.toml
 cd js && node --test
 ```
 

@@ -71,7 +71,7 @@ jobs:
             archive: tar.gz
     defaults:
       run:
-        working-directory: host-rs
+        working-directory: host
     steps:
       - uses: actions/checkout@v4
 
@@ -81,7 +81,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: host-rs
+          workspaces: host
           key: ${{ matrix.target }}
 
       # pcsc links against libpcsclite, which is not on the Ubuntu image.
@@ -154,7 +154,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: host-rs/dist/*
+          path: host/dist/*
           if-no-files-found: error
 
   publish:
@@ -183,7 +183,7 @@ jobs:
       # the page is where they choose the right one for their machine.
       - name: Build latest.json
         run: |
-          version=$(grep -m1 '^version' host-rs/Cargo.toml | cut -d'"' -f2)
+          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
           repo="${{ github.server_url }}/${{ github.repository }}"
           cat > artifacts/latest.json <<JSON
           {

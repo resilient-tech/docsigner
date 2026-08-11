@@ -18,7 +18,7 @@ MAPS = [
     ("core/docsigner_core", "*.py", "docs/core.md"),
     ("server/docsigner_server", "*.py", "docs/server.md"),
     ("desktop/backend/docsigner_desktop", "*.py", "docs/desktop.md"),
-    ("host-rs/src", "*.rs", "docs/host.md"),
+    ("host/src", "*.rs", "docs/host.md"),
 ]
 
 SKIP = {"__init__.py"}

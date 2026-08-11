@@ -6,7 +6,7 @@ Writes:
     desktop/packaging/DocSigner.icns    macOS app bundle icon (macOS only)
     desktop/frontend/public/icon.svg    desktop window favicon (copy)
     extension/icons/icon{16,48,128}.png browser extension icons
-    host-rs/packaging/icon.ico          embedded in the Windows host .exe
+    host/packaging/icon.ico          embedded in the Windows host .exe
 
 The outputs are committed, so building and shipping never needs this. Run it
 after editing assets/icon.svg.
@@ -39,7 +39,7 @@ SOURCE = REPO / "assets" / "icon.svg"
 ICNS = REPO / "desktop" / "packaging" / "DocSigner.icns"
 FRONTEND_ICON = REPO / "desktop" / "frontend" / "public" / "icon.svg"
 EXTENSION_ICONS = REPO / "extension" / "icons"
-HOST_ICO = REPO / "host-rs" / "packaging" / "icon.ico"
+HOST_ICO = REPO / "host" / "packaging" / "icon.ico"
 
 # Sizes Windows Explorer picks between, smallest first.
 ICO_SIZES = (16, 32, 48, 64, 128, 256)
