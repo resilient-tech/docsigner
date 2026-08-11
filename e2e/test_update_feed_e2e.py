@@ -131,3 +131,21 @@ def test_a_broken_feed_never_breaks_the_check(feed, body, status):
     assert result["currentVersion"] == host_version()
     # Present and explanatory, whichever way it failed.
     assert result["message"]
+
+
+def test_https_reaches_a_real_host():
+    """The shipped default is an https URL, and every case above is plain http.
+
+    That gap hid a real break: ureq's native-tls feature only supplies an
+    adapter, so without an explicit connector every https request failed with
+    "no TLS backend is configured" — the check could never have worked in
+    production while the local-http tests stayed green.
+
+    Asserted negatively on purpose. What the feed answers depends on whether a
+    release exists and whether the repo is public, and neither is this test's
+    business; that the host can complete a TLS handshake at all is.
+    """
+    result = check_update("https://github.com/resilient-tech/docsigner/releases/latest/download/latest.json")
+    assert result["updateAvailable"] in (True, False)
+    assert "TLS" not in result["message"], result["message"]
+    assert "tls" not in result["message"].lower(), result["message"]

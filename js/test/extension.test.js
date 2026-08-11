@@ -24,6 +24,20 @@ test("manifest.json is valid and matches the contract", () => {
   assert.equal(manifest.browser_specific_settings.gecko.id, "docsigner@docsigner.org");
 });
 
+// The allowlist in background.js is the only gate between a page and the host,
+// so a command CONTRACTS.md §2 defines and this set forgets is unreachable with
+// nothing failing anywhere. checkUpdate sat in exactly that state: implemented,
+// tested, documented, and quietly answered UNSUPPORTED. Pin all four.
+test("background.js allows every command the contract defines", () => {
+  const background = readFileSync(join(extDir, "background.js"), "utf8");
+  const allowed = /const NATIVE_COMMANDS = new Set\(\[([^\]]*)\]\)/.exec(background);
+  assert.ok(allowed, "NATIVE_COMMANDS should be a literal Set of strings");
+  const commands = [...allowed[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  for (const command of ["getVersion", "checkUpdate", "listCertificates", "signHash"]) {
+    assert.ok(commands.includes(command), `${command} is not reachable from a page`);
+  }
+});
+
 test("extension scripts parse", () => {
   for (const file of ["content.js", "background.js", "consent.js"]) {
     execFileSync(process.execPath, ["--check", join(extDir, file)]);

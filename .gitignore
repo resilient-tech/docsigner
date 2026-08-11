@@ -36,7 +36,6 @@ e2e/.env.e2e
 e2e/artifacts/
 server/sessions/
 server/documents/
-spike/spike_signed.pdf
 # keep throwaway test keys in the repo, ignore all other .p12
 *.p12
 !*test*.p12

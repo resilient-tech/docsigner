@@ -50,6 +50,16 @@ Run it from the Actions tab first (`workflow_dispatch`) to build without publish
 
 Measured rather than assumed: the x86_64 build, cross-compiled on an arm64 Mac, lists all three certificates off a real ProxKey under Rosetta. That token's own dylib happens to be universal, so this is insurance against the vendors that have not caught up rather than a fix for that one.
 
+### macOS, without a signing certificate
+
+`packaging/homebrew/docsigner-host.rb` installs the released archive as a Homebrew formula:
+
+```bash
+brew install resilient-tech/tap/docsigner-host
+```
+
+Homebrew stamps `com.apple.quarantine` on casks only, never on formulae, so a formula-installed binary runs with no Gatekeeper prompt and no Apple Developer ID. Copy the file into the tap repo and update `sha256` from the release's `SHA256SUMS` when tagging. A direct download of the same `.tar.gz` is quarantined and needs one `xattr -dr com.apple.quarantine` before it runs.
+
 ## Use it
 
 ```bash
@@ -68,7 +78,7 @@ docsigner-host sign --thumbprint <hex> --hash <base64> --alg sha256
 | `DOCSIGNER_PKCS11_MODULES` | extra module paths, `:`-separated (`;` on Windows) |
 | `DOCSIGNER_PIN` | skip the PIN dialog |
 | `DOCSIGNER_NO_NOTIFY` | suppress signing notifications |
-| `DOCSIGNER_UPDATE_URL` | JSON feed for the update check |
+| `DOCSIGNER_UPDATE_URL` | JSON feed for the update check; defaults to this repo's `latest.json` |
 
 Module paths also come from `~/.config/docsigner/modules.json` (`%APPDATA%\docsigner\modules.json` on Windows), then a built-in list of well-known driver locations for OpenSC, ePass2003, ProxKey, SafeNet, eMudhra, Bit4id, InnaITKey and YubiKey.
 

@@ -73,7 +73,6 @@ batch-signs a folder with no server and no extension.
 | `js/` | `docsigner.js`, the page-side library (one file, no deps) | [js/README.md](js/README.md) |
 | `demo/` | A working demo page, and the integration example | |
 | `trust/` | Trust anchors for the LTV profiles | [server/README.md](server/README.md#trust-anchors-for-the-ltv-profiles) |
-| `spike/` | Phase 0 proof scripts, kept as executable documentation | |
 
 Two things sit above all of it:
 

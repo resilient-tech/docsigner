@@ -16,7 +16,13 @@ use serde::Serialize;
 use serde_json::Value;
 
 pub const ENV_URL: &str = "DOCSIGNER_UPDATE_URL";
-pub const DEFAULT_UPDATE_URL: &str = ""; // set when a release feed exists
+
+/// The feed `release.yml` publishes with every tagged release. GitHub keeps
+/// `releases/latest/download/<asset>` pointing at the newest one, so this URL
+/// never has to change. `DOCSIGNER_UPDATE_URL` overrides it, which is how a
+/// fork or an internal mirror points somewhere else.
+pub const DEFAULT_UPDATE_URL: &str =
+    "https://github.com/resilient-tech/docsigner/releases/latest/download/latest.json";
 const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Serialize)]
@@ -94,7 +100,19 @@ pub fn check_update_at(url: &str) -> UpdateStatus {
         return UpdateStatus::unavailable("no update source configured");
     }
 
+    // The connector has to be handed over explicitly. ureq's "native-tls"
+    // feature only supplies the adapter; without this line every https request
+    // fails with "no TLS backend is configured", which is how this check stayed
+    // broken while the default feed was empty and nothing exercised https.
+    let connector = match native_tls::TlsConnector::new() {
+        Ok(connector) => connector,
+        Err(e) => {
+            return UpdateStatus::unavailable(format!("could not check for updates: {e}"));
+        }
+    };
+
     let response = ureq::AgentBuilder::new()
+        .tls_connector(std::sync::Arc::new(connector))
         .timeout_connect(TIMEOUT)
         .timeout_read(TIMEOUT)
         .build()
@@ -204,12 +222,30 @@ mod tests {
     }
 
     /// An empty variable means "unset", not "fetch the empty URL".
+    ///
+    /// Only the resolution is asserted, never `check_update()`: that would hit
+    /// the real release feed over the network from a unit test.
     #[test]
     fn an_empty_env_var_falls_back_to_the_default() {
         use crate::testenv::EnvGuard;
 
         let _guard = EnvGuard::new().set(ENV_URL, "");
         assert_eq!(configured_url(), DEFAULT_UPDATE_URL);
-        assert_eq!(check_update().message, "no update source configured");
+    }
+
+    /// The shipped default has to be a fetchable absolute URL, because it is now
+    /// what every install checks against. An empty or relative one would make
+    /// `checkUpdate` silently answer "no update source configured" forever,
+    /// which is exactly the state this feature sat in before it was wired up.
+    #[test]
+    fn the_default_feed_is_a_real_url() {
+        assert!(
+            DEFAULT_UPDATE_URL.starts_with("https://"),
+            "{DEFAULT_UPDATE_URL}"
+        );
+        assert!(
+            DEFAULT_UPDATE_URL.ends_with(".json"),
+            "{DEFAULT_UPDATE_URL}"
+        );
     }
 }

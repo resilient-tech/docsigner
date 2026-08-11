@@ -4,7 +4,11 @@
 const api = globalThis.browser ?? globalThis.chrome;
 
 const HOST_NAME = "com.docsigner.host";
-const NATIVE_COMMANDS = new Set(["getVersion", "listCertificates", "signHash"]);
+// checkUpdate is here and not in CONSENT_COMMANDS on purpose: like getVersion it
+// reveals nothing about the user, only which host version is installed. It does
+// make the host fetch one fixed URL, but a page cannot choose that URL, so the
+// worst a hostile page achieves is a request it could have made itself.
+const NATIVE_COMMANDS = new Set(["getVersion", "checkUpdate", "listCertificates", "signHash"]);
 const CONSENT_COMMANDS = new Set(["listCertificates", "signHash"]);
 const CONSENT_MESSAGE = "org.docsigner.consent";
 // ponytail: one flat timeout for every call. Signing waits on a human typing a

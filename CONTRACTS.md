@@ -209,10 +209,17 @@ Result: `{ "version": "0.1.0", "protocolVersion": 1, "logPath": "~/.config/docsi
 ### checkUpdate
 
 Params: `{}`. The host compares its running version against a published one
-fetched from `DOCSIGNER_UPDATE_URL` (a JSON feed `{ "version": "...", "url": "..." }`).
+fetched from a JSON feed `{ "version": "...", "url": "..." }`. The feed defaults
+to the `latest.json` each release publishes
+(`https://github.com/resilient-tech/docsigner/releases/latest/download/latest.json`);
+`DOCSIGNER_UPDATE_URL` overrides it for a fork or an internal mirror.
 Version-check only — the host never downloads or installs. Network, HTTP, and
 parse failures are soft: they return `updateAvailable: false` with an
 explanatory `message`, never an error response.
+
+Reachable from a page: it names no user data, only the installed host version,
+so the extension forwards it without an origin consent prompt (same class as
+`getVersion`).
 
 Result:
 
@@ -373,6 +380,9 @@ const { certificates, readers } = await signer.listCertificates();
 const { signatures } = await signer.signHash({
   thumbprint, hashes: [hash], digestAlgorithm: "sha256"
 });
+// Never rejects on a network or feed problem: those arrive as
+// updateAvailable: false with a message. Show downloadUrl when it is true.
+const { updateAvailable, downloadUrl } = await signer.checkUpdate();
 ```
 
 All rejections are `DocSignerError` with `.code` from the codes above. Nothing else in the API. Server calls (start/complete) are plain `fetch` in application code; the demo shows the wiring.
@@ -395,6 +405,7 @@ All rejections are `DocSignerError` with `.code` from the codes above. Nothing e
 
 ## 7. Changelog
 
+- **2026-08-11 (d)** — no wire change, `protocolVersion` stays 1: `checkUpdate` becomes reachable. The command was specified here, implemented and tested, and then blocked by the extension's own command allowlist while `DEFAULT_UPDATE_URL` sat empty — documented and unreachable. The allowlist now forwards it (no consent prompt; it names no user data), docsigner.js gains `checkUpdate()`, and the default feed is the `latest.json` every release publishes. A js test asserts the allowlist covers every command §2 defines, so a command cannot go missing that way again.
 - **2026-08-11 (c)** — narrowing, REST appearance only, `protocolVersion` stays 1: `appearance.font` drops to five hands (`great-vibes`, `caveat`, `nanum-pen-script`, `cookie`, `bad-script`), one per signing personality and matching the OpenSigner Frappe app's options. `dancing-script`, `sacramento`, `allura`, `alex-brush` and `cedarville-cursive` are gone and now raise `DOCUMENT_INVALID` naming the five that remain. An app that wants another hand registers its own directory with `docsigner_core.appearance.register_fonts()`; the desktop app exposes that as an upload. The server registers nothing, so its set stays the five.
 - **2026-08-11 (b)** — additive, REST only: `options.policy` embeds a signature policy identifier (ICP-Brasil AD-RB/RT/RC/RA), needs `POLICY_DIR`. `protocolVersion` stays 1.
 - **2026-08-11** — additive, `protocolVersion` stays 1: `signHash` params accept `origin`. The extension fills it from `sender.origin`; the host validates it and shows it in the PIN dialog and the signing notification. Callers that omit it get the previous prompt wording.

@@ -63,6 +63,20 @@ export class DocSigner {
     return this._call("signHash", params);
   }
 
+  /**
+   * Ask whether a newer host has been released. Never rejects on a network or
+   * feed problem: those come back as `updateAvailable: false` with a `message`,
+   * so a check can't break your page.
+   *
+   * Nobody can push an update to a hand-installed native host, so a stale one
+   * stays stale silently. Show `downloadUrl` when `updateAvailable` is true.
+   * @returns {Promise<{currentVersion: string, latestVersion: string|null,
+   *   updateAvailable: boolean, downloadUrl: string|null, message: string}>}
+   */
+  checkUpdate() {
+    return this._call("checkUpdate", {});
+  }
+
   _call(command, params, { timeoutMs, timeoutCode, timeoutMessage } = {}) {
     return new Promise((resolve, reject) => {
       const requestId = crypto.randomUUID();

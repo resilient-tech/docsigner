@@ -32,6 +32,10 @@ notify-rust = "4"
 # Blocking HTTP for the update check only. native-tls uses the TLS stack already
 # on the machine (Schannel / SecureTransport / OpenSSL), which keeps ~2 MB of
 # bundled rustls out of the binary for the sake of one JSON fetch.
+#
+# native-tls is named directly by update.rs, not just enabled here: ureq's
+# feature supplies only the adapter, and the connector has to be handed to the
+# AgentBuilder or every https request fails with "no TLS backend is configured".
 ureq = { version = "2", default-features = false, features = ["native-tls", "json", "gzip"] }
 native-tls = "0.2"
 
