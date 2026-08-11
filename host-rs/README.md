@@ -118,6 +118,18 @@ On a WatchData ProxKey carrying three Capricorn DSCs (2026-08-11, macOS arm64):
 | Second certificate on the same token | verifies against its own certificate and correctly fails against the other, so `find_private_key` matched by CKA_ID rather than defaulting to the only key |
 | Unknown thumbprint | `CERT_NOT_FOUND` |
 | PIN cache | one supplied PIN served a later request with no PIN and no dialog available |
+| Wrong PIN | reported `PIN_INCORRECT` only after the fix below |
+
+### The wrong-PIN finding
+
+One deliberate wrong-PIN attempt exposed a defect **both hosts shared**: a WatchData ProxKey rejects a wrong PIN with `CKR_GENERAL_ERROR`, not `CKR_PIN_INCORRECT`. Matching the return value alone therefore reported `INTERNAL`, with two consequences:
+
+- the page could not tell the user their PIN was wrong, only that something failed;
+- the stale-cached-PIN retry never fired, because it keyed off `PIN_INCORRECT`. A PIN changed on the token would fail every call for the full ten-minute cache TTL.
+
+`map_login_rv` now reads the vague return values (`CKR_GENERAL_ERROR`, `CKR_FUNCTION_FAILED`) as a rejected PIN when they come from `C_Login` specifically, where the module has already loaded and the certificate has already been found. `map_login_error` consults the token's own `user_pin_locked` flag first, since that is authoritative and a locked PIN must never be retried.
+
+`host/signer_host/pkcs11_ops.py` has the same gap at `_map_error` and the `except p11ex.PinIncorrect` at line 314. It is worth fixing there too while both hosts are in the tree.
 
 **End to end.** A PDF signed through `signer-core` with the token via this host validates as `valid: true, intact: true, modifications_ok: true`, and `trusted: true` against the repo's `trust/` anchors up the Capricorn chain to CCA India.
 

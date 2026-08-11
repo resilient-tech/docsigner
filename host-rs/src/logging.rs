@@ -17,10 +17,10 @@ use log::{Level, LevelFilter, Metadata, Record};
 pub fn config_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        if let Some(appdata) = std::env::var_os("APPDATA") {
-            return PathBuf::from(appdata).join("opensigner");
-        }
-        return dirs::home_dir().unwrap_or_default().join("opensigner");
+        std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_default())
+            .join("opensigner")
     }
     #[cfg(not(target_os = "windows"))]
     {

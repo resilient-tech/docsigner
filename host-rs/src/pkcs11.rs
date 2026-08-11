@@ -288,8 +288,46 @@ fn map_error(error: &P11Error) -> HostError {
     }
 }
 
-fn is_pin_incorrect(error: &P11Error) -> bool {
-    matches!(error, P11Error::Pkcs11(RvError::PinIncorrect, _))
+/// Map a return value seen specifically while logging in.
+///
+/// Not every driver uses the PIN-specific return values. WatchData ProxKey
+/// answers a wrong PIN with `CKR_GENERAL_ERROR` (live-tested against a
+/// Capricorn DSC), and matching the return value alone then reports INTERNAL:
+/// the page cannot tell the user their PIN was wrong, and the stale-cache retry
+/// in `login` never fires. The Python host has the same gap.
+///
+/// By this point the module loaded, the token answered and the certificate was
+/// found by thumbprint, so a `C_Login` failure means the PIN was not accepted.
+/// Only the vague failures are reinterpreted; anything that names a real
+/// condition still maps through `map_rv`.
+fn map_login_rv(rv: RvError) -> HostError {
+    match rv {
+        RvError::GeneralError | RvError::FunctionFailed => {
+            HostError::new(Code::PinIncorrect, "the PIN is incorrect")
+        }
+        other => map_rv(other),
+    }
+}
+
+/// Translate a login failure, consulting the token before the return value.
+///
+/// The token's own flags are authoritative for a locked PIN, and a locked PIN
+/// must never be retried: that is what burns the last attempt.
+fn map_login_error(context: &Pkcs11, slot: Slot, error: &P11Error) -> HostError {
+    if context
+        .get_token_info(slot)
+        .map(|info| info.user_pin_locked())
+        .unwrap_or(false)
+    {
+        return HostError::new(
+            Code::PinLocked,
+            "the PIN is locked; unlock it with the token vendor tool",
+        );
+    }
+    match error {
+        P11Error::Pkcs11(rv, _) => map_login_rv(*rv),
+        other => HostError::internal(format!("PKCS#11 error: {other}")),
+    }
 }
 
 /// A located certificate, with its module context held open so the caller can
@@ -476,26 +514,33 @@ fn login(located: &Located, pin_provider: PinProvider<'_>) -> Result<Session> {
         return Err(HostError::cancelled("PIN entry was cancelled"));
     }
 
-    match open_and_login(located, &pin) {
+    let failure = match open_and_login(located, &pin) {
         Ok(session) => {
             remember_pin(&located.label, &pin);
-            Ok(session)
+            return Ok(session);
         }
-        Err(e) if is_pin_incorrect(&e) => {
-            forget_pin(&located.label);
-            if cached.is_none() {
-                return Err(map_error(&e));
-            }
-            let fresh = pin_provider(&located.label)?;
-            if fresh.is_empty() {
-                return Err(HostError::cancelled("PIN entry was cancelled"));
-            }
-            let session = open_and_login(located, &fresh).map_err(|e| map_error(&e))?;
-            remember_pin(&located.label, &fresh);
-            Ok(session)
-        }
-        Err(e) => Err(map_error(&e)),
+        Err(e) => map_login_error(&located.context, located.slot, &e),
+    };
+
+    // Anything other than a rejected PIN (locked, token pulled mid-login) is
+    // the answer, not something to retry.
+    if failure.code != Code::PinIncorrect {
+        return Err(failure);
     }
+    forget_pin(&located.label);
+    if cached.is_none() {
+        return Err(failure);
+    }
+
+    // The cached PIN went stale (changed on the token): one proper retry.
+    let fresh = pin_provider(&located.label)?;
+    if fresh.is_empty() {
+        return Err(HostError::cancelled("PIN entry was cancelled"));
+    }
+    let session = open_and_login(located, &fresh)
+        .map_err(|e| map_login_error(&located.context, located.slot, &e))?;
+    remember_pin(&located.label, &fresh);
+    Ok(session)
 }
 
 fn open_and_login(located: &Located, pin: &str) -> std::result::Result<Session, P11Error> {
@@ -586,6 +631,48 @@ mod tests {
         assert!(!map_rv(RvError::PinLocked).allows_os_store_fallback());
         assert!(map_rv(RvError::TokenNotPresent).allows_os_store_fallback());
         assert!(map_rv(RvError::DeviceRemoved).allows_os_store_fallback());
+    }
+
+    /// Live-tested regression: a WatchData ProxKey rejects a wrong PIN with
+    /// CKR_GENERAL_ERROR, not CKR_PIN_INCORRECT. Reading that as INTERNAL tells
+    /// the user nothing and stops the stale-cache retry from ever firing.
+    #[test]
+    fn vague_login_failures_are_read_as_a_rejected_pin() {
+        for rv in [RvError::GeneralError, RvError::FunctionFailed] {
+            assert_eq!(
+                map_login_rv(rv).code,
+                Code::PinIncorrect,
+                "{rv:?} at login time means the PIN was not accepted"
+            );
+        }
+        // Away from login the same return value is still just an internal error.
+        assert_eq!(map_rv(RvError::GeneralError).code, Code::Internal);
+    }
+
+    /// Reinterpreting the vague codes must not swallow the specific ones.
+    #[test]
+    fn login_mapping_keeps_the_specific_return_values() {
+        assert_eq!(map_login_rv(RvError::PinIncorrect).code, Code::PinIncorrect);
+        assert_eq!(map_login_rv(RvError::PinLocked).code, Code::PinLocked);
+        assert_eq!(
+            map_login_rv(RvError::TokenNotPresent).code,
+            Code::TokenNotFound
+        );
+        assert_eq!(
+            map_login_rv(RvError::DeviceRemoved).code,
+            Code::TokenNotFound
+        );
+    }
+
+    /// A locked PIN must never be retried: the retry is what burns the last
+    /// attempt. Only PinIncorrect reaches the second prompt in `login`.
+    #[test]
+    fn a_locked_pin_is_not_a_retryable_outcome() {
+        assert_ne!(map_login_rv(RvError::PinLocked).code, Code::PinIncorrect);
+        assert_ne!(
+            map_login_rv(RvError::TokenNotPresent).code,
+            Code::PinIncorrect
+        );
     }
 
     /// Runs against whatever the machine has: no driver, a driver with no

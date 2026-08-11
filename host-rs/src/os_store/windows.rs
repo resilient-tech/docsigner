@@ -12,14 +12,14 @@
 use std::ffi::c_void;
 
 use windows::core::PCWSTR;
-use windows::Win32::Foundation::{HANDLE, NTE_USER_CANCELLED};
+use windows::Win32::Foundation::{BOOL, NTE_USER_CANCELLED};
 use windows::Win32::Security::Cryptography::{
-    CertCloseStore, CertEnumCertificatesInStore, CertFreeCertificateContext,
-    CertGetCertificateContextProperty, CertOpenSystemStoreW, CryptAcquireCertificatePrivateKey,
-    NCryptFreeObject, NCryptSignHash, BCRYPT_PKCS1_PADDING_INFO, BCRYPT_SHA256_ALGORITHM,
-    BCRYPT_SHA384_ALGORITHM, BCRYPT_SHA512_ALGORITHM, CERT_CONTEXT, CERT_KEY_PROV_INFO_PROP_ID,
-    CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG, NCRYPT_FLAGS, NCRYPT_KEY_HANDLE, NCRYPT_PAD_PKCS1_FLAG,
-    NCRYPT_SILENT_FLAG,
+    CertCloseStore, CertEnumCertificatesInStore, CertGetCertificateContextProperty,
+    CertOpenSystemStoreW, CryptAcquireCertificatePrivateKey, NCryptFreeObject, NCryptSignHash,
+    BCRYPT_PKCS1_PADDING_INFO, BCRYPT_SHA256_ALGORITHM, BCRYPT_SHA384_ALGORITHM,
+    BCRYPT_SHA512_ALGORITHM, CERT_CONTEXT, CERT_KEY_SPEC, CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG,
+    HCERTSTORE, HCRYPTPROV_LEGACY, HCRYPTPROV_OR_NCRYPT_KEY_HANDLE, NCRYPT_FLAGS, NCRYPT_HANDLE,
+    NCRYPT_KEY_HANDLE, NCRYPT_PAD_PKCS1_FLAG, NCRYPT_SILENT_FLAG,
 };
 
 use crate::certs::{self, DigestAlg, KeyType, Source};
@@ -27,15 +27,25 @@ use crate::error::{HostError, Result};
 
 pub const STORE_LABEL: &str = "MY";
 
+/// `CERT_KEY_PROV_INFO_PROP_ID`. Its presence is how the store says a
+/// certificate has a usable private key behind it.
+const CERT_KEY_PROV_INFO_PROP_ID: u32 = 2;
+
+/// "MY\0" as UTF-16, the store name.
+const MY: &[u16] = &[b'M' as u16, b'Y' as u16, 0];
+
 /// RAII wrapper so every early return still closes the store.
-struct Store(HANDLE);
+struct Store(HCERTSTORE);
 
 impl Store {
     fn open() -> Result<Self> {
-        // SAFETY: a null provider with a store name opens the current user's store.
-        let handle = unsafe { CertOpenSystemStoreW(HANDLE::default(), w_my()) }.map_err(|e| {
-            HostError::internal(format!("cannot open the Windows certificate store: {e}"))
-        })?;
+        // SAFETY: a default (null) legacy provider with a store name opens the
+        // current user's store.
+        let handle =
+            unsafe { CertOpenSystemStoreW(HCRYPTPROV_LEGACY::default(), PCWSTR(MY.as_ptr())) }
+                .map_err(|e| {
+                    HostError::internal(format!("cannot open the Windows certificate store: {e}"))
+                })?;
         Ok(Store(handle))
     }
 }
@@ -47,12 +57,6 @@ impl Drop for Store {
             let _ = CertCloseStore(self.0, 0);
         }
     }
-}
-
-fn w_my() -> PCWSTR {
-    // "MY\0" as UTF-16, kept alive for the duration of the call below.
-    const MY: &[u16] = &[b'M' as u16, b'Y' as u16, 0];
-    PCWSTR(MY.as_ptr())
 }
 
 /// DER bytes of a certificate context.
@@ -71,28 +75,27 @@ unsafe fn has_private_key(context: *const CERT_CONTEXT) -> bool {
     CertGetCertificateContextProperty(context, CERT_KEY_PROV_INFO_PROP_ID, None, &mut size).is_ok()
 }
 
-/// Walk the store, handing each context to `visit`. Stops early when `visit`
-/// returns `Some`.
+/// Walk the store, handing each live context to `visit`. Stops at the first
+/// `Some`, whose value is returned.
+///
+/// The context stays valid only for the duration of the callback: the next
+/// enumeration step frees it. Anything needed afterwards must be copied out,
+/// which is why `sign` does its whole job inside the callback rather than
+/// carrying a context away.
 fn for_each_certificate<T>(
     mut visit: impl FnMut(*const CERT_CONTEXT, &[u8]) -> Option<T>,
 ) -> Result<Option<T>> {
     let store = Store::open()?;
-    let mut context: *mut CERT_CONTEXT = std::ptr::null_mut();
+    let mut context: *const CERT_CONTEXT = std::ptr::null();
     loop {
         // SAFETY: passing the previous context advances the enumeration and
-        // frees it; a null return ends the walk.
-        context = unsafe { CertEnumCertificatesInStore(store.0, Some(context)) } as *mut _;
+        // frees it; a null return ends the walk and frees nothing further.
+        context = unsafe { CertEnumCertificatesInStore(store.0, Some(context)) };
         if context.is_null() {
             return Ok(None);
         }
         let der = unsafe { context_der(context) };
         if let Some(found) = visit(context, &der) {
-            // The enumeration owns the context; duplicate nothing, just stop.
-            // SAFETY: freeing the context we stopped on, which the loop would
-            // otherwise have freed on the next call.
-            unsafe {
-                let _ = CertFreeCertificateContext(Some(context));
-            }
             return Ok(Some(found));
         }
     }
@@ -118,6 +121,14 @@ fn digest_algorithm_name(alg: DigestAlg) -> PCWSTR {
     }
 }
 
+fn map_ncrypt_error(error: windows::core::Error, doing: &str) -> HostError {
+    if error.code() == NTE_USER_CANCELLED {
+        HostError::cancelled("signing was cancelled")
+    } else {
+        HostError::internal(format!("{doing} failed ({:#010x})", error.code().0))
+    }
+}
+
 /// One `NCryptSignHash` call: ask for the length, then fill the buffer.
 fn ncrypt_sign(
     key: NCRYPT_KEY_HANDLE,
@@ -138,101 +149,104 @@ fn ncrypt_sign(
     Ok(buffer)
 }
 
-fn map_ncrypt_error(error: windows::core::Error, doing: &str) -> HostError {
-    if error.code() == NTE_USER_CANCELLED {
-        HostError::cancelled("signing was cancelled")
-    } else {
-        HostError::internal(format!("{doing} failed ({:#010x})", error.code().0))
+/// A CNG key handle that frees itself when the OS said we own it.
+struct AcquiredKey {
+    handle: NCRYPT_KEY_HANDLE,
+    caller_frees: bool,
+}
+
+impl Drop for AcquiredKey {
+    fn drop(&mut self) {
+        if self.caller_frees {
+            // SAFETY: the handle came from CryptAcquireCertificatePrivateKey
+            // with pfCallerFreeProvOrNCryptKey set, so we own it.
+            unsafe {
+                let _ = NCryptFreeObject(NCRYPT_HANDLE(self.handle.0));
+            }
+        }
     }
 }
 
+/// Acquire the CNG private key behind a certificate context.
+///
+/// SAFETY: `context` must be a live CERT_CONTEXT.
+unsafe fn acquire_key(context: *const CERT_CONTEXT) -> Option<AcquiredKey> {
+    let mut handle = HCRYPTPROV_OR_NCRYPT_KEY_HANDLE::default();
+    let mut key_spec = CERT_KEY_SPEC::default();
+    let mut caller_frees = BOOL::default();
+    CryptAcquireCertificatePrivateKey(
+        context,
+        // ONLY_NCRYPT_KEY guarantees the handle is a CNG key rather than a
+        // legacy CryptoAPI provider, so the transmute below is sound.
+        CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG,
+        None,
+        &mut handle,
+        Some(&mut key_spec),
+        Some(&mut caller_frees),
+    )
+    .ok()?;
+    Some(AcquiredKey {
+        handle: NCRYPT_KEY_HANDLE(handle.0),
+        caller_frees: caller_frees.as_bool(),
+    })
+}
+
 pub fn sign(thumbprint: &str, digests: &[Vec<u8>], alg: DigestAlg) -> Result<Vec<Vec<u8>>> {
-    let der = for_each_certificate(|_context, der| {
-        (certs::thumbprint(der) == thumbprint).then(|| der.to_vec())
-    })?
-    .ok_or_else(|| {
-        HostError::cert_not_found(format!(
-            "no certificate with thumbprint {thumbprint} in the Windows store"
-        ))
-    })?;
-
-    let key_type = certs::cert_info(&der, "", "", Source::OsStore)?.key_type;
-
-    // Re-walk to get a live context for the match: the enumeration above freed
-    // the one it stopped on, and CNG needs a context to acquire the key from.
-    let mut key = NCRYPT_KEY_HANDLE::default();
-    let mut caller_frees = false;
-    let acquired = for_each_certificate(|context, candidate| {
-        if certs::thumbprint(candidate) != thumbprint {
+    // The whole job happens inside the callback: the enumeration frees each
+    // context as it moves on, so the key must be acquired and used while the
+    // matching context is still live.
+    let outcome = for_each_certificate(|context, der| {
+        if certs::thumbprint(der) != thumbprint {
             return None;
         }
-        let mut handle = NCRYPT_KEY_HANDLE::default();
-        let mut key_spec = 0u32;
-        let mut free = windows::Win32::Foundation::BOOL::default();
-        // SAFETY: context is live here; ONLY_NCRYPT_KEY guarantees the handle
-        // is an NCRYPT_KEY_HANDLE rather than a legacy CryptoAPI handle.
-        let ok = unsafe {
-            CryptAcquireCertificatePrivateKey(
-                context,
-                CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG,
-                None,
-                &mut handle.0 as *mut _ as *mut _,
-                &mut key_spec,
-                Some(&mut free),
-            )
-        }
-        .is_ok();
-        ok.then(|| (handle, free.as_bool()))
+        // SAFETY: context is live for the duration of this callback.
+        let Some(key) = (unsafe { acquire_key(context) }) else {
+            return Some(Err(HostError::cert_not_found(
+                "certificate found but its private key is not accessible",
+            )));
+        };
+        Some(sign_with_key(&key, der, digests, alg))
     })?;
 
-    match acquired {
-        Some((handle, free)) => {
-            key = handle;
-            caller_frees = free;
-        }
-        None => {
-            return Err(HostError::cert_not_found(
-                "certificate found but its private key is not accessible",
-            ))
-        }
-    }
+    outcome.unwrap_or_else(|| {
+        Err(HostError::cert_not_found(format!(
+            "no certificate with thumbprint {thumbprint} in the Windows store"
+        )))
+    })
+}
 
-    let result = (|| -> Result<Vec<Vec<u8>>> {
-        match key_type {
-            KeyType::Rsa => {
-                let padding = BCRYPT_PKCS1_PADDING_INFO {
-                    pszAlgId: digest_algorithm_name(alg),
-                };
-                let padding_ptr = &padding as *const _ as *const c_void;
-                digests
-                    .iter()
-                    .map(|digest| {
-                        ncrypt_sign(
-                            key,
-                            Some(padding_ptr),
-                            NCRYPT_PAD_PKCS1_FLAG | NCRYPT_SILENT_FLAG,
-                            digest,
-                        )
-                    })
-                    .collect()
-            }
-            // CNG returns raw r||s; convert like the PKCS#11 path.
-            KeyType::Ec => digests
+fn sign_with_key(
+    key: &AcquiredKey,
+    der: &[u8],
+    digests: &[Vec<u8>],
+    alg: DigestAlg,
+) -> Result<Vec<Vec<u8>>> {
+    let key_type = certs::cert_info(der, "", "", Source::OsStore)?.key_type;
+    match key_type {
+        KeyType::Rsa => {
+            let padding = BCRYPT_PKCS1_PADDING_INFO {
+                pszAlgId: digest_algorithm_name(alg),
+            };
+            let padding_ptr = &padding as *const _ as *const c_void;
+            digests
                 .iter()
                 .map(|digest| {
-                    let raw = ncrypt_sign(key, None, NCRYPT_SILENT_FLAG, digest)?;
-                    certs::ecdsa_raw_to_der(&raw)
+                    ncrypt_sign(
+                        key.handle,
+                        Some(padding_ptr),
+                        NCRYPT_PAD_PKCS1_FLAG | NCRYPT_SILENT_FLAG,
+                        digest,
+                    )
                 })
-                .collect(),
+                .collect()
         }
-    })();
-
-    if caller_frees {
-        // SAFETY: the handle came from CryptAcquireCertificatePrivateKey with
-        // caller_frees set, so we own it.
-        unsafe {
-            let _ = NCryptFreeObject(key.into());
-        }
+        // CNG returns raw r||s; convert like the PKCS#11 path.
+        KeyType::Ec => digests
+            .iter()
+            .map(|digest| {
+                let raw = ncrypt_sign(key.handle, None, NCRYPT_SILENT_FLAG, digest)?;
+                certs::ecdsa_raw_to_der(&raw)
+            })
+            .collect(),
     }
-    result
 }
