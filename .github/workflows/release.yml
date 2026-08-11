@@ -243,8 +243,12 @@ jobs:
           key: desktop-x86_64-apple-darwin
 
       # No `version` here: desktop/frontend/package.json pins packageManager,
-      # and action-setup refuses when both say so.
+      # and action-setup refuses when both say so. It has to be pointed at that
+      # file, though: the action reads ./package.json by default and this repo
+      # has none at its root, which failed with "No pnpm version is specified".
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: desktop/frontend/package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -324,7 +328,11 @@ jobs:
       - name: Build the sidecar host
         run: cargo build --release --manifest-path host/Cargo.toml
 
+      # Same as the macOS job: the version comes from the frontend's
+      # package.json, and the action has to be told where that is.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: desktop/frontend/package.json
 
       - uses: actions/setup-node@v4
         with:
