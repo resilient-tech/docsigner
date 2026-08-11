@@ -1,10 +1,7 @@
-"""Detached CAdES signatures over arbitrary files (CMS SignedData, .p7s).
+"""Sign any file, not just PDFs. The signature comes out as a separate .p7s.
 
-Same interrupted two-step dance as session.py, minus the PDF machinery: the
-signed attributes cover the file's digest, a token signs their hash, and the
-finished CMS ships as a detached .p7s. Profiles stop at B-T (CAdES-BES plus an
-RFC 3161 signature timestamp); the long-term CAdES archival forms are a
-different standard ladder and stay out until someone needs them.
+Same two-step dance as pdf_sign.py, without the PDF part. Stops at B-T: the
+long-term forms are a different standard and nobody has asked yet.
 """
 
 import asyncio

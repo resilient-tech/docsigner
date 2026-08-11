@@ -1,17 +1,12 @@
-"""Download and organise the trust store under trust/.
+"""Fetch the certificates we trust, straight from the CAs.
 
-Layout: one folder per country or purpose (in/, br/, us/, tsa/). Expired
-certificates land in trust/archive/<folder>/ so they stay out of the anchors
-the server loads, while remaining available for validating old documents.
+One folder per country or job (in/, br/, us/, tsa/). Expired ones go to
+archive/, out of the way but still there for checking old documents.
 
-Run from the repo root:
+    python scripts/fetch_trust_roots.py     # from the repo root
 
-    python scripts/fetch_trust_roots.py
-
-Safe to re-run: files are overwritten with fresh copies, nothing else in the
-tree is touched. Sources are the CAs' own repositories. The EU is deliberately
-absent here; its trust comes as per-country signed XML lists (EUTL, ETSI TS
-119 612), which need a parser rather than a folder of files.
+Safe to re-run. The EU is missing on purpose: its trust arrives as signed XML
+lists that need a parser, not a folder of files.
 """
 
 import base64
@@ -27,11 +22,9 @@ TRUST = Path(__file__).resolve().parents[1] / "trust"
 
 _CCA_FILES = "https://www.cca.gov.in/cca/sites/default/files/files/"
 
-# Every licensed CA operating under RCAI 2022, from CCA's own listing
-# (cca.gov.in/display_cert2022.php). These are intermediates, not anchors:
-# chains terminate at the CCA India roots. Holding them locally keeps chain
-# building off each CA's repository at signing time; a CA absent here still
-# validates through AIA fetching.
+# Every licensed Indian CA, from CCA's own list. These sit in the middle of a
+# chain, not at the top. Keeping them here saves a network trip at signing
+# time; one that is missing still works, just slower.
 _LICENSED_CAS_2022 = [
     ("SafeScrypt-CA-2022", "Sify%20Safecrypt%20CA%202022.cer"),
     ("eMudhra-CA-2022", "e-Mudhra%20CA%202022.cer"),

@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""Write the server's OpenAPI document to server/openapi.json.
+"""Write the API description to server/openapi.json.
 
-The document is committed so it can be reviewed like any other contract change
-and consumed without running the server. `server/tests/test_openapi.py` fails
-when it drifts, so a route change that would break generated clients shows up
-as a diff in the pull request rather than in someone's build.
+It is committed, so a change to the API shows up as a diff in the pull request
+instead of breaking someone's generated client later. A test fails if it drifts.
 
     python scripts/export_openapi.py
-
-Generate a client from it in whatever language you use, for example:
-
     npx openapi-typescript server/openapi.json -o signer.d.ts
-    openapi-generator generate -i server/openapi.json -g go -o ./signer
 """
 
 import json
@@ -23,11 +17,7 @@ SPEC_PATH = REPO / "server" / "openapi.json"
 
 
 def build() -> dict:
-    """The spec, built without importing anything that needs configuration.
-
-    signer_server.app reads the environment at import time; the defaults are
-    enough to describe the routes, and nothing here starts a server.
-    """
+    """Build the description. Starts no server, needs no configuration."""
     sys.path.insert(0, str(REPO / "server"))
     from signer_server.app import app
 
@@ -35,8 +25,7 @@ def build() -> dict:
 
 
 def render(spec: dict) -> str:
-    # sort_keys so the file is a stable diff rather than a reshuffle whenever
-    # FastAPI changes dictionary ordering.
+    # Sorted, so the diff shows real changes and not a reshuffle.
     return json.dumps(spec, indent=2, sort_keys=True) + "\n"
 
 

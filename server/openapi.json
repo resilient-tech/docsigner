@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AuditRecord": {
-        "description": "Machine-readable completion record, for an audit trail.",
+        "description": "What got signed, by whom, when. For the caller's audit trail.",
         "properties": {
           "certificate_issuer": {
             "title": "Certificate Issuer",
@@ -216,7 +216,7 @@
         "type": "object"
       },
       "PdfaClaim": {
-        "description": "What the input claimed about PDF/A conformance, when it claimed anything.",
+        "description": "What the file claimed about being PDF/A, if it claimed anything.",
         "properties": {
           "conformance": {
             "anyOf": [
@@ -398,7 +398,7 @@
       },
       "SigningOptions": {
         "additionalProperties": true,
-        "description": "The `options` object. Known fields are documented; the rest pass through.\n\n`extra=\"allow\"` on purpose: options grow with the standards (policies, PDF/A\nhandling, appearance) and a client that sends a newer field to an older\nserver should get \"unsupported profile\", not \"malformed request\".",
+        "description": "Signing options. Unknown fields pass straight through, on purpose.\n\nA newer client talking to an older server should hear \"I don't support that\nprofile\", not \"your request is malformed\".",
         "properties": {
           "appearance": {
             "anyOf": [
@@ -1184,7 +1184,7 @@
     },
     "/api/signatures/batch": {
       "post": {
-        "description": "N documents, one certificate, one options object: the server half of\nbulk signing. The client signs all returned hashes in one signHash call\n(one PIN prompt), then posts them to batch-complete.",
+        "description": "Many documents, one certificate. Caller signs every hash in one go, so\nthe user sees one PIN prompt for the whole pile.",
         "operationId": "start_batch_api_signatures_batch_post",
         "requestBody": {
           "content": {

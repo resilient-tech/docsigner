@@ -1,10 +1,9 @@
-"""Run the DocSigner desktop app.
+"""Start the app.
 
-    python -m docsigner_desktop            native window over the local server
-    python -m docsigner_desktop --server   headless server on :8000 (UI dev)
+    python -m docsigner_desktop            the real window
+    python -m docsigner_desktop --server   no window, for UI work
 
-Window mode serves the built frontend from frontend/dist (run `pnpm build`
-first). For UI work, run --server here and `pnpm dev` in ../frontend against it.
+Window mode serves the built UI, so run `pnpm build` first.
 """
 
 import socket
@@ -43,8 +42,7 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
 
 
 def main() -> None:
-    # No --host-cli re-exec here any more: the signing host is its own binary
-    # (host-rs), carried as a sidecar in packaged builds and found by host.py.
+    # The signing host is its own binary now, shipped beside us. host.py finds it.
     if "--server" in sys.argv:
         _serve(DEV_PORT)
         return

@@ -1,5 +1,4 @@
-"""`python -m signer_server` runs the reference server. Port defaults to 8001;
-override with the PORT env var (or a PORT line in .env)."""
+"""Run the server. Port 8001 unless PORT says otherwise."""
 
 import os
 
@@ -9,10 +8,8 @@ from .app import app
 
 
 def main() -> None:
-    # timeout_keep_alive: uvicorn's 5s default closes the browser's pooled
-    # connection while the user is at the token PIN prompt; Chrome then fails
-    # the complete POST on the dead socket instead of retrying. 300s covers
-    # any realistic PIN entry.
+    # Long keep-alive because the user is standing at a PIN prompt. The 5s
+    # default drops the connection under them and the next POST dies on it.
     uvicorn.run(
         app,
         host="127.0.0.1",

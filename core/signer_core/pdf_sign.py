@@ -1,12 +1,8 @@
-"""Interrupted PDF signing sessions.
+"""Sign a PDF in two steps, because the token will not hand over its key.
 
-start() prepares the PDF, builds the CMS signed attributes, and returns the
-digest a token must sign. complete() takes the raw signature bytes and embeds
-the finished CMS. The state in between is a plain dataclass that survives a
-trip to disk, so the two calls can happen in different processes.
-
-The pyHanko call sequence mirrors spike/spike_interrupted_signing.py, with
-use_pades=True for production PAdES output. Shared CMS bricks live in cms.py.
+start() gets the PDF ready and hands out one hash. complete() takes the signed
+hash back and glues it in. The state in between survives a trip to disk, so the
+two halves can run in different processes.
 """
 
 import asyncio
@@ -57,15 +53,15 @@ class SessionState:
     cert_der: bytes
     digest_algorithm: str
     profile: str
-    # TSA chosen at start; complete() must timestamp with the same authority.
+    # Both halves must use the same clock.
     tsa_url: str = ""
-    # Kept for the audit record in the complete response; default keeps
-    # sessions serialized before this field loadable.
+    # For the audit record.
     field_name: str = ""
-    # CCA profiles only: base64 DER of the signer's chain, gathered at start().
-    # The CMS carries just the signer, so complete() needs these to build a
-    # complete DSS mirror. Default keeps older serialized sessions loadable.
+    # India only: the signer's chain, gathered at start(). The signature itself
+    # carries only the signer, so complete() needs these to build the chain.
     chain_certs: list = dataclasses.field(default_factory=list)
+
+    # The defaults above also keep older saved sessions loadable.
 
     def to_bytes(self) -> bytes:
         return encode_state(self, _BYTES_FIELDS, kind="pdf")
@@ -89,14 +85,9 @@ class SigningSession:
         strict_ltv: bool = True,
         policy_dir=None,
     ) -> tuple[SessionState, bytes, str]:
-        """Prepare a PDF for signing.
+        """Get the PDF ready. Hand back the state, the hash to sign, and how it was hashed.
 
-        Returns (session_state, to_sign_hash, digest_algorithm). The hash is
-        the digest of the CMS signed attributes, ready for a raw PKCS#1 v1.5
-        or ECDSA signature. ``strict_ltv`` keeps every gathered CRL so the
-        revocation embedded for CCA profiles verifies offline; see ltv.py.
-        ``policy_dir`` holds the artifacts for ``options.policy``; see
-        policies.py.
+        The hash is small and ready for the token to sign as-is.
         """
         return asyncio.run(
             _start(pdf_bytes, cert_der, options or {}, timestamper,
@@ -112,12 +103,9 @@ class SigningSession:
         validation_context=None,
         strict_ltv: bool = True,
     ) -> bytes:
-        """Embed the signature produced by the token; returns the signed PDF.
+        """Glue the token's signature in. Returns the signed PDF.
 
-        B-LT and B-LTA sessions also need a validation context here: after
-        the signature lands, revocation data is written to the DSS and (for
-        B-LTA) an archive timestamp is appended. See ltv.py. ``strict_ltv``
-        controls whether CRLs the chain needs are kept in the DSS.
+        Long-term profiles also add revocation proof and a timestamp here.
         """
         return asyncio.run(
             _complete(state, signature, timestamper, validation_context, strict_ltv)
@@ -128,20 +116,18 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
                  strict_ltv=True, policy_dir=None):
     profile = Profile.parse(options.get("profile"))
     check_requirements(profile, timestamper, validation_context)
-    # Resolved before any PDF work: an unknown policy name or a missing
-    # artifact should fail on the request, not after the document is written.
+    # Before touching the PDF: a bad policy name should fail the request, not
+    # the half-written document.
     policy = resolve_policy(options.get("policy"), policy_dir)
-    # B-LT/B-LTA prepare and embed as B-T: PAdES wants the signature timestamp
-    # in place before LTV data, and the DSS write plus archive timestamp are
-    # key-free incremental updates that complete() adds afterwards (ltv.py).
+    # Long-term profiles start life as B-T. The timestamp has to land before the
+    # revocation proof, which complete() adds afterwards.
     prepare_profile = Profile.B_T if profile.needs_revocation_info else profile
 
     md_algorithm = parse_digest_algorithm(options)
     signer_cert = parse_cert(cert_der)
     try:
-        # strict=False: real-world PDFs (govt/portal/scanner output) often carry
-        # minor xref-stream quirks that strict mode rejects; lenient parsing signs
-        # them. Tradeoff: pyHanko's strict xref-ambiguity checks are skipped.
+        # Lenient on purpose. Government and scanner PDFs are full of small
+        # structural quirks, and strict mode refuses to sign them.
         writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes), strict=False)
     except Exception:
         raise SignerError("DOCUMENT_INVALID", "document is not a readable PDF") from None
@@ -152,11 +138,9 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
         reason=options.get("reason"), signer_name=cert_common_name(signer_cert),
     )
 
-    # CCA profiles (ESAIG 1.19): revocation for the signer chain, and the TSA
-    # chain when timestamping, is a *signed* attribute, so it must be gathered
-    # before the token signs. It also has to fit inside the signature
-    # placeholder, so it is collected before the placeholder is sized: Indian
-    # CA CRLs run to megabytes, far past pyHanko's default estimate.
+    # India signs the revocation proof too, so it has to be gathered before the
+    # token signs, and it has to fit in the hole we leave. Size the hole after
+    # gathering: Indian CA revocation lists run to megabytes.
     attr_settings = None
     bytes_reserved = None
     chain_certs_b64 = []
@@ -171,14 +155,12 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
         attr_settings = PdfCMSSignedAttributes(
             signing_time=datetime.now(timezone.utc), adobe_revinfo_attr=revinfo
         )
-        # /Contents is hex-encoded (2 chars per byte); 32 KB of headroom covers
-        # the CMS body, the signer certificate, and a CCA-LTA timestamp token.
+        # Doubled because the PDF stores this as hex, 2 chars per byte. The
+        # 32 KB spare covers the signature, the certificate and a timestamp.
         bytes_reserved = (len(revinfo.dump()) + 32_768) * 2
 
     if policy is not None:
-        # The policy rides on the CAdES attribute spec, which PAdES and the CCA
-        # profiles both carry. Non-CCA profiles have no attr_settings until
-        # here, so signing_time is set to match what pyHanko would have done.
+        # Set the time ourselves here, to match what pyHanko would have set.
         base = attr_settings or PdfCMSSignedAttributes(
             signing_time=datetime.now(timezone.utc)
         )
@@ -238,15 +220,10 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
 
 
 async def _gather_cca_revinfo(signer_cert, validation_context, timestamper, strict_ltv):
-    """Collect chain revocation data into a RevocationInfoArchival value.
+    """Ask the CA whether the chain is still good, and keep the answers.
 
-    Validating the signer (and, for CCA-LTA, the TSA) against a fetching
-    context leaves the gathered OCSP responses and CRLs on the context; those
-    become the pdfRevocationInfoArchival signed attribute per CCA ESAIG 1.19.
-
-    ``strict_ltv`` keeps every gathered CRL so the attribute verifies offline
-    (Adobe LTV). Off, ESAIG 1.19.3's OCSP preference wins and CRLs are dropped
-    once OCSP covers the chain, keeping the signed attribute small.
+    Validating the chain leaves those answers behind, and they become the bit
+    India wants signed. strict_ltv keeps every list so it also verifies offline.
     """
     paths = []
     try:
@@ -276,11 +253,8 @@ async def _gather_cca_revinfo(signer_cert, validation_context, timestamper, stri
 
 
 def _chain_certs(paths):
-    """Every certificate across the validated paths, deduplicated by DER.
-
-    complete() embeds these in the CCA DSS mirror so a reader can build the
-    chain: the CMS holds only the signer and the OCSP bundles skip the sub-CA.
-    """
+    """Every certificate in the chain, no duplicates. A reader needs these to
+    walk from the signer up to the root."""
     seen, chain = set(), []
     for path in paths:
         for cert in path:
@@ -298,8 +272,7 @@ async def _complete(state, signature, timestamper, validation_context, strict_lt
     signer_cert = parse_cert(state.cert_der)
     verify_signature(signer_cert, signature, state.signed_attrs_der, state.digest_algorithm)
 
-    # Feed back the exact signed attributes from start(), so the bytes the
-    # token signed are the bytes that land in the CMS.
+    # The exact bytes from start(), so what the token signed is what lands.
     signed_attrs = cms.CMSAttributes.load(state.signed_attrs_der)
     final_signer = ExternalSigner(
         signing_cert=signer_cert,
@@ -331,12 +304,9 @@ async def _complete(state, signature, timestamper, validation_context, strict_lt
             strict_ltv=strict_ltv,
         )
     elif profile.is_cca:
-        # The signed pdfRevocationInfoArchival attribute satisfies CCA ESAIG,
-        # but Adobe's "LTV enabled" badge reads the document security store.
-        # Mirror that same revocation into a DSS (reusing what start() already
-        # gathered, no re-fetch) so the file reads as LTV everywhere while
-        # staying CCA-compliant. The chain from start() rides along so the DSS
-        # can build the path the CMS alone cannot.
+        # India's way satisfies India, but Adobe looks somewhere else for its
+        # "LTV enabled" badge. Copy the same proof there too, reusing what
+        # start() gathered. No refetch.
         extra_certs = [
             asn1_x509.Certificate.load(base64.b64decode(c)) for c in state.chain_certs
         ]

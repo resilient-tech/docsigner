@@ -1,14 +1,8 @@
-"""Reach the DSC token through the DocSigner host, run as a fresh subprocess
-per call (the same model the browser extension uses).
+"""Talk to the token, through the host binary, one fresh process per call.
 
-Running the host fresh each time sidesteps the per-process slot state some token
-drivers cache, which otherwise wedges a long-lived scan. The host's CLI already
-merges PKCS#11 tokens with the OS keychain and handles the PIN dialog, so this
-is a thin wrapper over its `list` and `sign` commands.
-
-The host is `host-rs`, a self-contained Rust binary of about 1 MB. It ships
-beside the app in a packaged build and is found in the cargo target directory
-when running from source.
+Fresh each time on purpose: some token drivers cache state per process and a
+long-lived one eventually wedges. The host already does the hard parts (finding
+the token, the PIN dialog), so this is a thin wrapper over `list` and `sign`.
 """
 
 import base64
@@ -32,31 +26,25 @@ class TokenError(Exception):
 
 
 class HostNotFound(TokenError):
-    """The host binary is missing, which is a setup problem, not a token one."""
+    """No host binary. That is a setup problem, not a token problem."""
 
 
 def _candidates() -> list[Path]:
     """Where to look for the host binary, most specific first."""
     here = Path(__file__).resolve()
     if getattr(sys, "frozen", False):
-        # PyInstaller unpacks bundled binaries into _MEIPASS; the onedir build
-        # also leaves them beside the executable.
+        # Where a packaged build puts it: unpacked, or next to the executable.
         roots = [Path(getattr(sys, "_MEIPASS", "")), Path(sys.executable).parent]
         return [root / BINARY_NAME for root in roots if str(root)]
 
-    # From source: host-rs/target/{release,debug}/ relative to the repo root,
-    # which is three parents up from desktop/backend/docsigner_desktop/.
+    # Running from source: wherever cargo built it.
     repo = here.parents[3]
     target = repo / "host-rs" / "target"
     return [target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME]
 
 
 def host_binary() -> str:
-    """Absolute path to the host binary. Raises HostNotFound if there is none.
-
-    DOCSIGNER_HOST_BIN overrides the search, which is how a build under test
-    is pointed at a specific binary.
-    """
+    """Where the host binary is. DOCSIGNER_HOST_BIN wins over the search."""
     override = os.environ.get(ENV_HOST_BIN)
     if override:
         return override
@@ -94,11 +82,10 @@ def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
 
 
 def scan() -> dict:
-    """Everything `listCertificates` reports: certificates, readers, diagnostics.
+    """Everything the host can see. Empty dict if the host cannot be reached.
 
-    An empty dict when the host cannot be reached at all. The `readers` half is
-    what makes "token plugged in, driver missing" tellable from "nothing
-    plugged in", which are the same empty certificate list to the user.
+    `readers` is what separates "token in, driver missing" from "nothing
+    plugged in". To the user both look like an empty list.
     """
     try:
         return _run(["list"], timeout=30)
@@ -107,16 +94,16 @@ def scan() -> dict:
 
 
 def list_certificates() -> list[dict]:
-    """Token + keychain certificates, or [] if the host or a token is absent."""
+    """Just the certificates. Empty if there is no host or no token."""
     return scan().get("certificates", [])
 
 
 def sign_hashes(thumbprint: str, digests: list[bytes], algorithm: str = "sha256",
                 pin: str | None = None) -> list[bytes]:
-    """Sign every digest in one login (one PIN for the batch). Raises TokenError.
+    """Sign every hash on one login, so the user types the PIN once.
 
-    A PIN passed here is handed to the host through the environment, so it never
-    touches a file or the network; without one the host shows its own dialog.
+    A PIN given here reaches the host through the environment. It never touches
+    a file or the network. Leave it out and the host asks for it itself.
     """
     args = ["sign", "--thumbprint", thumbprint, "--alg", algorithm]
     for d in digests:

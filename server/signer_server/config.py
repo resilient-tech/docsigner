@@ -1,4 +1,4 @@
-"""Environment-driven configuration. Plain os.environ, no config framework."""
+"""Settings, straight from environment variables. No config framework."""
 
 import os
 import tempfile
@@ -7,11 +7,10 @@ from pathlib import Path
 
 
 def load_dotenv(path: str = ".env") -> None:
-    """Populate os.environ from a KEY=VALUE .env file if one exists.
+    """Read a .env file, if there is one.
 
-    Real environment variables always win (setdefault), so exported vars and
-    test setups are never overridden. Only enough syntax to read .env.example:
-    blank lines and #-comments are skipped, surrounding quotes are stripped.
+    A real environment variable always wins. Handles blank lines, # comments
+    and quotes, and nothing fancier.
     """
     try:
         lines = Path(path).read_text().splitlines()
@@ -28,10 +27,7 @@ def load_dotenv(path: str = ".env") -> None:
 
 
 def _split_pair(value: str | None) -> tuple[str, str] | None:
-    """Read TSA_AUTH="user:password" into the tuple requests wants.
-
-    Only the first colon splits, so passwords may contain colons.
-    """
+    """Split "user:password". First colon only, so passwords may contain colons."""
     if not value:
         return None
     user, sep, password = value.partition(":")
@@ -75,8 +71,8 @@ class Config:
             trust_dir=os.environ.get("TRUST_DIR"),
             policy_dir=os.environ.get("POLICY_DIR"),
             max_pdf_mb=int(os.environ.get("MAX_PDF_MB", "50")),
-            # Keep the CRLs a chain needs so B-LT/B-LTA/CCA read as LTV enabled
-            # (larger files). Set STRICT_LTV=false for OCSP-first sizing instead.
+            # Keep every proof, so Adobe shows the LTV badge. Bigger files.
+            # STRICT_LTV=false trades the badge for size.
             strict_ltv=os.environ.get("STRICT_LTV", "true").strip().lower()
             not in ("false", "0", "no", "off"),
         )

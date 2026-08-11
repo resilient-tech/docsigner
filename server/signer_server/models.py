@@ -1,17 +1,8 @@
-"""Request and response shapes for CONTRACTS.md section 1.
+"""Every request and reply shape. Typed so a generated client is worth using.
 
-These exist so the generated OpenAPI document is worth something. Before them
-the spec described eleven endpoints with two schemas between them and every
-body typed `object`, so a client generated from it was barely better than raw
-HTTP. That is the whole argument against hand-writing an SDK per language:
-describe the contract once, let each language generate its own.
-
-Validation stays deliberately shallow. The codes in CONTRACTS.md
-(`DOCUMENT_INVALID`, `CERT_INVALID`, `SIGNATURE_INVALID`) distinguish which
-part of a request was wrong, and the checks that produce them live in `app.py`
-and `signer-core`. Pydantic here only pins the field names and types; anything
-it does reject is mapped back to the right code by the request-validation
-handler.
+Checking here is deliberately shallow: field names and types only. Whether the
+bytes are really a certificate is decided in app.py and core, where the right
+error code is known.
 """
 
 from typing import Any, Literal
@@ -22,11 +13,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SigningOptions(BaseModel):
-    """The `options` object. Known fields are documented; the rest pass through.
+    """Signing options. Unknown fields pass straight through, on purpose.
 
-    `extra="allow"` on purpose: options grow with the standards (policies, PDF/A
-    handling, appearance) and a client that sends a newer field to an older
-    server should get "unsupported profile", not "malformed request".
+    A newer client talking to an older server should hear "I don't support that
+    profile", not "your request is malformed".
     """
 
     model_config = ConfigDict(extra="allow")
@@ -100,7 +90,7 @@ class ValidateRequest(BaseModel):
 
 
 class PdfaClaim(BaseModel):
-    """What the input claimed about PDF/A conformance, when it claimed anything."""
+    """What the file claimed about being PDF/A, if it claimed anything."""
 
     part: int | None = None
     conformance: str | None = None
@@ -121,7 +111,7 @@ class SessionStarted(BaseModel):
 
 
 class AuditRecord(BaseModel):
-    """Machine-readable completion record, for an audit trail."""
+    """What got signed, by whom, when. For the caller's audit trail."""
 
     signer: str
     certificate_serial: str

@@ -1,14 +1,11 @@
-"""Bulk signing.
+"""Sign the whole batch.
 
-Two paths, one shape:
-- token: interrupted signing (signer-core) per file to collect the hashes,
-  then ONE PKCS#11 login signs them all (one PIN for the batch, via the host),
-  then each signature is embedded and written.
-- server key: a one-shot PKCS#12 sign per file.
+Two paths, same shape:
+- token: get a hash from every file, sign them all on one login, glue them back.
+  That is what makes one PIN cover the folder.
+- server key: sign each file outright.
 
-Both convert the fractional placement to a PDF-points box per file, map the
-appearance profile onto signer-core's appearance dict, and thread the
-timestamp/trust context for B-T and up. Output is <name><suffix>.pdf.
+Both turn the placement into a box for that page and write <name><suffix>.pdf.
 """
 
 import base64
@@ -52,11 +49,10 @@ def _appearance(profile: AppearanceProfile, box: list[float], page: int,
 
 
 def _resolve_page(page: int, pages: int) -> int:
-    """Clamp a placement page to a file's range; a negative page means last.
+    """Keep the page number inside this file. Negative means last page.
 
-    One placement covers a whole batch, but a page index only makes sense per
-    file: a box placed on page 5 of a 6-page doc must fall back to the last page
-    of a 1-page doc, not fail to place.
+    One placement covers the batch, but page 5 of a 6-page file has to land
+    somewhere sensible in a 1-page file rather than fail.
     """
     return page if page < 0 else min(page, pages - 1)
 
@@ -76,8 +72,7 @@ def _output_path(path: str, suffix: str) -> Path:
 
 
 def _skip_reason(path: str, suffix: str) -> str | None:
-    """Never clobber: skip a file that is already a signed output, or whose
-    signed copy already exists. The caller reports this per file."""
+    """Never overwrite. Skip anything already signed, or already has a signed copy."""
     p = Path(path)
     if suffix and p.stem.endswith(suffix):
         return "already a signed file"
@@ -131,7 +126,7 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
     hashes: list[bytes] = []
     algorithm = "sha256"
 
-    # 1. Prepare every file (no token yet): collect one hash each.
+    # 1. Get a hash out of every file. Token not needed yet.
     for path in req.files:
         reason = _skip_reason(path, req.suffix)
         if reason:
@@ -151,9 +146,8 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
             log.exception("prepare failed: %s (standard=%s)", path, req.standard)
             results[path] = {"path": path, "ok": False, "error": _err(exc)}
 
-    # 2. One PIN: sign every hash in a single PKCS#11 session, via a fresh
-    #    host subprocess (see host.py). Import lazily: the p12 path never
-    #    touches the host.
+    # 2. One PIN, every hash signed in one go. Imported late so the server-key
+    #    path never loads the token code.
     if hashes:
         try:
             from . import host
@@ -161,15 +155,14 @@ def _sign_token(req: SignRequest, identity: dict, ts, vc) -> list[dict]:
             signatures = host.sign_hashes(identity["thumbprint"], hashes, algorithm, req.pin)
         except Exception as exc:  # noqa: BLE001 - batch sign failed for all prepared files
             log.exception("token sign failed (standard=%s)", req.standard)
-            # The cached identity may name a token that has since been
-            # unplugged; drop it so the next look re-reads the device.
+            # We may be holding a token that has since been unplugged. Forget it.
             certs.invalidate_token_cache()
             for path, _state in prepared:
                 results[path] = {"path": path, "ok": False, "error": _err(exc)}
             prepared = []
             signatures = []
 
-        # 3. Embed each signature and write the output.
+        # 3. Glue each signature in and write the file out.
         for (path, state), sig in zip(prepared, signatures):
             try:
                 signed = SigningSession.complete(state, sig, timestamper=ts, validation_context=vc)

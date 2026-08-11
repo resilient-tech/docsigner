@@ -1,5 +1,4 @@
-"""The endpoints from CONTRACTS.md section 1. Thin on purpose: all
-signing logic lives in signer-core; this module only speaks HTTP."""
+"""The routes. Thin on purpose: this file only speaks HTTP, core does the work."""
 
 import base64
 import hashlib
@@ -76,10 +75,8 @@ async def signer_error_handler(request: Request, exc: SignerError):
     )
 
 
-# Which part of a request Pydantic rejected decides the code, so typing the
-# bodies did not flatten three distinct outcomes into one. A missing
-# `certificate` still reads CERT_INVALID, as it did when app.py parsed the
-# body by hand.
+# Which field was wrong picks the error code, so a bad certificate and a bad
+# signature stay two different answers instead of one vague one.
 _FIELD_ERROR_CODES = {
     "certificate": "CERT_INVALID",
     "signature": "SIGNATURE_INVALID",
@@ -105,9 +102,8 @@ async def request_validation_handler(request: Request, exc: RequestValidationErr
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request: Request, exc: Exception):
-    # This handler runs in Starlette's outermost error middleware, outside
-    # CORSMiddleware, so the header must be set by hand: without it browsers
-    # report a 500 as a network failure instead of showing the error.
+    # This runs outside the CORS layer, so set the header by hand. Without it
+    # the browser calls a 500 a network failure and the user sees nothing useful.
     return JSONResponse(
         status_code=500,
         content={"error": {"code": "INTERNAL", "message": "internal server error"}},
@@ -116,7 +112,7 @@ async def unhandled_error_handler(request: Request, exc: Exception):
 
 
 def _iso_z(dt: datetime) -> str:
-    """RFC 3339 with a literal Z. datetime.isoformat() emits +00:00 instead."""
+    """Timestamp ending in Z. The built-in writes +00:00, which we do not want."""
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -125,12 +121,7 @@ def _expires_at() -> str:
 
 
 def _b64_bytes(value, field: str, error_code: str) -> bytes:
-    """Decode a base64 field, reporting the contract's code for that field.
-
-    Content, not presence: the models pin that these arrive as strings, but
-    "is it actually base64" and "is it actually a certificate" stay here, where
-    the right error code is known.
-    """
+    """Decode a base64 field, blaming the right field if it is junk."""
     if not isinstance(value, str) or not value:
         raise SignerError(error_code, f"'{field}' must be a base64 string")
     try:
@@ -149,19 +140,14 @@ def _document_bytes(value) -> bytes:
 
 
 def _options_dict(options) -> dict:
-    """A SigningOptions model as the plain dict signer-core expects.
-
-    exclude_none so an unset field stays absent rather than becoming an
-    explicit null, which is what the hand-parsed body used to produce.
-    """
+    """Options model to the plain dict core wants. Unset fields stay absent."""
     return options.model_dump(exclude_none=True) if options else {}
 
 
 def _signing_validation_context():
     if config.trust_dir:
-        # "require" so B-LT/B-LTA embed revocation for the whole chain; a partial
-        # DSS reads as "not LTV enabled" in Adobe. Only affects LTV completion,
-        # which is the sole caller that gathers revocation.
+        # "require" so the whole chain gets covered. A gap means Adobe will not
+        # show the LTV badge.
         return build_validation_context(
             config.trust_dir, allow_fetching=True, revocation_mode="require"
         )
@@ -174,11 +160,10 @@ def _stored_document_response(signed_pdf: bytes) -> dict:
 
 
 def _timestamper(tsa_url: str | None):
-    """Build the timestamper, sending TSA credentials to the configured TSA only.
+    """The clock for this call.
 
-    A request may name any TSA in the registry. Those are public and anonymous,
-    and TSA_AUTH/TSA_BEARER belong to one paid account, so the credentials go
-    out only when the resolved URL is the one they were issued for.
+    Credentials go out only to the clock they were issued for. A request may
+    name any public clock, and those must never see the paid account's login.
     """
     own = bool(tsa_url) and tsa_url == config.tsa_url
     return make_timestamper(
@@ -189,12 +174,12 @@ def _timestamper(tsa_url: str | None):
 
 
 def _request_timestamper(options: dict):
-    """The TSA for this request: options.tsa (a registry name) or the default."""
+    """The clock the caller named, or the configured one."""
     return _timestamper(resolve_tsa_url(options.get("tsa"), config.tsa_url))
 
 
 def _pdfa_fields(pdf_bytes: bytes, options: dict) -> dict:
-    """Additive response fields describing the document's PDF/A claim."""
+    """Extra reply fields when the file claims to be PDF/A."""
     pdfa = detect_pdfa(pdf_bytes)
     if not pdfa:
         return {}
@@ -250,7 +235,7 @@ def _load_session(session_id: str) -> bytes:
 
 
 def _audit_record(state: SessionState, signed_pdf: bytes) -> dict:
-    """Machine-readable completion record (CONTRACTS.md section 1)."""
+    """What got signed, by whom, when. For the caller's audit trail."""
     cert = pyca_x509.load_der_x509_certificate(state.cert_der)
     return {
         "signer": cert.subject.rfc4514_string(),
@@ -270,7 +255,7 @@ def _complete_one(session_id: str, signature: bytes) -> dict:
     except SignerError:
         raise
     except Exception:
-        # A CAdES session id, or a corrupt blob: not a PDF signing session.
+        # Wrong kind of session, or a corrupt blob. Either way, not ours.
         raise SignerError("SESSION_NOT_FOUND", "no such session") from None
 
     signed_pdf = SigningSession.complete(
@@ -280,7 +265,7 @@ def _complete_one(session_id: str, signature: bytes) -> dict:
         validation_context=_signing_validation_context(),
         strict_ltv=config.strict_ltv,
     )
-    # Single-use: consumed on success; a failed attempt may be retried.
+    # One use only. A failed try can be retried; a good one is spent.
     sessions.delete(session_id)
     return {**_stored_document_response(signed_pdf), "audit": _audit_record(state, signed_pdf)}
 
@@ -315,15 +300,13 @@ def _batch_list(items: list, field: str) -> list:
     tags=["PDF"],
 )
 def start_batch(payload: StartBatchRequest = Body(...)):
-    """N documents, one certificate, one options object: the server half of
-    bulk signing. The client signs all returned hashes in one signHash call
-    (one PIN prompt), then posts them to batch-complete."""
+    """Many documents, one certificate. Caller signs every hash in one go, so
+    the user sees one PIN prompt for the whole pile."""
     documents = _batch_list(payload.documents, "documents")
     cert_der = _b64_bytes(payload.certificate, "certificate", "CERT_INVALID")
     options = _options_dict(payload.options)
     timestamper = _request_timestamper(options)
-    # One shared context: revocation data fetched for the first document is
-    # reused for the rest of the batch instead of re-hitting the CA N times.
+    # Shared, so we ask the CA once for the batch instead of once per document.
     validation_context = _signing_validation_context()
 
     entries = []
@@ -369,7 +352,7 @@ def complete_batch(payload: BatchCompleteRequest = Body(...)):
             signature = _b64_bytes(item.signature, "signature", "SIGNATURE_INVALID")
             results.append(_complete_one(item.session_id, signature))
         except SignerError as exc:
-            # Fail fast; earlier completions stay stored (see CONTRACTS.md).
+            # Stop here. Whatever already finished stays finished.
             raise SignerError(exc.code, f"item {index}: {exc.message}") from None
     return {"documents": results}
 
@@ -384,8 +367,7 @@ def _sniff_media_type(data: bytes) -> str:
 
 @app.get(
     "/api/documents/{document_id}",
-    # response_class so FastAPI does not also advertise an application/json
-    # 200: this route returns the document's bytes, whatever they are.
+    # Set so the spec does not also claim this returns JSON. It returns a file.
     response_class=Response,
     responses={
         200: {
@@ -409,7 +391,7 @@ def get_document(document_id: str):
     except Expired:
         raise SignerError("SESSION_EXPIRED", "document has expired") from None
     except Missing:
-        # The contract defines no document-specific code; this is the closest fit.
+        # No document-specific code exists. This is the nearest one.
         raise SignerError("SESSION_NOT_FOUND", "no such document") from None
     return Response(content=data, media_type=_sniff_media_type(data))
 
@@ -454,7 +436,7 @@ def validate_document(payload: ValidateRequest = Body(...)):
     }
 
 
-# ---- CAdES: detached .p7s over any file (CONTRACTS.md section 1, CAdES) ----
+# ---- CAdES: sign any file, signature comes out separate as a .p7s ----
 
 
 @app.post(
@@ -532,7 +514,7 @@ def cades_server_side(payload: SignServerSideRequest = Body(...)):
     return _stored_document_response(p7s)
 
 
-# ---- XAdES: enveloped XML signature, server-held key only ----
+# ---- XAdES: sign XML, signature goes inside it. Server key only ----
 
 
 @app.post(

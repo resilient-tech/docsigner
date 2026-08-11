@@ -1,9 +1,8 @@
-"""Enveloped XAdES-B signatures for XML documents, server-held key only.
+"""Sign XML. Server key only.
 
-signxml drives the XML-DSig and XAdES assembly and needs the private key in
-process, so this path rides the server P12. Token-based XAdES would mean
-rebuilding XML-DSig around a detached digest; it stays out until someone
-actually needs it, and callers get a clear error instead.
+The library we use wants the key in hand, so a token cannot drive this. Doing
+it with a token means rebuilding XML signing around a hash, and nobody has
+asked yet. Callers get a clear error.
 """
 
 from pathlib import Path

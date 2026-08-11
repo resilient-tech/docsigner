@@ -1,8 +1,4 @@
-"""signer-core: PDF digital signing on top of pyHanko.
-
-Interrupted signing sessions for hardware tokens, one-shot server-side
-signing, PAdES baseline profiles, and signature validation.
-"""
+"""Turn a PDF into a signed PDF. Sign with a USB token or with a key on disk."""
 
 from .errors import SignerError
 from .oneshot import sign_with_p12

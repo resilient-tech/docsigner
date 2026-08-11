@@ -1,4 +1,4 @@
-// Consent popup: show the asking origin, report Allow or Deny to the background.
+// The permission popup. Shows who is asking, reports back yes or no.
 
 const api = globalThis.browser ?? globalThis.chrome;
 const origin = new URLSearchParams(location.search).get("origin") || "";

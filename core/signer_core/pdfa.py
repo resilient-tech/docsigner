@@ -1,9 +1,7 @@
-"""PDF/A detection.
+"""Spot a PDF/A file, so we can warn instead of quietly breaking it.
 
-Signing a PDF/A file with an invisible signature preserves conformance (an
-incremental update touches nothing the standard constrains). A visible stamp
-does not: pyHanko's text stamps use an unembedded standard font, which PDF/A
-forbids. Detection lets the API say so instead of silently downgrading a file.
+An invisible signature is safe on one. A visible stamp is not: the stamp font
+is not embedded, and PDF/A forbids that.
 """
 
 import io
@@ -16,7 +14,7 @@ _CONFORMANCE = re.compile(rb"pdfaid:conformance(?:>\s*|=\s*[\"'])([A-Ua-u])")
 
 
 def parse_xmp_pdfa(xmp: bytes):
-    """PDF/A identification from raw XMP, element or attribute form; None if absent."""
+    """Dig the PDF/A claim out of raw metadata. None if there is none."""
     part = _PART.search(xmp)
     if not part:
         return None
@@ -28,7 +26,7 @@ def parse_xmp_pdfa(xmp: bytes):
 
 
 def detect_pdfa(pdf_bytes: bytes):
-    """PDF/A claim of a document per its XMP metadata; None when not PDF/A."""
+    """What flavour of PDF/A this file claims to be. None if it is not one."""
     try:
         reader = PdfFileReader(io.BytesIO(pdf_bytes), strict=False)
         metadata = reader.root["/Metadata"].data

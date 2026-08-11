@@ -1,6 +1,7 @@
-"""Signing identities: DSC tokens (via the DocSigner host, PKCS#11) and
-server-held PKCS#12 keys. A self-signed test key is created on first run so
-the app works without a token; plug a token in and its certificates appear.
+"""Who can sign: USB tokens, and keys sitting on disk.
+
+A throwaway test key is made on first run, so the app works with no token.
+Plug a token in and its certificates show up alongside.
 """
 
 import datetime
@@ -81,33 +82,25 @@ def _cn(name: x509.Name) -> str:
 
 # ---- DSC token certificates (via the native host) -------------------------
 
-# One scan costs a host subprocess plus a PKCS#11 walk that slow drivers drag
-# out for seconds, and both list_identities and find_identity need one, so a
-# single sign used to pay for two. Cache the found set briefly.
-#
-# Only non-empty results are cached: someone who just plugged a token in must
-# see it on the next look, and an empty scan is exactly the case where they
-# are about to. A stale entry after an unplug costs one failed sign, which
-# invalidates the cache and reports TOKEN_NOT_FOUND.
+# A scan is slow (a subprocess, then a walk some drivers drag out for seconds)
+# and one sign used to pay for two. So remember it for a moment.
 _TOKEN_CACHE_TTL_SECONDS = 30
-# (expiry, identities, readers). Readers ride along so the "driver missing"
-# hint comes from the same scan the certificate list did, and the two cannot
-# disagree.
+# Readers ride along with the certificates, from the same scan, so the list and
+# the "driver missing" hint can never disagree.
 _token_cache: tuple[float, list[dict], list[dict]] | None = None
 _token_lock = threading.Lock()
 
 
 def _token_scan() -> tuple[list[dict], list[dict]]:
-    """(identities, readers), cached briefly. The lock also collapses the
-    concurrent calls FastAPI's threadpool allows into one scan."""
+    """What is plugged in, remembered briefly. The lock folds parallel calls
+    into one scan."""
     global _token_cache
     with _token_lock:
         if _token_cache is not None and _token_cache[0] > time.monotonic():
             return _token_cache[1], _token_cache[2]
         found, readers = _scan_token_identities()
-        # Only a productive scan is cached: someone who just plugged a token in,
-        # or just installed its driver, must see it on the next look, and an
-        # empty scan is exactly when they are about to.
+        # Never remember an empty scan. Someone who just plugged a token in has
+        # to see it on the next look.
         _token_cache = (
             (time.monotonic() + _TOKEN_CACHE_TTL_SECONDS, found, readers) if found else None
         )
@@ -119,7 +112,7 @@ def _token_identities() -> list[dict]:
 
 
 def invalidate_token_cache() -> None:
-    """Drop the cached scan, so the next look re-reads the device."""
+    """Forget what we saw, so the next look asks the device again."""
     global _token_cache
     with _token_lock:
         _token_cache = None
@@ -148,18 +141,14 @@ def _scan_token_identities() -> tuple[list[dict], list[dict]]:
 
 
 def token_hint() -> dict | None:
-    """"Your token is plugged in, its driver is not installed", when that is
-    what happened.
+    """"Your token is in, its driver is missing" when that is what happened.
 
-    The host sees readers through the OS smart-card service, which reports a
-    USB token's name from its descriptor with no vendor driver present. So an
-    empty certificate list can be told apart: nothing plugged in, or plugged in
-    and unusable. Only the second is worth interrupting someone about, and it
-    is the single most common reason signing does not work on a fresh machine.
+    The OS can see the token even with no driver, so an empty list splits two
+    ways: nothing plugged in, or plugged in and unusable. Only the second is
+    worth interrupting someone about, and it is the top reason signing fails
+    on a fresh machine.
 
-    None when there is nothing to say: certificates were found, no reader is
-    connected, or a driver is installed and the token is simply not readable
-    (a different problem, already covered by the error the sign attempt gives).
+    None when there is nothing useful to say.
     """
     identities, readers = _token_scan()
     if identities:
@@ -172,9 +161,9 @@ def token_hint() -> dict | None:
     return {
         "token": named[0] if named else None,
         "readers": [r.get("name", "") for r in missing],
-        # No vendor URL: an Indian DSC's driver comes from the CA that issued
-        # it, not from whoever made the hardware, and a wrong link for security
-        # middleware is worse than no link.
+        # No download link on purpose. An Indian token's driver comes from the
+        # CA that issued it, not the hardware maker, and a wrong link here is
+        # worse than none.
         "message": (
             f"{named[0]} detected, but its driver is not installed."
             if named
@@ -185,7 +174,7 @@ def token_hint() -> dict | None:
 
 
 def _cn_str(subject: str) -> str:
-    """Pull CN from a "CN=Name, O=..." string the host returns."""
+    """Pull the person's name out of the certificate's subject line."""
     for part in subject.split(","):
         part = part.strip()
         if part.upper().startswith("CN="):

@@ -1,12 +1,4 @@
-"""Shared CMS bricks for the signing flows.
-
-Both signing flows use these: PDF sessions (pdf_sign.py), detached CAdES
-(cades.py), and one-shot P12 (oneshot.py). Kept here so no flow reaches into
-another's internals.
-
-The bricks: size the signature placeholder, save/load session state to JSON,
-parse a signer certificate, verify a signature before it lands, load a P12 key.
-"""
+"""Bits every signing flow needs. Lives here so no flow reaches into another."""
 
 import base64
 import dataclasses
@@ -23,12 +15,12 @@ from pyhanko.sign import signers
 
 from .errors import SignerError
 
-# Room for the yet-unknown signature; fits RSA-4096.
+# Hole we leave for a signature we do not have yet. Fits RSA-4096.
 PLACEHOLDER_SIG_SIZE = 512
 
 
 def encode_state(state, bytes_fields: tuple, *, kind: str | None = None) -> bytes:
-    """Dataclass state -> JSON bytes; bytes fields go base64. kind tags the blob."""
+    """State to JSON bytes. Byte fields go base64, `kind` tags what it is."""
     data = dataclasses.asdict(state)
     if kind:
         data["kind"] = kind
@@ -38,11 +30,7 @@ def encode_state(state, bytes_fields: tuple, *, kind: str | None = None) -> byte
 
 
 def decode_state(raw: bytes, bytes_fields: tuple, *, kind: str | None = None) -> dict:
-    """JSON bytes -> kwargs dict; base64 fields go back to bytes.
-
-    Reject a blob of the wrong kind (a PDF session is not a CAdES session).
-    Old blobs with no kind are still loadable.
-    """
+    """Back to a kwargs dict. Refuses the wrong kind of session blob."""
     data = json.loads(raw.decode("utf-8"))
     stored = data.pop("kind", None)
     if kind is not None and stored is not None and stored != kind:
@@ -87,7 +75,7 @@ def verify_signature(signer_cert, signature, signed_attrs_der, md_algorithm):
 
 
 def load_p12_signer(p12_path, passphrase):
-    """Load a server-held PKCS#12 key as a pyHanko signer, or raise INTERNAL."""
+    """Load the server's own .p12 key."""
     if isinstance(passphrase, str):
         passphrase = passphrase.encode("utf-8")
     try:

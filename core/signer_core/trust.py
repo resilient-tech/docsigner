@@ -12,11 +12,10 @@ CERT_SUFFIXES = (".pem", ".crt", ".cer", ".der")
 
 
 def load_trust_certs(trust_dir) -> list:
-    """Load every PEM/DER certificate under a directory, recursively.
+    """Every certificate in a folder and below it.
 
-    Subdirectories group certificates (by country, by purpose: in/, tsa/, ...).
-    Anything under a directory named "archive" is skipped; expired roots live
-    there so old documents can still be validated by moving them back in.
+    Skips anything under "archive". Expired roots wait there; move one back up
+    to check a document signed under it.
     """
     base = Path(trust_dir)
     certs = []
@@ -32,17 +31,13 @@ def load_trust_certs(trust_dir) -> list:
 def build_validation_context(
     trust_dir=None, allow_fetching=False, revocation_mode="soft-fail"
 ) -> ValidationContext:
-    """No trust dir means an empty trust set: signatures come back trusted=False.
+    """Who we trust. No folder means we trust nobody, so everything reads untrusted.
 
-    Only self-signed certificates in the directory are treated as trust anchors;
-    intermediates (a sub-CA, an issuing CA) go into the path-building pool. That
-    keeps a sub-CA from being mistaken for a root, which would anchor validation
-    early and cut LTV revocation gathering short of the real root.
+    Only self-signed certificates count as roots. A sub-CA mistaken for a root
+    would stop the walk early and miss the real root.
 
-    revocation_mode "require" makes LTV augmentation gather revocation for every
-    certificate in the chain (signer and timestamp). The default "soft-fail"
-    tolerates gaps, which is right for read-only validation but leaves a B-LT
-    DSS incomplete: Adobe then reports the signature as not LTV enabled.
+    Use revocation_mode "require" when building a long-term signature: the
+    default tolerates gaps, and a gap means Adobe will not call it LTV.
     """
     certs = load_trust_certs(trust_dir) if trust_dir else []
     roots = [c for c in certs if c.subject == c.issuer]
@@ -55,10 +50,8 @@ def build_validation_context(
     )
 
 
-# Public RFC 3161 endpoints that answer without an account. A request picks
-# one by name (options.tsa); arbitrary URLs from clients are refused so the
-# deployment's trust decisions stay server-side. For LTV profiles the chosen
-# TSA's root must sit in TRUST_DIR (trust/tsa/, fed by scripts/fetch_trust_roots.py).
+# Free public clocks. A request picks one by name, never by URL: letting a
+# client name any URL would move a trust decision off the server.
 KNOWN_TSAS = {
     "digicert": "http://timestamp.digicert.com",
     "sectigo": "http://timestamp.sectigo.com",
@@ -69,10 +62,10 @@ KNOWN_TSAS = {
 
 
 def resolve_tsa_url(name, default_url=None):
-    """Map a client-supplied TSA name to its URL; None/empty means the default.
+    """Name to URL. Empty means the configured default.
 
-    Unknown names raise instead of falling back, so a tester who picked a TSA
-    is never silently timestamped by a different one.
+    An unknown name raises rather than falling back, so nobody who picked a
+    clock quietly gets a different one.
     """
     if not name:
         return default_url
@@ -87,12 +80,10 @@ def resolve_tsa_url(name, default_url=None):
 
 
 def make_timestamper(tsa_url=None, auth=None, bearer=None):
-    """Build the timestamper, optionally authenticated.
+    """The thing that stamps the time.
 
-    The public TSAs above answer anonymously. Every CCA-licensed Indian TSA
-    (eMudhra, Capricorn, and the rest) sells timestamps per token and answers
-    only with credentials, so both HTTP schemes they use are supported: `auth`
-    is an (user, password) tuple for Basic, `bearer` a token for Authorization.
+    Public clocks answer anyone. Indian ones sell timestamps and want a login,
+    so both ways in are here: `auth` is (user, password), `bearer` is a token.
     """
     if not tsa_url:
         return None

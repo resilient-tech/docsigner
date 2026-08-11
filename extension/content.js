@@ -1,7 +1,5 @@
-// Page <-> extension bridge (CONTRACTS.md section 3).
-// Listens for "org.docsigner.request" CustomEvents on window, forwards them
-// to the background, and answers with "org.docsigner.response". Nothing else
-// crosses this boundary.
+// The one door between a web page and the extension. Passes messages across
+// and nothing else.
 
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
@@ -11,7 +9,7 @@
   window.addEventListener(REQUEST_EVENT, (event) => {
     let detail;
     try {
-      // JSON round trip: detaches us from page-controlled getters and proxies.
+      // Round-trip through JSON, so page-controlled tricks cannot ride along.
       detail = JSON.parse(JSON.stringify(event.detail));
     } catch {
       return;
@@ -38,7 +36,7 @@
   function respond(requestId, reply) {
     let detail = { requestId, ...reply };
     if (typeof cloneInto === "function") {
-      // Firefox: page code can't read content-script objects unless cloned in.
+      // Firefox will not let the page read our objects unless we clone them in.
       detail = cloneInto(detail, window);
     }
     window.dispatchEvent(new CustomEvent(RESPONSE_EVENT, { detail }));

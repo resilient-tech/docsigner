@@ -1,12 +1,10 @@
-"""Emit the Firefox copy of the extension.
+"""Make the Firefox copy of the extension.
 
-One manifest cannot serve both browser families: Chrome refuses to load an
-MV3 manifest that carries background.scripts ("requires manifest version of
-2 or lower"), and Firefox does not run background.service_worker. So
-extension/ stays Chrome-shaped, and this script writes
-dist/firefox-extension/ with the background switched to an event page.
+One manifest cannot please both. Chrome refuses the background style Firefox
+needs, and Firefox ignores Chrome's. So extension/ stays Chrome-shaped and this
+writes a Firefox version beside it.
 
-Usage: python scripts/build_firefox_extension.py
+    python scripts/build_firefox_extension.py
 """
 
 import json

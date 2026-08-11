@@ -1,7 +1,5 @@
-// Background service worker (event page on Firefox).
-// Routes bridge requests to the native messaging host (CONTRACTS.md sections 2 and 3):
-// "ping" is answered here, everything else goes through an origin consent check
-// and then to com.docsigner.host.
+// The only part of the extension allowed to talk to the host binary.
+// "ping" it answers itself. Everything else asks the user for permission first.
 
 const api = globalThis.browser ?? globalThis.chrome;
 
@@ -9,15 +7,13 @@ const HOST_NAME = "com.docsigner.host";
 const NATIVE_COMMANDS = new Set(["getVersion", "listCertificates", "signHash"]);
 const CONSENT_COMMANDS = new Set(["listCertificates", "signHash"]);
 const CONSENT_MESSAGE = "org.docsigner.consent";
-// ponytail: one flat timeout for every native call. signHash includes a PIN
-// prompt, so it has to be generous. Per-command budgets if this ever bites.
+// ponytail: one flat timeout for every call. Signing waits on a human typing a
+// PIN, so it has to be generous. Per-command budgets if this ever bites.
 const NATIVE_TIMEOUT_MS = 120000;
 
-// One long-lived native messaging port instead of a process per request, so
-// the host survives between calls and its in-memory PIN cache works
-// (CONTRACTS.md section 2). Chrome 116+ keeps this service worker alive while
-// the port is open; if the worker is ever killed anyway, the port drops, the
-// host exits, the PIN cache dies with it, and the next request reconnects.
+// One long-lived connection, not a process per call, so the host stays up and
+// remembers the PIN between calls. If we ever get killed, the host exits, the
+// remembered PIN dies with it, and the next call reconnects. That is fine.
 let nativePort = null;
 const pendingNative = new Map(); // request id -> {resolve, reject, timer}
 
@@ -64,7 +60,7 @@ function callNative(message) {
   });
 }
 
-// Consent prompts waiting for a click, keyed by origin.
+// Permission prompts waiting on a click, one per site.
 // ponytail: in-memory map. The open response channel keeps the worker alive
 // long enough for a human to click a button; persist to storage if it doesn't.
 const pendingConsent = new Map();
@@ -79,7 +75,7 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 api.windows.onRemoved.addListener((windowId) => {
-  // Consent window closed without a click counts as deny, but isn't remembered.
+  // Closed without answering means no, but we do not remember it as one.
   for (const [origin, pending] of pendingConsent) {
     if (pending.windowId === windowId) {
       pendingConsent.delete(origin);
@@ -112,9 +108,9 @@ async function handleRequest(message, sender) {
     }
 
     const id = message.requestId || crypto.randomUUID();
-    // The host puts this in the PIN dialog. It comes from sender.origin, the
-    // browser's word, and overwrites anything the page put in params: a page
-    // naming its own origin could name someone else's.
+    // Shown in the PIN dialog. Taken from the browser, never from the page,
+    // and it overwrites whatever the page sent. A page allowed to name itself
+    // could name someone else.
     const nativeParams = origin ? { ...params, origin } : params;
     const reply = await callNative({ id, command, params: nativeParams });
     if (reply && reply.error) {
@@ -143,7 +139,7 @@ function senderOrigin(sender) {
   }
 }
 
-// ---- origin consent ----
+// ---- asking the user whether a site may see their certificates ----
 
 async function originAllowed(origin) {
   const stored = await api.storage.local.get("origins");

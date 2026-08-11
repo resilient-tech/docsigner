@@ -1,5 +1,4 @@
-// DocSigner demo wiring. This file doubles as the integration reference:
-// everything a real app needs is in signDocument() below.
+// The demo, and the worked example. Copy signDocument() below into your app.
 
 import { DocSigner, DocSignerError } from "../js/docsigner.js";
 
@@ -7,7 +6,7 @@ import { DocSigner, DocSignerError } from "../js/docsigner.js";
 const INSTALL_EXTENSION_URL = "#";
 const INSTALL_HOST_URL = "#";
 
-// One readable line per contract error code (CONTRACTS.md sections 1 to 3).
+// A plain sentence for every error code. This is the whole list.
 const MESSAGES = {
   EXTENSION_NOT_INSTALLED: {
     text: "The DocSigner browser extension is not installed.",
@@ -67,8 +66,8 @@ el("visible").addEventListener("change", () => {
 el("verify").addEventListener("click", verifyDocument);
 applyDoctype();
 
-// Remember the PIN for this tab's session only (cleared when the tab closes).
-// A real integration should think before persisting a PIN anywhere.
+// PIN lives until the tab closes, and no longer. Think hard before you keep
+// one anywhere else.
 el("pin").value = sessionStorage.getItem("docsigner-pin") || "";
 el("pin").addEventListener("input", () => {
   sessionStorage.setItem("docsigner-pin", el("pin").value);
@@ -130,8 +129,7 @@ async function listCertificates() {
 function renderCertificates() {
   const select = el("cert");
   select.innerHTML = "";
-  // Multi-cert tokens (ProxKey ships auth + signing + encryption certs) list
-  // the signing-capable ones first, tagged by key usage.
+  // A token often holds three certificates. Put the ones that can sign on top.
   const canSign = (cert) =>
     !!(cert.keyUsage && (cert.keyUsage.digitalSignature || cert.keyUsage.nonRepudiation));
   certificates
@@ -153,7 +151,7 @@ function commonName(subject) {
   return match ? match[1] : subject || "Unknown signer";
 }
 
-// Everything the Options fieldset says, as a contract `options` object.
+// The Options box, turned into what the server expects.
 async function buildOptions(kind) {
   const options = { profile: el("profile").value };
   if (el("tsa").value) options.tsa = el("tsa").value;
@@ -173,9 +171,8 @@ async function buildOptions(kind) {
   return options;
 }
 
-// The full signing flow. Token signing runs the session dance (start, sign
-// the hash(es) on the token, complete) — several PDFs share one PIN via the
-// batch endpoints. Server-key signing is one call per document.
+// The whole flow. With a token: start, sign the hash, complete. Many PDFs
+// share one PIN. With a server key: one call, done.
 async function signDocument() {
   const kind = el("doctype").value;
   const files = Array.from(el("file").files);
@@ -248,7 +245,7 @@ async function signDocument() {
   }
 }
 
-// Bulk: N PDFs, one token session, one PIN (CONTRACTS.md, batch endpoints).
+// Many PDFs, one PIN.
 async function bulkSign(files, cert, options) {
   setStatus("info", `Uploading ${files.length} documents...`);
   const documents = [];
@@ -292,8 +289,8 @@ async function verifyDocument() {
       return;
     }
     for (const sig of result.signatures) {
-      // intact covers the signed bytes; modifications_ok covers what was added
-      // afterwards (DSS and timestamps are fine, content edits are not).
+      // "intact" is about the signed bytes. "modifications_ok" is about what
+      // came after: timestamps fine, content edits not.
       const altered = sig.modifications_ok === false;
       const ok = sig.valid && sig.intact && !altered;
       const headline = `${ok ? "✓" : "✗"} ${sig.field_name} — ${sig.signer || "unknown signer"}`;

@@ -1,4 +1,4 @@
-"""One-shot signing with a server-held PKCS#12 key. No session dance."""
+"""Sign in one go with a key the server holds. No two-step dance."""
 
 import io
 import secrets
@@ -31,7 +31,7 @@ def sign_with_p12(
     signer = load_p12_signer(p12_path, passphrase)
 
     try:
-        # strict=False: tolerate real-world PDFs with minor xref quirks (see session.py).
+        # Lenient, same reason as pdf_sign.py.
         writer = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes), strict=False)
     except Exception:
         raise SignerError("DOCUMENT_INVALID", "document is not a readable PDF") from None

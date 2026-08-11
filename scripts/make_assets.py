@@ -11,19 +11,17 @@ Writes:
 The outputs are committed, so building and shipping never needs this. Run it
 after editing assets/icon.svg.
 
-Rasterising goes through headless Chromium (Chrome, Chromium, Edge or Brave,
-whichever is installed; DOCSIGNER_CHROMIUM overrides the search). macOS ships
-qlmanage, which looks like the obvious choice and is the wrong one: it flattens
-onto white, so every icon came out with opaque white corners where the squircle
-does not reach. Chromium keeps the alpha, and it is the same engine that draws
-the SVG favicon, so what renders here is what users see. Each size is rendered
-from the vector rather than downscaled from one big raster, which keeps the
-mark's strokes crisp at 16 px.
+Drawing goes through headless Chrome. macOS ships qlmanage, which looks like
+the obvious tool and is the wrong one: it paints onto white, so every icon came
+out with white corners. Chrome keeps the transparency, and it is the same engine
+that draws the favicon, so what we make here is what people see.
 
-Packing the .ico is done here from struct: an ICO holding PNG frames is a
-6-byte header plus a 16-byte entry per size, which is less code than justifying
-an image library. Packing the .icns needs iconutil, so that one output is macOS
-only; the rest regenerate anywhere.
+Every size is drawn from the vector, never shrunk from one big image, so the
+mark stays sharp at 16 px.
+
+The .ico is packed by hand: it is a 6-byte header plus 16 bytes per size, which
+is less code than justifying a new dependency. The .icns needs a macOS tool, so
+that one output is macOS only.
 """
 
 import os
@@ -77,9 +75,9 @@ def find_chromium() -> str:
 
 
 def render(browser: str, svg: Path, size: int, out: Path) -> Path:
-    """Rasterise one SVG at one size, transparent outside the artwork."""
-    # An <img> at an explicit size, in a page with no margin and no background,
-    # so the screenshot is exactly the artwork and nothing else.
+    """Draw one SVG at one size. Everything outside the art stays see-through."""
+    # A bare page with no margin and no background, so the screenshot is the
+    # artwork and nothing else.
     page = svg.with_name(f"{svg.stem}-{size}.html")
     page.write_text(
         "<style>html,body{margin:0;padding:0;background:transparent}"
@@ -159,12 +157,12 @@ def write_extension_icons(browser: str, svg: Path) -> None:
 def write_ico(browser: str, svg: Path, work: Path) -> None:
     frames = [render(browser, svg, size, work / f"ico{size}.png").read_bytes() for size in ICO_SIZES]
 
-    # ICONDIR: reserved, type 1 (icon), image count.
+    # Header: reserved, "this is an icon", how many sizes follow.
     header = struct.pack("<HHH", 0, 1, len(frames))
     offset = len(header) + 16 * len(frames)
     entries, body = b"", b""
     for size, png in zip(ICO_SIZES, frames):
-        # 256 is stored as 0; the field is a single byte.
+        # The size field is one byte, so 256 has to be written as 0.
         entries += struct.pack(
             "<BBBBHHII",
             size % 256,  # width
@@ -191,7 +189,7 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        # The renderer loads the SVG over file://, so it has to sit beside the
+        # The browser loads the SVG off disk, so it has to sit beside the
         # generated wrapper pages.
         svg = work / SOURCE.name
         shutil.copyfile(SOURCE, svg)

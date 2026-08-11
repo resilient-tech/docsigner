@@ -1,4 +1,4 @@
-"""File-backed blob store with TTL sweep on access.
+"""Blobs in files. Old ones get swept out on the way past.
 
 # ponytail: file-based sessions, swap for redis if multi-node
 """
@@ -33,7 +33,7 @@ class FileStore:
         return key
 
     def get(self, key: str) -> bytes:
-        # Keys come from URLs; the pattern check keeps path tricks out.
+        # Keys arrive from URLs. This check keeps ../ tricks out.
         if not key or not _KEY_RE.fullmatch(key):
             raise Missing(key)
         path = self.directory / key

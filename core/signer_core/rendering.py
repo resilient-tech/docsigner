@@ -1,12 +1,8 @@
-"""Rasterize a PDF page for a placement UI, read page sizes in points, and turn
-a fractional placement into a PDF-points box.
+"""Turn a page into a picture, and a spot on that picture into a spot on the page.
 
-Shared so every consumer (the desktop app, the docsigner integration) rasterizes
-and positions signatures the same way. Rendering needs the optional 'render'
-extra (pypdfium2); the import is lazy so `import signer_core` stays light for the
-server and host, which never rasterize:
-
-    pip install signer-core[render]
+Lives here so every app that lets you place a signature places it the same way.
+Needs the optional extra: `pip install signer-core[render]`. The import is lazy,
+so the server and host stay light.
 """
 
 import base64
@@ -42,11 +38,9 @@ def page_size(path: str, index: int) -> tuple[float, float, int]:
 
 
 def render_page(path: str, index: int, width_px: int = 1000) -> dict:
-    """Rasterize a page to a JPEG data URL, plus its size in points and index.
+    """Page to a JPEG data URL, with its size and index.
 
-    init_forms() paints signature/form-field widgets into the image, so existing
-    signatures show in the preview. It is idempotent and a no-op on documents
-    without forms.
+    Form widgets are painted in too, so signatures already on the page show up.
     """
     pdfium = _pdfium()
     pdf = pdfium.PdfDocument(path)
@@ -76,10 +70,10 @@ def render_page(path: str, index: int, width_px: int = 1000) -> dict:
 
 def placement_box(fx: float, fy: float, fw: float, fh: float,
                   w_pt: float, h_pt: float) -> list[float]:
-    """Fractional top-left placement (0..1) -> [x1, y1, x2, y2] in PDF points.
+    """A spot on the screen to a box on the page.
 
-    Screen space is top-left origin; PDF space is bottom-left. One fractional
-    placement maps cleanly onto pages of any size, so a batch shares one box.
+    Screens count down from the top, PDFs count up from the bottom. Keeping the
+    spot as a fraction is what lets one placement fit every page size in a batch.
     """
     x1 = fx * w_pt
     x2 = (fx + fw) * w_pt

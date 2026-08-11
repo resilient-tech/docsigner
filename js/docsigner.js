@@ -1,16 +1,11 @@
-// DocSigner page library (CONTRACTS.md section 4).
-// Talks to the browser extension over window CustomEvents, nothing else.
-// Zero dependencies. ES module: load with <script type="module"> or a bundler.
+// What a web page uses to reach a USB token.
+// Talks to the browser extension and nothing else. No dependencies.
 
 const REQUEST_EVENT = "org.docsigner.request";
 const RESPONSE_EVENT = "org.docsigner.response";
 
 /**
- * Error raised by every rejected DocSigner promise.
- * `code` is one of the stable codes from CONTRACTS.md sections 2 and 3,
- * e.g. EXTENSION_NOT_INSTALLED, HOST_NOT_INSTALLED, ORIGIN_DENIED,
- * USER_CANCELLED, PIN_INCORRECT, PIN_LOCKED, TOKEN_NOT_FOUND, CERT_NOT_FOUND,
- * MODULE_ERROR, UNSUPPORTED, INTERNAL.
+ * What every failed call throws. Switch on `code`; the list is in CONTRACTS.md.
  */
 export class DocSignerError extends Error {
   constructor(code, message) {
@@ -27,11 +22,9 @@ export class DocSigner {
   }
 
   /**
-   * Check that the extension is installed and answering.
-   * @param {{timeout?: number}} [options] milliseconds to wait for the ping
-   *   reply, default 2000.
+   * Is the extension there and answering?
+   * @param {{timeout?: number}} [options] how long to wait, default 2000 ms.
    * @returns {Promise<{installed: boolean, version: string}>}
-   *   Rejects with DocSignerError code EXTENSION_NOT_INSTALLED on timeout.
    */
   init({ timeout = 2000 } = {}) {
     return this._call("ping", {}, {
@@ -42,16 +35,10 @@ export class DocSigner {
   }
 
   /**
-   * List certificates on all connected tokens and smartcards.
+   * Every certificate on every plugged-in token.
    * @returns {Promise<{certificates: Array<object>, readers?: Array<object>}>}
-   *   certificates: descriptors as defined in CONTRACTS.md section 2
-   *   (thumbprint, certificate as b64 DER, subject, issuer, validFrom,
-   *   validTo, keyType, tokenLabel, moduleName).
-   *   readers: smart-card readers the OS sees (name, token, driverFound),
-   *   present when the host detected any — the difference between "no token
-   *   plugged in" and "token present but its driver is missing".
-   *   diagnostics: per-source scan counters (modulesConfigured, modulesLoaded,
-   *   tokens, pkcs11Certificates, osStoreCertificates) explaining empty lists.
+   *   `readers` and `diagnostics` explain an empty list: nothing plugged in,
+   *   or plugged in with no driver. Field names are in CONTRACTS.md.
    */
   async listCertificates() {
     const result = await this._call("listCertificates", {});
@@ -63,16 +50,12 @@ export class DocSigner {
   }
 
   /**
-   * Sign one or more digests with a token-held private key. The native host
-   * prompts for the PIN; all hashes in one call cost one PIN prompt.
+   * Sign hashes with the token. Everything in one call costs one PIN prompt.
    * @param {{thumbprint: string, hashes: string[], digestAlgorithm?: string, pin?: string}} params
-   *   thumbprint: lowercase hex SHA-1 of the chosen certificate's DER.
-   *   hashes: base64 digests to sign.
-   *   digestAlgorithm: sha256 (default), sha384 or sha512.
-   *   pin: optional token PIN. When set, the host signs without showing its
-   *     dialog; your page then owns PIN security (CONTRACTS.md section 2).
-   * @returns {Promise<{signatures: string[]}>} base64 CMS-ready signature
-   *   values, same order as the input hashes.
+   *   `thumbprint` picks the certificate, `hashes` are base64.
+   *   Pass `pin` and the host skips its own dialog, which makes the PIN your
+   *   page's problem to protect.
+   * @returns {Promise<{signatures: string[]}>} in the same order as the hashes.
    */
   signHash({ thumbprint, hashes, digestAlgorithm = "sha256", pin }) {
     const params = { thumbprint, hashes, digestAlgorithm };

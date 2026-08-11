@@ -1,5 +1,7 @@
-"""Native file and folder pickers, so loading is a real dialog instead of a
-pasted path. macOS uses osascript; elsewhere the UI falls back to the path box."""
+"""Real file and folder dialogs, so nobody has to paste a path.
+
+macOS gets a proper picker. Elsewhere the UI falls back to a text box.
+"""
 
 import subprocess
 import sys

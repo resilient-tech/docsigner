@@ -1,13 +1,9 @@
-"""Serve the repo root for the demo with caching turned off.
+"""Serve the demo, with caching off.
 
-`python -m http.server` lets the browser cache demo.js and docsigner.js, so
-after editing them the page keeps running the old copy until a hard refresh.
-This dev server sends no-store on every response, so a plain reload always
-picks up the latest code.
+The plain http.server lets the browser hold on to old JS, so you edit a file
+and the page keeps running yesterday's copy. This one always reloads.
 
-    python scripts/serve_demo.py            # http://127.0.0.1:8080/demo/
-
-Run from the repo root so /demo/ and /js/ both resolve.
+    python scripts/serve_demo.py     # from the repo root
 """
 
 import http.server

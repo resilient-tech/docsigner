@@ -1,9 +1,7 @@
-"""Timestamp authority and trust anchors, the same story as the Frappe
-integration: B-T adds an RFC 3161 timestamp; B-LT and the CCA profiles embed
-revocation data gathered against the trust anchors.
+"""Where to get the time from, and who to trust.
 
-Override with DOCSIGNER_TSA_URL and DOCSIGNER_TRUST_DIR. If the DocSigner
-repo's bundled trust/ store sits nearby it is picked up automatically.
+Override with DOCSIGNER_TSA_URL and DOCSIGNER_TRUST_DIR. If the repo's trust/
+folder sits nearby it gets picked up on its own.
 """
 
 import logging
@@ -21,7 +19,7 @@ LOG_FILE = DATA_DIR / "docsigner-desktop.log"
 
 
 def setup_logging() -> None:
-    """Log to a rotating file so failures (with tracebacks) can be shared."""
+    """Write to a rolling log file, so a user can send us what broke."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("docsigner_desktop")
     logger.setLevel(logging.INFO)
@@ -37,7 +35,7 @@ def _autodetect_trust() -> str | None:
     if env:
         return env
     if getattr(sys, "frozen", False):
-        # PyInstaller unpacks bundled trust/ (see the spec's datas) here.
+        # Where a packaged build unpacks the bundled trust/ folder.
         bundled = Path(sys._MEIPASS) / "trust"
         return str(bundled) if bundled.exists() else None
     # desktop/backend/docsigner_desktop/config.py -> parents[3] is the repo root.
@@ -49,11 +47,7 @@ TRUST_DIR = _autodetect_trust()
 
 
 def context_for(standard: str, tsa_url: str | None = None):
-    """Return (timestamper, validation_context) for a standard; (None, None) for B-B.
-
-    tsa_url overrides the default TSA for this batch (the settings-page value);
-    an empty/None value falls back to DOCSIGNER_TSA_URL / the built-in default.
-    """
+    """The clock and the trust list this standard needs. Both None for plain B-B."""
     profile = Profile.parse(standard)
     ts = make_timestamper(tsa_url or TSA_URL) if profile.needs_timestamp else None
     vc = None

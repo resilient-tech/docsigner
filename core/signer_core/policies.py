@@ -1,20 +1,13 @@
-"""Signature policy identifiers, the attribute that makes a signature
-"an ICP-Brasil signature" rather than a generic PAdES one.
+"""The stamp that says "this is a Brazilian signature", not just any signature.
 
-ETSI baseline profiles (B-B and up) need no policy attribute, which is why
-India and the EU work without this module. Brazil is different: ITI classifies
-a signature as AD-RB, AD-RT, AD-RC or AD-RA only when the CMS carries a
-`signature-policy-identifier` naming one of their published policies. Argentina
-and a few other LatAm PKIs work the same way.
+Most countries grade a signature by its profile (B-B, B-T and up), so they never
+come here. Brazil grades it by a named policy the signature has to point at.
 
-The attribute is an OID plus a digest of the policy document itself, so the
-hash has to match the exact artifact ITI published. Hardcoding a digest here
-would rot the day a policy is reissued, and a wrong one produces a signature
-that every verifier rejects. So a policy is registered as a name, an OID, a
-URI and the artifact's filename, and the digest is computed from the file on
-disk at signing time. `POLICY_DIR` points at the folder holding them.
+A policy is an ID plus a hash of the policy document. We hash the file on disk
+at signing time rather than hardcode it, because a reissued document with a
+stale hash makes every verifier reject the signature. POLICY_DIR holds the files.
 
-Adding a country's policy is a download plus one row in POLICIES.
+Adding a country: download its document, add one row to POLICIES.
 """
 
 import hashlib
@@ -42,9 +35,8 @@ class SignaturePolicy:
     digest_algorithm: str = "sha256"
 
 
-# ICP-Brasil's PAdES policies, from ITI's DOC-ICP-15.03. The OIDs are stable and
-# public; the artifacts are not shipped here because they are ITI's documents,
-# and their digests are computed from whichever revision the deployment fetched.
+# Brazil's four, from ITI's DOC-ICP-15.03. The IDs are public and stable. The
+# documents are ITI's, so we do not ship them; the deployment fetches its own.
 POLICIES = {
     "icp-brasil-ad-rb": SignaturePolicy(
         oid="2.16.76.1.7.1.11.1.1",
@@ -70,12 +62,10 @@ POLICIES = {
 
 
 def resolve_policy(name, policy_dir=None):
-    """Turn a client-supplied policy name into the CMS attribute value.
+    """Policy name to the thing that goes in the signature. Empty means none.
 
-    None or empty means no policy attribute, which is every profile that does
-    not need one. An unknown name raises rather than signing without the
-    attribute: a caller who asked for AD-RB and silently got plain PAdES would
-    only find out at the verifier.
+    An unknown name raises. Someone who asked for a Brazilian signature and
+    quietly got a plain one would only find out at the verifier.
     """
     if not name:
         return None
@@ -107,7 +97,7 @@ def resolve_policy(name, policy_dir=None):
 
 
 def _identifier(policy, artifact):
-    """Build the SignaturePolicyIdentifier: OID, digest of the artifact, URI."""
+    """The ID, the hash of the policy document, and where to find it."""
     digest = hashlib.new(policy.digest_algorithm, artifact).digest()
     return SignaturePolicyIdentifier(
         name="signature_policy_id",
