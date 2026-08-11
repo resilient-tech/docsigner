@@ -37,6 +37,34 @@ jobs:
         working-directory: js
         run: node --test
 
+  # The parts of the e2e suite that drive the real host binary but need neither
+  # a token nor a running server. These were only ever run by hand, which is how
+  # a stale binary silently turned every one of them into a skip.
+  #
+  # The rest of e2e/ boots a server (e2e/run_e2e.sh) or needs a DSC plugged in,
+  # and stays a manual step before releases.
+  e2e-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host-rs
+      - name: Install PC/SC headers
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
+      - name: Install
+        run: pip install -r requirements-dev.txt
+      # The tests locate this themselves and fail rather than skip when CI is
+      # set, so a build that never happened cannot pass as green.
+      - name: Build the host
+        run: cargo build --release --manifest-path host-rs/Cargo.toml
+      - name: Test the host over its real wire protocol
+        run: pytest e2e/test_host_e2e.py e2e/test_update_feed_e2e.py -q
+
   # The Rust host is built on all three platforms because its OS-store backends
   # are behind cfg gates: os_store/windows.rs and os_store/macos.rs never see a
   # compiler on Linux, so a Linux-only job would wave through code that does not
