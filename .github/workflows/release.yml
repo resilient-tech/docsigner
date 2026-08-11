@@ -359,8 +359,15 @@ jobs:
           # pywebview needs the GTK bindings present to be collected, and they
           # are not in requirements.txt: that file serves the macOS build, where
           # the window is pyobjc.
+          #
+          # Pinned under 3.52, which moved to girepository-2.0 and so to glib
+          # 2.80. Ubuntu 22.04 carries girepository-1.0 and the build dies in
+          # meson without it. The runner stays 22.04 on purpose: it sets the
+          # glibc floor for the binary this job produces, the same reason the
+          # host matrix builds there. Raise the pin the day the floor moves,
+          # not before.
           if [ "${{ runner.os }}" = "Linux" ]; then
-            ${{ matrix.python }} -m pip install -q pygobject
+            ${{ matrix.python }} -m pip install -q "pygobject<3.52"
           fi
 
       - name: Package
