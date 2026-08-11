@@ -1,14 +1,14 @@
 // Background service worker (event page on Firefox).
 // Routes bridge requests to the native messaging host (CONTRACTS.md sections 2 and 3):
 // "ping" is answered here, everything else goes through an origin consent check
-// and then to com.opensigner.host.
+// and then to com.docsigner.host.
 
 const api = globalThis.browser ?? globalThis.chrome;
 
-const HOST_NAME = "com.opensigner.host";
+const HOST_NAME = "com.docsigner.host";
 const NATIVE_COMMANDS = new Set(["getVersion", "listCertificates", "signHash"]);
 const CONSENT_COMMANDS = new Set(["listCertificates", "signHash"]);
-const CONSENT_MESSAGE = "org.opensigner.consent";
+const CONSENT_MESSAGE = "org.docsigner.consent";
 // ponytail: one flat timeout for every native call. signHash includes a PIN
 // prompt, so it has to be generous. Per-command budgets if this ever bites.
 const NATIVE_TIMEOUT_MS = 120000;
@@ -124,7 +124,7 @@ async function handleRequest(message, sender) {
   } catch (e) {
     const text = String((e && e.message) || e);
     if (/native messaging host not found|no such native application|not installed/i.test(text)) {
-      return errorReply("HOST_NOT_INSTALLED", "The OpenSigner native host is not installed");
+      return errorReply("HOST_NOT_INSTALLED", "The DocSigner native host is not installed");
     }
     return errorReply("INTERNAL", text);
   }

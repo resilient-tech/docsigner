@@ -1,6 +1,6 @@
 """Serve the repo root for the demo with caching turned off.
 
-`python -m http.server` lets the browser cache demo.js and opensigner.js, so
+`python -m http.server` lets the browser cache demo.js and docsigner.js, so
 after editing them the page keeps running the old copy until a hard refresh.
 This dev server sends no-store on every response, so a plain reload always
 picks up the latest code.

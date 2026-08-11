@@ -3,11 +3,11 @@
 //! Also the interface the desktop app uses: it runs this binary as a fresh
 //! subprocess per call and reads one JSON object from stdout.
 //!
-//!     opensigner-host version
-//!     opensigner-host list
-//!     opensigner-host sign --thumbprint ab12cd… --hash <b64> --alg sha256
+//!     docsigner-host version
+//!     docsigner-host list
+//!     docsigner-host sign --thumbprint ab12cd… --hash <b64> --alg sha256
 //!
-//! Set `OPENSIGNER_PIN` to skip the PIN dialog.
+//! Set `DOCSIGNER_PIN` to skip the PIN dialog.
 //!
 //! ponytail: hand-rolled argument parsing rather than clap, for three
 //! subcommands and three flags on a binary whose size is the point.
@@ -19,19 +19,19 @@ use serde_json::{json, Value};
 use crate::protocol::{self, State};
 
 const USAGE: &str = "\
-opensigner-host — DSC token access for OpenSigner
+docsigner-host — DSC token access for DocSigner
 
 USAGE:
-    opensigner-host                     native messaging host on stdio (browser)
-    opensigner-host version             show host and protocol version
-    opensigner-host list                list certificates on all connected tokens
-    opensigner-host sign --thumbprint <hex> --hash <b64> [--hash <b64>…] [--alg sha256]
+    docsigner-host                     native messaging host on stdio (browser)
+    docsigner-host version             show host and protocol version
+    docsigner-host list                list certificates on all connected tokens
+    docsigner-host sign --thumbprint <hex> --hash <b64> [--hash <b64>…] [--alg sha256]
 
 ENVIRONMENT:
-    OPENSIGNER_PIN               skip the PIN dialog
-    OPENSIGNER_PKCS11_MODULES    extra PKCS#11 module paths
-    OPENSIGNER_NO_NOTIFY         suppress signing notifications
-    OPENSIGNER_UPDATE_URL        JSON feed for the update check
+    DOCSIGNER_PIN               skip the PIN dialog
+    DOCSIGNER_PKCS11_MODULES    extra PKCS#11 module paths
+    DOCSIGNER_NO_NOTIFY         suppress signing notifications
+    DOCSIGNER_UPDATE_URL        JSON feed for the update check
 ";
 
 pub fn run(args: &[String]) -> ExitCode {

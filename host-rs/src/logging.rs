@@ -12,22 +12,22 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::{Level, LevelFilter, Metadata, Record};
 
-/// Per-user config directory: `~/.config/opensigner` on POSIX,
-/// `%APPDATA%\opensigner` on Windows. Matches modules.py `config_dir()`.
+/// Per-user config directory: `~/.config/docsigner` on POSIX,
+/// `%APPDATA%\docsigner` on Windows. Matches modules.py `config_dir()`.
 pub fn config_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
         std::env::var_os("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| dirs::home_dir().unwrap_or_default())
-            .join("opensigner")
+            .join("docsigner")
     }
     #[cfg(not(target_os = "windows"))]
     {
         dirs::home_dir()
             .unwrap_or_default()
             .join(".config")
-            .join("opensigner")
+            .join("docsigner")
     }
 }
 
@@ -165,6 +165,6 @@ mod tests {
     #[test]
     fn config_dir_is_under_the_home_directory() {
         let dir = config_dir();
-        assert!(dir.ends_with("opensigner"), "{dir:?}");
+        assert!(dir.ends_with("docsigner"), "{dir:?}");
     }
 }

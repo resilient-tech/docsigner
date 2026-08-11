@@ -40,7 +40,7 @@ def make_self_signed_cert():
     name = x509.Name(
         [
             x509.NameAttribute(NameOID.COMMON_NAME, "Spike Signer"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "OpenSigner Spike"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "DocSigner Spike"),
         ]
     )
     now = datetime.datetime.now(datetime.timezone.utc)

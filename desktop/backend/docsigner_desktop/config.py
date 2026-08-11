@@ -2,7 +2,7 @@
 integration: B-T adds an RFC 3161 timestamp; B-LT and the CCA profiles embed
 revocation data gathered against the trust anchors.
 
-Override with OPENSIGNER_TSA_URL and OPENSIGNER_TRUST_DIR. If the OpenSigner
+Override with DOCSIGNER_TSA_URL and DOCSIGNER_TRUST_DIR. If the DocSigner
 repo's bundled trust/ store sits nearby it is picked up automatically.
 """
 
@@ -16,14 +16,14 @@ from signer_core import Profile, build_validation_context, make_timestamper
 
 from .store import DATA_DIR
 
-TSA_URL = os.environ.get("OPENSIGNER_TSA_URL") or "http://timestamp.digicert.com"
-LOG_FILE = DATA_DIR / "opensigner-desktop.log"
+TSA_URL = os.environ.get("DOCSIGNER_TSA_URL") or "http://timestamp.digicert.com"
+LOG_FILE = DATA_DIR / "docsigner-desktop.log"
 
 
 def setup_logging() -> None:
     """Log to a rotating file so failures (with tracebacks) can be shared."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    logger = logging.getLogger("opensigner_desktop")
+    logger = logging.getLogger("docsigner_desktop")
     logger.setLevel(logging.INFO)
     if any(isinstance(h, RotatingFileHandler) for h in logger.handlers):
         return
@@ -33,14 +33,14 @@ def setup_logging() -> None:
 
 
 def _autodetect_trust() -> str | None:
-    env = os.environ.get("OPENSIGNER_TRUST_DIR")
+    env = os.environ.get("DOCSIGNER_TRUST_DIR")
     if env:
         return env
     if getattr(sys, "frozen", False):
         # PyInstaller unpacks bundled trust/ (see the spec's datas) here.
         bundled = Path(sys._MEIPASS) / "trust"
         return str(bundled) if bundled.exists() else None
-    # desktop/backend/opensigner_desktop/config.py -> parents[3] is the repo root.
+    # desktop/backend/docsigner_desktop/config.py -> parents[3] is the repo root.
     guess = Path(__file__).resolve().parents[3] / "trust"
     return str(guess) if guess.exists() else None
 
@@ -52,7 +52,7 @@ def context_for(standard: str, tsa_url: str | None = None):
     """Return (timestamper, validation_context) for a standard; (None, None) for B-B.
 
     tsa_url overrides the default TSA for this batch (the settings-page value);
-    an empty/None value falls back to OPENSIGNER_TSA_URL / the built-in default.
+    an empty/None value falls back to DOCSIGNER_TSA_URL / the built-in default.
     """
     profile = Profile.parse(standard)
     ts = make_timestamper(tsa_url or TSA_URL) if profile.needs_timestamp else None

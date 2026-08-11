@@ -1,6 +1,6 @@
 # End-to-end tests
 
-Live e2e for OpenSigner. Unlike the unit suites (which mock the token and use
+Live e2e for DocSigner. Unlike the unit suites (which mock the token and use
 FastAPI's in-memory `TestClient`), these boot a **real** signer-server over a
 socket and drive the server, host, extension, and demo the way a browser and
 token would — then verify every signed output through the server's own
@@ -22,7 +22,7 @@ edit it — the token PIN is `admin@123` by default:
 cp e2e/.env.e2e.example e2e/.env.e2e
 ```
 
-`.env.e2e` holds the token PIN (`OPENSIGNER_PIN`), the signer PII the test certs
+`.env.e2e` holds the token PIN (`DOCSIGNER_PIN`), the signer PII the test certs
 carry (`E2E_SIGNER_CN/ORG/COUNTRY/EMAIL`, reason, location), the server-held
 `.p12` passphrase, ports, `TSA_URL`, `TRUST_DIR`, and the two gate flags.
 
@@ -34,8 +34,8 @@ a reason** rather than pass hollowly or fail.
 | Suite | Runs in CI / offline sandbox | Needs your machine |
 |---|---|---|
 | `test_server_e2e.py` | B-B (all digests, RSA + EC, PDF + CAdES, token + server-side), batch, XAdES, appearance variants, error paths | B-T (reachable TSA); B-LT/B-LTA/CCA-LTV/CCA-LTA (CA-issued cert + reachable OCSP → real DSC) |
-| `test_host_e2e.py` | real host process `getVersion`; list/sign over the wire vs a fake token, PIN `admin@123`, signatures verified against the cert | real DSC: `OPENSIGNER_E2E_REAL_TOKEN=1` + `OPENSIGNER_PKCS11_MODULES` |
-| `test_extension_e2e.py` | manifest / script / icon checks (via the JS suite); bridge event-name contract | browser: `OPENSIGNER_E2E_BROWSER=1` (Chrome + `pip install playwright`, `playwright install chromium`) |
+| `test_host_e2e.py` | real host process `getVersion`; list/sign over the wire vs a fake token, PIN `admin@123`, signatures verified against the cert | real DSC: `DOCSIGNER_E2E_REAL_TOKEN=1` + `DOCSIGNER_PKCS11_MODULES` |
+| `test_extension_e2e.py` | manifest / script / icon checks (via the JS suite); bridge event-name contract | browser: `DOCSIGNER_E2E_BROWSER=1` (Chrome + `pip install playwright`, `playwright install chromium`) |
 | `test_demo_e2e.py` | demo page served, asset graph resolves, demo's server-side PDF/XAdES/CAdES flows validate | — |
 
 Why the LTV/CCA profiles skip offline: they embed revocation data fetched from
@@ -44,7 +44,7 @@ ask, and the sandbox blocks the CA endpoints anyway. On your machine with the
 DSC token plugged in and its CA reachable, they run — flip the gate:
 
 ```bash
-OPENSIGNER_E2E_REAL_TOKEN=1 OPENSIGNER_PKCS11_MODULES=/path/to/pkcs11.so \
+DOCSIGNER_E2E_REAL_TOKEN=1 DOCSIGNER_PKCS11_MODULES=/path/to/pkcs11.so \
   python -m pytest e2e/test_host_e2e.py -k real_token -s
 ```
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "signer-server"
 version = "0.1.0"
-description = "signer-server: a small FastAPI reference server for OpenSigner. Installs signer_server as a package so `python -m signer_server` runs from anywhere."
+description = "signer-server: a small FastAPI reference server for DocSigner. Installs signer_server as a package so `python -m signer_server` runs from anywhere."
 requires-python = ">=3.10"
 dependencies = [
     "fastapi",

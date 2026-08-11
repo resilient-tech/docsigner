@@ -1,8 +1,8 @@
-# PyInstaller build for the OpenSigner desktop app (FastAPI + pywebview).
+# PyInstaller build for the DocSigner desktop app (FastAPI + pywebview).
 #
 #   cd desktop/frontend && pnpm build      # the window loads frontend/dist
-#   cd desktop/backend  && ./.venv/bin/pyinstaller packaging/opensigner-desktop.spec
-#   -> desktop/backend/dist/OpenSigner.app
+#   cd desktop/backend  && ./.venv/bin/pyinstaller packaging/docsigner-desktop.spec
+#   -> desktop/backend/dist/DocSigner.app
 #
 # (build-macos.sh does all of this.) Still needs a per-OS run to confirm, and a
 # real-token sign, the same way the host binary is verified before release.
@@ -31,11 +31,11 @@ BACKEND = os.path.join(DESKTOP, "backend")
 REPO = os.path.abspath(os.path.join(DESKTOP, ".."))
 FRONTEND_DIST = os.path.join(DESKTOP, "frontend", "dist")
 TRUST = os.path.join(REPO, "trust")
-# Not opensigner_desktop/__main__.py directly: PyInstaller runs the entry as a
+# Not docsigner_desktop/__main__.py directly: PyInstaller runs the entry as a
 # top-level script with no package, which breaks that file's relative imports.
 # run_desktop.py starts through the package instead.
 entry = os.path.join(BACKEND, "run_desktop.py")
-ICON = os.path.join(SPECPATH, "OpenSigner.icns")
+ICON = os.path.join(SPECPATH, "DocSigner.icns")
 
 # signer_core is installed editable (PEP 660), which PyInstaller's static
 # analysis can't follow. Point pathex at its source so it resolves as an
@@ -44,7 +44,7 @@ CORE = os.path.join(REPO, "core")
 
 # The token host is a separate Rust binary, ~1 MB, carried as a sidecar.
 # host.py looks for it in _MEIPASS and beside the executable, in that order.
-HOST_BINARY_NAME = "opensigner-host.exe" if sys.platform == "win32" else "opensigner-host"
+HOST_BINARY_NAME = "docsigner-host.exe" if sys.platform == "win32" else "docsigner-host"
 HOST_BINARY = os.path.join(REPO, "host-rs", "target", "release", HOST_BINARY_NAME)
 if not os.path.isfile(HOST_BINARY):
     raise SystemExit(
@@ -152,7 +152,7 @@ exe = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name="opensigner-desktop",
+    name="docsigner-desktop",
     debug=False,
     strip=True,
     upx=False,
@@ -162,16 +162,16 @@ exe = EXE(
 # strip: symbols only, and build-macos.sh signs after this, so the signature is
 # applied to the stripped binaries. upx stays off: it breaks macOS code signing
 # and trips Windows antivirus.
-coll = COLLECT(exe, a.binaries, a.datas, strip=True, upx=False, name="opensigner-desktop")
+coll = COLLECT(exe, a.binaries, a.datas, strip=True, upx=False, name="docsigner-desktop")
 
 app = BUNDLE(
     coll,
-    name="OpenSigner.app",
+    name="DocSigner.app",
     icon=ICON if os.path.exists(ICON) else None,
-    bundle_identifier="tech.resilient.opensigner",
+    bundle_identifier="tech.resilient.docsigner",
     info_plist={
-        "CFBundleName": "OpenSigner",
-        "CFBundleDisplayName": "OpenSigner",
+        "CFBundleName": "DocSigner",
+        "CFBundleDisplayName": "DocSigner",
         "CFBundleShortVersionString": "0.1.0",
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "11.0",

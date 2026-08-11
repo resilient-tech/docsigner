@@ -1,26 +1,26 @@
-// OpenSigner page library (CONTRACTS.md section 4).
+// DocSigner page library (CONTRACTS.md section 4).
 // Talks to the browser extension over window CustomEvents, nothing else.
 // Zero dependencies. ES module: load with <script type="module"> or a bundler.
 
-const REQUEST_EVENT = "org.opensigner.request";
-const RESPONSE_EVENT = "org.opensigner.response";
+const REQUEST_EVENT = "org.docsigner.request";
+const RESPONSE_EVENT = "org.docsigner.response";
 
 /**
- * Error raised by every rejected OpenSigner promise.
+ * Error raised by every rejected DocSigner promise.
  * `code` is one of the stable codes from CONTRACTS.md sections 2 and 3,
  * e.g. EXTENSION_NOT_INSTALLED, HOST_NOT_INSTALLED, ORIGIN_DENIED,
  * USER_CANCELLED, PIN_INCORRECT, PIN_LOCKED, TOKEN_NOT_FOUND, CERT_NOT_FOUND,
  * MODULE_ERROR, UNSUPPORTED, INTERNAL.
  */
-export class OpenSignerError extends Error {
+export class DocSignerError extends Error {
   constructor(code, message) {
     super(message || code);
-    this.name = "OpenSignerError";
+    this.name = "DocSignerError";
     this.code = code;
   }
 }
 
-export class OpenSigner {
+export class DocSigner {
   constructor() {
     this._pending = new Map(); // requestId -> {resolve, reject, timer}
     this._onResponse = null;
@@ -31,13 +31,13 @@ export class OpenSigner {
    * @param {{timeout?: number}} [options] milliseconds to wait for the ping
    *   reply, default 2000.
    * @returns {Promise<{installed: boolean, version: string}>}
-   *   Rejects with OpenSignerError code EXTENSION_NOT_INSTALLED on timeout.
+   *   Rejects with DocSignerError code EXTENSION_NOT_INSTALLED on timeout.
    */
   init({ timeout = 2000 } = {}) {
     return this._call("ping", {}, {
       timeoutMs: timeout,
       timeoutCode: "EXTENSION_NOT_INSTALLED",
-      timeoutMessage: `The OpenSigner extension did not answer within ${timeout} ms. It is probably not installed.`,
+      timeoutMessage: `The DocSigner extension did not answer within ${timeout} ms. It is probably not installed.`,
     });
   }
 
@@ -87,7 +87,7 @@ export class OpenSigner {
       if (timeoutMs) {
         timer = setTimeout(() => {
           this._pending.delete(requestId);
-          reject(new OpenSignerError(timeoutCode || "INTERNAL", timeoutMessage || `No response to "${command}"`));
+          reject(new DocSignerError(timeoutCode || "INTERNAL", timeoutMessage || `No response to "${command}"`));
         }, timeoutMs);
       }
       this._pending.set(requestId, { resolve, reject, timer });
@@ -108,7 +108,7 @@ export class OpenSigner {
       this._pending.delete(detail.requestId);
       if (entry.timer) clearTimeout(entry.timer);
       if (detail.error) {
-        entry.reject(new OpenSignerError(detail.error.code || "INTERNAL", detail.error.message));
+        entry.reject(new DocSignerError(detail.error.code || "INTERNAL", detail.error.message));
       } else {
         entry.resolve(detail.result);
       }

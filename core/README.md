@@ -1,6 +1,6 @@
 # signer-core
 
-The Python signing library the rest of OpenSigner is built on. pyHanko does the
+The Python signing library the rest of DocSigner is built on. pyHanko does the
 PDF work underneath; this package adds interrupted signing sessions (sign a hash
 now, embed the signature later), PAdES / CAdES / XAdES assembly, LTV and
 revocation embedding, PDF/A detection, appearance stamps, and validation.

@@ -1,6 +1,6 @@
 //! Discovery of PKCS#11 module paths.
 //!
-//! Priority order: the `OPENSIGNER_PKCS11_MODULES` env var, the user config
+//! Priority order: the `DOCSIGNER_PKCS11_MODULES` env var, the user config
 //! file, then a built-in list of well-known install paths for common tokens.
 //! Only paths that exist on disk are returned.
 
@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-pub const ENV_VAR: &str = "OPENSIGNER_PKCS11_MODULES";
+pub const ENV_VAR: &str = "DOCSIGNER_PKCS11_MODULES";
 
 pub use crate::logging::config_dir;
 

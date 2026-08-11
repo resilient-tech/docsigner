@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .models import AppearanceProfile, Settings
 
-DATA_DIR = Path(os.environ.get("OPENSIGNER_DATA", str(Path.home() / ".config" / "opensigner-desktop")))
+DATA_DIR = Path(os.environ.get("DOCSIGNER_DATA", str(Path.home() / ".config" / "docsigner-desktop")))
 SETTINGS_FILE = DATA_DIR / "settings.json"
 KEYS_DIR = DATA_DIR / "signing-keys"
 

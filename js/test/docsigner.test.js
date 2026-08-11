@@ -1,4 +1,4 @@
-// Unit tests for OpenSigner against a fake window. Run: node --test
+// Unit tests for DocSigner against a fake window. Run: node --test
 // The "extension" here is just a listener answering request events.
 
 import { test } from "node:test";
@@ -14,10 +14,10 @@ if (typeof globalThis.CustomEvent !== "function") {
 }
 globalThis.window = new EventTarget();
 
-const { OpenSigner, OpenSignerError } = await import("../opensigner.js");
+const { DocSigner, DocSignerError } = await import("../docsigner.js");
 
-const REQUEST_EVENT = "org.opensigner.request";
-const RESPONSE_EVENT = "org.opensigner.response";
+const REQUEST_EVENT = "org.docsigner.request";
+const RESPONSE_EVENT = "org.docsigner.response";
 
 // Installs a fake extension. handler(command, params) returns
 // {result} or {error}, or null to stay silent. Returns an uninstall function.
@@ -38,14 +38,14 @@ test("init resolves on ping response", async (t) => {
   t.after(fakeExtension((command) =>
     command === "ping" ? { result: { installed: true, version: "0.1.0" } } : null
   ));
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   assert.deepEqual(await signer.init({ timeout: 200 }), { installed: true, version: "0.1.0" });
 });
 
 test("init times out with EXTENSION_NOT_INSTALLED when nobody answers", async () => {
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   await assert.rejects(signer.init({ timeout: 30 }), (e) => {
-    assert.ok(e instanceof OpenSignerError);
+    assert.ok(e instanceof DocSignerError);
     assert.equal(e.code, "EXTENSION_NOT_INSTALLED");
     return true;
   });
@@ -56,7 +56,7 @@ test("listCertificates round trip returns certificates and readers", async (t) =
   t.after(fakeExtension((command) =>
     command === "listCertificates" ? { result: { certificates: [cert] } } : null
   ));
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   assert.deepEqual(await signer.listCertificates(),
     { certificates: [cert], readers: [], diagnostics: null });
 });
@@ -69,18 +69,18 @@ test("listCertificates passes readers and diagnostics through", async (t) => {
     command === "listCertificates"
       ? { result: { certificates: [], readers: [reader], diagnostics } } : null
   ));
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   assert.deepEqual(await signer.listCertificates(),
     { certificates: [], readers: [reader], diagnostics });
 });
 
 test("errors propagate with code and message intact", async (t) => {
   t.after(fakeExtension(() => ({ error: { code: "PIN_LOCKED", message: "PIN retry count exhausted" } })));
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   await assert.rejects(
     signer.signHash({ thumbprint: "ab12", hashes: ["aGk="] }),
     (e) => {
-      assert.ok(e instanceof OpenSignerError);
+      assert.ok(e instanceof DocSignerError);
       assert.equal(e.code, "PIN_LOCKED");
       assert.equal(e.message, "PIN retry count exhausted");
       return true;
@@ -94,7 +94,7 @@ test("concurrent calls route responses by requestId, even out of order", async (
   window.addEventListener(REQUEST_EVENT, listener);
   t.after(() => window.removeEventListener(REQUEST_EVENT, listener));
 
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   const first = signer.signHash({ thumbprint: "aa", hashes: ["one"] });
   const second = signer.signHash({ thumbprint: "bb", hashes: ["two"] });
   assert.equal(seen.length, 2);
@@ -116,7 +116,7 @@ test("digestAlgorithm defaults to sha256", async (t) => {
     sent = params;
     return { result: { signatures: [] } };
   }));
-  const signer = new OpenSigner();
+  const signer = new DocSigner();
   await signer.signHash({ thumbprint: "aa", hashes: ["x"] });
   assert.equal(sent.digestAlgorithm, "sha256");
 });

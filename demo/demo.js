@@ -1,7 +1,7 @@
-// OpenSigner demo wiring. This file doubles as the integration reference:
+// DocSigner demo wiring. This file doubles as the integration reference:
 // everything a real app needs is in signDocument() below.
 
-import { OpenSigner, OpenSignerError } from "../js/opensigner.js";
+import { DocSigner, DocSignerError } from "../js/docsigner.js";
 
 // Point these at your published extension listing and host installers.
 const INSTALL_EXTENSION_URL = "#";
@@ -10,11 +10,11 @@ const INSTALL_HOST_URL = "#";
 // One readable line per contract error code (CONTRACTS.md sections 1 to 3).
 const MESSAGES = {
   EXTENSION_NOT_INSTALLED: {
-    text: "The OpenSigner browser extension is not installed.",
+    text: "The DocSigner browser extension is not installed.",
     link: INSTALL_EXTENSION_URL, linkText: "Install the extension",
   },
   HOST_NOT_INSTALLED: {
-    text: "The OpenSigner native host is not installed on this computer.",
+    text: "The DocSigner native host is not installed on this computer.",
     link: INSTALL_HOST_URL, linkText: "Download the installer",
   },
   ORIGIN_DENIED: { text: "You denied this site access to your certificates. Remove the decision in the extension settings to be asked again." },
@@ -35,7 +35,7 @@ const MESSAGES = {
 };
 
 const el = (id) => document.getElementById(id);
-const signer = new OpenSigner();
+const signer = new DocSigner();
 let certificates = [];
 
 // What each document type needs from the form.
@@ -69,9 +69,9 @@ applyDoctype();
 
 // Remember the PIN for this tab's session only (cleared when the tab closes).
 // A real integration should think before persisting a PIN anywhere.
-el("pin").value = sessionStorage.getItem("opensigner-pin") || "";
+el("pin").value = sessionStorage.getItem("docsigner-pin") || "";
 el("pin").addEventListener("input", () => {
-  sessionStorage.setItem("opensigner-pin", el("pin").value);
+  sessionStorage.setItem("docsigner-pin", el("pin").value);
 });
 
 function applyDoctype() {
@@ -349,12 +349,12 @@ async function post(path, body) {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new OpenSignerError("INTERNAL", `Could not reach the server at ${serverUrl()}. Is signer-server running?`);
+    throw new DocSignerError("INTERNAL", `Could not reach the server at ${serverUrl()}. Is signer-server running?`);
   }
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     const error = (data && data.error) || { code: "INTERNAL", message: `Server answered HTTP ${response.status}` };
-    throw new OpenSignerError(error.code, error.message);
+    throw new DocSignerError(error.code, error.message);
   }
   return data;
 }
@@ -363,13 +363,13 @@ function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result.split(",", 2)[1]); // strip the data: prefix
-    reader.onerror = () => reject(new OpenSignerError("INTERNAL", "Could not read the chosen file"));
+    reader.onerror = () => reject(new DocSignerError("INTERNAL", "Could not read the chosen file"));
     reader.readAsDataURL(file);
   });
 }
 
 function showError(e) {
-  const code = e instanceof OpenSignerError ? e.code : "INTERNAL";
+  const code = e instanceof DocSignerError ? e.code : "INTERNAL";
   const known = MESSAGES[code] || MESSAGES.INTERNAL;
   const detail = known === MESSAGES.INTERNAL && e.message ? ` (${e.message})` : "";
   setStatus("error", `${known.text}${detail}`, known.link ? { href: known.link, text: known.linkText } : null);

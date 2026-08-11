@@ -13,7 +13,7 @@ use std::process::Command;
 
 /// Lowercase needle in the process name -> what to tell the user to close.
 const KNOWN: &[(&str, &str)] = &[
-    ("opensigner-host", "another OpenSigner host"),
+    ("docsigner-host", "another DocSigner host"),
     ("webpki", "a competing signing host"),
     ("epass", "the ePass token manager"),
     ("proxkey", "the ProxKey token tool"),

@@ -4,7 +4,7 @@
 //! stale silently and there is no store to push a new build; this lets a page
 //! tell the user a newer host exists and point them at the installer.
 //!
-//! The source is a JSON URL, `OPENSIGNER_UPDATE_URL` (falls back to the module
+//! The source is a JSON URL, `DOCSIGNER_UPDATE_URL` (falls back to the module
 //! default, empty until a release feed exists), returning at least:
 //!
 //!     {"version": "0.2.0", "url": "https://…/download"}
@@ -18,7 +18,7 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::Value;
 
-pub const ENV_URL: &str = "OPENSIGNER_UPDATE_URL";
+pub const ENV_URL: &str = "DOCSIGNER_UPDATE_URL";
 pub const DEFAULT_UPDATE_URL: &str = ""; // set when a release feed exists
 const TIMEOUT: Duration = Duration::from_secs(5);
 

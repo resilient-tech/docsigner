@@ -1,4 +1,4 @@
-# opensigner-host (Rust)
+# docsigner-host (Rust)
 
 The native messaging host, in Rust. Reads DSC token certificates over PKCS#11 and the OS certificate stores, and signs 32-byte digests with the token's private key. It never touches a PDF: the signing engine stays in Python (`core/`), and this binary only does the part that has to reach hardware.
 
@@ -28,7 +28,7 @@ bundling rustls for the sake of one JSON fetch in the update check.
 cargo build --release
 ```
 
-The binary lands at `target/release/opensigner-host`. No Python, no venv, no PyInstaller spec.
+The binary lands at `target/release/docsigner-host`. No Python, no venv, no PyInstaller spec.
 
 ## Releasing
 
@@ -53,10 +53,10 @@ Measured rather than assumed: the x86_64 build, cross-compiled on an arm64 Mac, 
 ## Use it
 
 ```bash
-opensigner-host                  # native messaging host on stdio (what the browser runs)
-opensigner-host version
-opensigner-host list
-opensigner-host sign --thumbprint <hex> --hash <base64> --alg sha256
+docsigner-host                  # native messaging host on stdio (what the browser runs)
+docsigner-host version
+docsigner-host list
+docsigner-host sign --thumbprint <hex> --hash <base64> --alg sha256
 ```
 
 `list` and `sign` print one JSON object on stdout, which is also how the desktop app calls it. In host mode stdout carries protocol frames only; everything else goes to the log file that `getVersion` reports.
@@ -65,12 +65,12 @@ opensigner-host sign --thumbprint <hex> --hash <base64> --alg sha256
 
 | Variable | Effect |
 |---|---|
-| `OPENSIGNER_PKCS11_MODULES` | extra module paths, `:`-separated (`;` on Windows) |
-| `OPENSIGNER_PIN` | skip the PIN dialog |
-| `OPENSIGNER_NO_NOTIFY` | suppress signing notifications |
-| `OPENSIGNER_UPDATE_URL` | JSON feed for the update check |
+| `DOCSIGNER_PKCS11_MODULES` | extra module paths, `:`-separated (`;` on Windows) |
+| `DOCSIGNER_PIN` | skip the PIN dialog |
+| `DOCSIGNER_NO_NOTIFY` | suppress signing notifications |
+| `DOCSIGNER_UPDATE_URL` | JSON feed for the update check |
 
-Module paths also come from `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.json` on Windows), then a built-in list of well-known driver locations for OpenSC, ePass2003, ProxKey, SafeNet, eMudhra, Bit4id, InnaITKey and YubiKey.
+Module paths also come from `~/.config/docsigner/modules.json` (`%APPDATA%\docsigner\modules.json` on Windows), then a built-in list of well-known driver locations for OpenSC, ePass2003, ProxKey, SafeNet, eMudhra, Bit4id, InnaITKey and YubiKey.
 
 ## Layout
 
@@ -115,8 +115,8 @@ cargo test
 **Signing against a real token.** It needs the token holder's PIN, so it stays a manual step:
 
 ```bash
-opensigner-host list
-OPENSIGNER_PIN=<your-pin> opensigner-host sign --thumbprint <hex> --hash $(printf 'x' | shasum -a 256 | cut -d' ' -f1 | xxd -r -p | base64)
+docsigner-host list
+DOCSIGNER_PIN=<your-pin> docsigner-host sign --thumbprint <hex> --hash $(printf 'x' | shasum -a 256 | cut -d' ' -f1 | xxd -r -p | base64)
 ```
 
 Never script a PIN guess. These tokens lock after a small number of wrong attempts and only the vendor tool can unlock them, so test the failure paths against SoftHSM, not hardware.
@@ -162,6 +162,6 @@ One deliberate wrong-PIN attempt exposed a defect **both hosts shared**: a Watch
 
 **End to end.** A PDF signed through `signer-core` with the token via this host validates as `valid: true, intact: true, modifications_ok: true`, and `trusted: true` against the repo's `trust/` anchors up the Capricorn chain to CCA India.
 
-**Through the desktop app.** With `OPENSIGNER_HOST_BIN` pointed at this binary, the desktop backend lists all three certificates and bulk-signs four files on one PIN, every signature verifying.
+**Through the desktop app.** With `DOCSIGNER_HOST_BIN` pointed at this binary, the desktop backend lists all three certificates and bulk-signs four files on one PIN, every signature verifying.
 
 Not verified: wrong-PIN and locked-PIN handling, which cannot be exercised on hardware without risking a lockout.

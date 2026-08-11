@@ -194,7 +194,7 @@ fn sign_hash(params: &Value) -> Result<Value> {
         sign_with_fallback(thumbprint, &digests, alg, pin.as_deref(), origin.as_deref())?;
 
     notify::notify(
-        "OpenSigner",
+        "DocSigner",
         &notify::signed_message(signatures.len(), thumbprint, origin.as_deref()),
     );
     Ok(json!({

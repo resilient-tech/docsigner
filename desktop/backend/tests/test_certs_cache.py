@@ -8,7 +8,7 @@ found, never cache "nothing found", and let a failed sign clear it.
 
 import pytest
 
-from opensigner_desktop import certs
+from docsigner_desktop import certs
 
 
 @pytest.fixture(autouse=True)

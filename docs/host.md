@@ -80,22 +80,22 @@ cargo build --release --manifest-path host-rs/Cargo.toml
 ```
 
 ```bash
-host-rs/target/release/opensigner-host list      # certs on your token
-host-rs/target/release/opensigner-host version
+host-rs/target/release/docsigner-host list      # certs on your token
+host-rs/target/release/docsigner-host version
 ```
 
 Sign a base64 hash from the terminal:
 
 ```bash
-opensigner-host sign \
+docsigner-host sign \
   --thumbprint ab12cd... \
   --hash <base64-digest> \
   --alg sha256
 ```
 
-- set `OPENSIGNER_PIN` to skip the dialog (tests, scripts).
-- point at a driver the built-in list misses: `export OPENSIGNER_PKCS11_MODULES=/path/to/pkcs11.so`.
-- set `OPENSIGNER_NO_NOTIFY` to silence the popup.
+- set `DOCSIGNER_PIN` to skip the dialog (tests, scripts).
+- point at a driver the built-in list misses: `export DOCSIGNER_PKCS11_MODULES=/path/to/pkcs11.so`.
+- set `DOCSIGNER_NO_NOTIFY` to silence the popup.
 
 **Adding a token backend?** Copy the shape of `src/os_store/`: expose
 `list_der()` and `sign(thumbprint, digests, alg)`, build entries with

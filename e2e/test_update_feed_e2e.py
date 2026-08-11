@@ -18,7 +18,7 @@ import pytest
 
 from test_host_e2e import host_binary
 
-RELEASES_URL = "https://github.com/resilient-tech/opensigner/releases/latest"
+RELEASES_URL = "https://github.com/resilient-tech/docsigner/releases/latest"
 
 
 class _Feed:
@@ -71,7 +71,7 @@ def check_update(url):
     out = subprocess.run(
         [str(host_binary()), "check-update"],
         capture_output=True, text=True, timeout=60,
-        env={"OPENSIGNER_UPDATE_URL": url, "PATH": "/usr/bin:/bin"},
+        env={"DOCSIGNER_UPDATE_URL": url, "PATH": "/usr/bin:/bin"},
     )
     return json.loads(out.stdout)["result"]
 

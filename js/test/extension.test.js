@@ -21,7 +21,7 @@ test("manifest.json is valid and matches the contract", () => {
   assert.equal(manifest.background.scripts, undefined);
   assert.equal(manifest.content_scripts[0].run_at, "document_start");
   assert.deepEqual(manifest.content_scripts[0].matches, ["<all_urls>"]);
-  assert.equal(manifest.browser_specific_settings.gecko.id, "opensigner@opensigner.org");
+  assert.equal(manifest.browser_specific_settings.gecko.id, "docsigner@docsigner.org");
 });
 
 test("extension scripts parse", () => {

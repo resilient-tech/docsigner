@@ -1,6 +1,6 @@
 {
-  "name": "com.opensigner.host",
-  "description": "OpenSigner PKCS#11 signing host",
+  "name": "com.docsigner.host",
+  "description": "DocSigner PKCS#11 signing host",
   "path": "__HOST_PATH__",
   "type": "stdio",
   "allowed_extensions": [

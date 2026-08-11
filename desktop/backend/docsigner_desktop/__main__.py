@@ -1,7 +1,7 @@
-"""Run the OpenSigner desktop app.
+"""Run the DocSigner desktop app.
 
-    python -m opensigner_desktop            native window over the local server
-    python -m opensigner_desktop --server   headless server on :8000 (UI dev)
+    python -m docsigner_desktop            native window over the local server
+    python -m docsigner_desktop --server   headless server on :8000 (UI dev)
 
 Window mode serves the built frontend from frontend/dist (run `pnpm build`
 first). For UI work, run --server here and `pnpm dev` in ../frontend against it.
@@ -58,7 +58,7 @@ def main() -> None:
     port = _free_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
     _wait_until_serving(port)
-    webview.create_window("OpenSigner Desktop", f"http://{HOST}:{port}", width=1200, height=820)
+    webview.create_window("DocSigner Desktop", f"http://{HOST}:{port}", width=1200, height=820)
     webview.start()
 
 

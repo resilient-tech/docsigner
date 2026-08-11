@@ -1,9 +1,9 @@
 {
-  "name": "opensigner",
+  "name": "docsigner",
   "version": "0.1.0",
-  "description": "Browser library for the OpenSigner document signing stack.",
+  "description": "Browser library for the DocSigner document signing stack.",
   "type": "module",
-  "main": "opensigner.js",
+  "main": "docsigner.js",
   "scripts": {
     "test": "node --test"
   },

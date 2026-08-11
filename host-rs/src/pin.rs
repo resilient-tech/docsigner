@@ -10,7 +10,7 @@ use std::process::Command;
 
 use crate::error::{HostError, Result};
 
-pub const ENV_VAR: &str = "OPENSIGNER_PIN";
+pub const ENV_VAR: &str = "DOCSIGNER_PIN";
 
 /// Long enough for someone to find the token and read the label off it.
 const DIALOG_TIMEOUT_SECONDS: u64 = 300;
@@ -62,7 +62,7 @@ fn prompt(text: &str) -> Option<String> {
     let script = format!(
         "try\n  \
            text returned of (display dialog \"{text}\" default answer \"\" \
-           with hidden answer with title \"OpenSigner\")\n\
+           with hidden answer with title \"DocSigner\")\n\
          on error number -128\n  \
            \"\"\n\
          end try"
@@ -86,7 +86,7 @@ fn prompt(text: &str) -> Option<String> {
     let script = format!(
         r#"Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $f = New-Object Windows.Forms.Form
-$f.Text = 'OpenSigner'; $f.Width = 340; $f.Height = 210
+$f.Text = 'DocSigner'; $f.Width = 340; $f.Height = 210
 $f.StartPosition = 'CenterScreen'; $f.TopMost = $true
 $f.FormBorderStyle = 'FixedDialog'; $f.MinimizeBox = $false; $f.MaximizeBox = $false
 $l = New-Object Windows.Forms.Label
@@ -116,7 +116,7 @@ fn prompt(text: &str) -> Option<String> {
     if let Some(pin) = run_dialog(
         Command::new("zenity")
             .arg("--password")
-            .arg("--title=OpenSigner")
+            .arg("--title=DocSigner")
             .arg(format!("--text={text}")),
     ) {
         return Some(pin);
@@ -126,7 +126,7 @@ fn prompt(text: &str) -> Option<String> {
             .arg("--password")
             .arg(text)
             .arg("--title")
-            .arg("OpenSigner"),
+            .arg("DocSigner"),
     ) {
         return Some(pin);
     }
@@ -151,7 +151,7 @@ fn pinentry(text: &str) -> Option<String> {
         // Assuan is line-based, so a literal newline would end the command.
         // Percent-encoding is how the protocol carries one (and %, in turn).
         let desc = text.replace('%', "%25").replace('\n', "%0A");
-        let _ = writeln!(stdin, "SETTITLE OpenSigner");
+        let _ = writeln!(stdin, "SETTITLE DocSigner");
         let _ = writeln!(stdin, "SETDESC {desc}");
         let _ = writeln!(stdin, "GETPIN");
         let _ = writeln!(stdin, "BYE");

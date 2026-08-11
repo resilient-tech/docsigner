@@ -1,6 +1,6 @@
 """Real DSC token + real server: the revocation-embedding profiles end to end.
 
-Gated on OPENSIGNER_E2E_REAL_TOKEN=1 (plug the token in). The self-signed certs
+Gated on DOCSIGNER_E2E_REAL_TOKEN=1 (plug the token in). The self-signed certs
 the rest of the server matrix uses cannot answer OCSP, so B-LT/B-LTA/CCA-LTV/
 CCA-LTA skip there; here the token's CA-issued DSC drives them through the real
 server, and each signed output is checked to verify offline from its DSS alone,
@@ -24,11 +24,11 @@ from helpers import b64, has_cca_revinfo, read_dss  # noqa: E402
 from test_host_e2e import host_binary  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
-    os.environ.get("OPENSIGNER_E2E_REAL_TOKEN") != "1",
-    reason="real DSC path: set OPENSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
+    os.environ.get("DOCSIGNER_E2E_REAL_TOKEN") != "1",
+    reason="real DSC path: set DOCSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
 )
 
-PIN = os.environ.get("OPENSIGNER_PIN", "admin@123")
+PIN = os.environ.get("DOCSIGNER_PIN", "admin@123")
 LTV_PROFILES = ["B-LT", "B-LTA", "CCA-LTV", "CCA-LTA"]
 
 
@@ -41,7 +41,7 @@ def _host(*args):
     proc = subprocess.run(
         [str(host_binary()), *args],
         capture_output=True, text=True, timeout=300,
-        env={**os.environ, "OPENSIGNER_PIN": PIN, "OPENSIGNER_NO_NOTIFY": "1"},
+        env={**os.environ, "DOCSIGNER_PIN": PIN, "DOCSIGNER_NO_NOTIFY": "1"},
     )
     payload = json.loads(proc.stdout or "{}")
     assert "result" in payload, payload.get("error") or proc.stderr

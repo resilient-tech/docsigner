@@ -183,7 +183,7 @@ export function App() {
   async function copyReport() {
     const failed = files.filter((f) => results[f.path] && !results[f.path].ok && !results[f.path].skipped)
     const lines = [
-      'OpenSigner Desktop — error report',
+      'DocSigner Desktop — error report',
       `standard: ${settings?.standard}   certificate: ${signerName}${isToken ? ' (token)' : ' (key)'}`,
       ...(error ? [`error: ${error}`] : []),
       ...failed.map((f) => `- ${f.name}: ${results[f.path].error}`),
@@ -265,7 +265,7 @@ export function App() {
           <span className="brand-mark">
             <Signature size={17} strokeWidth={2.25} />
           </span>
-          OpenSigner
+          DocSigner
         </div>
         <div className="topbar-spacer" />
         <button

@@ -1,5 +1,5 @@
 @echo off
-rem Install the OpenSigner native messaging host for the current user (Windows).
+rem Install the DocSigner native messaging host for the current user (Windows).
 rem
 rem Usage:
 rem     install.bat [CHROME_EXTENSION_ID] [FIREFOX_EXTENSION_ID]
@@ -21,35 +21,35 @@ if "%CHROME_EXT_ID%"=="__EXTENSION_ID__" (
 )
 
 set "HERE=%~dp0"
-set "HOST_NAME=com.opensigner.host"
-set "INSTALL_DIR=%LOCALAPPDATA%\opensigner"
+set "HOST_NAME=com.docsigner.host"
+set "INSTALL_DIR=%LOCALAPPDATA%\docsigner"
 
 rem "%HERE%.." first, which is where it sits in a downloaded release archive:
 rem most people run this from an unpacked download, not a checkout. Then a
 rem cargo build, release before debug so a stale debug build is never the one
 rem that gets registered.
-set "BINARY=%HERE%..\opensigner-host.exe"
-if not exist "%BINARY%" set "BINARY=%HERE%..\target\release\opensigner-host.exe"
-if not exist "%BINARY%" set "BINARY=%HERE%..\target\debug\opensigner-host.exe"
-if not exist "%BINARY%" set "BINARY=%HERE%opensigner-host.exe"
+set "BINARY=%HERE%..\docsigner-host.exe"
+if not exist "%BINARY%" set "BINARY=%HERE%..\target\release\docsigner-host.exe"
+if not exist "%BINARY%" set "BINARY=%HERE%..\target\debug\docsigner-host.exe"
+if not exist "%BINARY%" set "BINARY=%HERE%docsigner-host.exe"
 if not exist "%BINARY%" (
-    echo error: opensigner-host.exe not found next to this script.
+    echo error: docsigner-host.exe not found next to this script.
     echo        From a downloaded release: run this from the unpacked folder.
     echo        From a checkout:           cargo build --release
     exit /b 1
 )
 
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
-copy /y "%BINARY%" "%INSTALL_DIR%\opensigner-host.exe" >nul
-echo installed binary: %INSTALL_DIR%\opensigner-host.exe
+copy /y "%BINARY%" "%INSTALL_DIR%\docsigner-host.exe" >nul
+echo installed binary: %INSTALL_DIR%\docsigner-host.exe
 
 rem JSON needs doubled backslashes in the binary path.
-set "JSON_PATH=%INSTALL_DIR:\=\\%\\opensigner-host.exe"
+set "JSON_PATH=%INSTALL_DIR:\=\\%\\docsigner-host.exe"
 
 > "%INSTALL_DIR%\%HOST_NAME%.chrome.json" (
     echo {
-    echo   "name": "com.opensigner.host",
-    echo   "description": "OpenSigner PKCS#11 signing host",
+    echo   "name": "com.docsigner.host",
+    echo   "description": "DocSigner PKCS#11 signing host",
     echo   "path": "%JSON_PATH%",
     echo   "type": "stdio",
     echo   "allowed_origins": ["chrome-extension://%CHROME_EXT_ID%/"]
@@ -59,8 +59,8 @@ echo wrote manifest:   %INSTALL_DIR%\%HOST_NAME%.chrome.json
 
 > "%INSTALL_DIR%\%HOST_NAME%.firefox.json" (
     echo {
-    echo   "name": "com.opensigner.host",
-    echo   "description": "OpenSigner PKCS#11 signing host",
+    echo   "name": "com.docsigner.host",
+    echo   "description": "DocSigner PKCS#11 signing host",
     echo   "path": "%JSON_PATH%",
     echo   "type": "stdio",
     echo   "allowed_extensions": ["%FIREFOX_EXT_ID%"]

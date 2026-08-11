@@ -1,5 +1,5 @@
 /* The exact fonts signer-core stamps into the PDF, so the on-screen preview
-   matches the signed output. All OFL, bundled from the OpenSigner core. */
+   matches the signed output. All OFL, bundled from the DocSigner core. */
 @font-face { font-family: 'Great Vibes'; src: url('/fonts/GreatVibes-Regular.ttf') format('truetype'); font-display: swap; }
 @font-face { font-family: 'Dancing Script'; src: url('/fonts/DancingScript-Regular.ttf') format('truetype'); font-display: swap; }
 @font-face { font-family: 'Caveat'; src: url('/fonts/Caveat-Regular.ttf') format('truetype'); font-display: swap; }

@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from opensigner_desktop import host
+from docsigner_desktop import host
 
 
 @pytest.fixture(autouse=True)
@@ -18,12 +18,12 @@ def _no_override(monkeypatch):
 
 
 def test_override_wins_over_everything(monkeypatch):
-    monkeypatch.setenv(host.ENV_HOST_BIN, "/opt/opensigner-host")
-    assert host._host_argv() == ["/opt/opensigner-host"]
+    monkeypatch.setenv(host.ENV_HOST_BIN, "/opt/docsigner-host")
+    assert host._host_argv() == ["/opt/docsigner-host"]
 
     # Even in a frozen build, where a bundled sidecar would otherwise be found.
     monkeypatch.setattr(sys, "frozen", True, raising=False)
-    assert host._host_argv() == ["/opt/opensigner-host"]
+    assert host._host_argv() == ["/opt/docsigner-host"]
 
 
 def test_frozen_looks_beside_the_executable(monkeypatch, tmp_path):

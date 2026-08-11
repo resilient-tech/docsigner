@@ -1,20 +1,20 @@
 #!/bin/sh
-# Install the OpenSigner native messaging host on macOS or Linux.
+# Install the DocSigner native messaging host on macOS or Linux.
 #
 # Usage:
 #     ./install.sh [CHROME_EXTENSION_ID] [FIREFOX_EXTENSION_ID]
 #
-# Run as a normal user for a per-user install (~/.local/opensigner), or as
-# root for a system-wide install (/usr/local/opensigner).
+# Run as a normal user for a per-user install (~/.local/docsigner), or as
+# root for a system-wide install (/usr/local/docsigner).
 #
 # Build the binary first:  cargo build --release
-# Or point OPENSIGNER_BINARY at an existing build.
+# Or point DOCSIGNER_BINARY at an existing build.
 
 set -eu
 
 CHROME_EXT_ID="${1:-__EXTENSION_ID__}"
 FIREFOX_EXT_ID="${2:-__EXTENSION_ID__}"
-HOST_NAME="com.opensigner.host"
+HOST_NAME="com.docsigner.host"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 if [ "$CHROME_EXT_ID" = "__EXTENSION_ID__" ]; then
@@ -28,13 +28,13 @@ fi
 # most people run this from an unpacked download, not a checkout. Then a cargo
 # build, release before debug so a stale debug build is never the one that gets
 # registered.
-BINARY="${OPENSIGNER_BINARY:-}"
+BINARY="${DOCSIGNER_BINARY:-}"
 if [ -z "$BINARY" ]; then
     for candidate in \
-        "$HERE/../opensigner-host" \
-        "$HERE/../target/release/opensigner-host" \
-        "$HERE/../target/debug/opensigner-host" \
-        "$HERE/opensigner-host"; do
+        "$HERE/../docsigner-host" \
+        "$HERE/../target/release/docsigner-host" \
+        "$HERE/../target/debug/docsigner-host" \
+        "$HERE/docsigner-host"; do
         if [ -f "$candidate" ]; then
             BINARY="$candidate"
             break
@@ -42,30 +42,30 @@ if [ -z "$BINARY" ]; then
     done
 fi
 if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
-    echo "error: opensigner-host binary not found next to this script." >&2
+    echo "error: docsigner-host binary not found next to this script." >&2
     echo "       From a downloaded release: run this from the unpacked folder." >&2
     echo "       From a checkout:           cargo build --release" >&2
-    echo "       Or set OPENSIGNER_BINARY to its path." >&2
+    echo "       Or set DOCSIGNER_BINARY to its path." >&2
     exit 1
 fi
 
 if [ "$(id -u)" = "0" ]; then
-    INSTALL_DIR="/usr/local/opensigner"
+    INSTALL_DIR="/usr/local/docsigner"
     SYSTEM_INSTALL=1
 else
-    INSTALL_DIR="$HOME/.local/opensigner"
+    INSTALL_DIR="$HOME/.local/docsigner"
     SYSTEM_INSTALL=0
 fi
 
 mkdir -p "$INSTALL_DIR"
-cp "$BINARY" "$INSTALL_DIR/opensigner-host"
-chmod 755 "$INSTALL_DIR/opensigner-host"
-echo "installed binary: $INSTALL_DIR/opensigner-host"
+cp "$BINARY" "$INSTALL_DIR/docsigner-host"
+chmod 755 "$INSTALL_DIR/docsigner-host"
+echo "installed binary: $INSTALL_DIR/docsigner-host"
 
 write_manifest() {
     # $1 = template (chrome|firefox), $2 = extension id, $3 = target directory
     mkdir -p "$3"
-    sed -e "s|__HOST_PATH__|$INSTALL_DIR/opensigner-host|" \
+    sed -e "s|__HOST_PATH__|$INSTALL_DIR/docsigner-host|" \
         -e "s|__EXTENSION_ID__|$2|" \
         "$HERE/manifests/$HOST_NAME.$1.json" > "$3/$HOST_NAME.json"
     echo "wrote manifest:   $3/$HOST_NAME.json"

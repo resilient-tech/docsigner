@@ -1,5 +1,5 @@
 {
-  "name": "opensigner-desktop-frontend",
+  "name": "docsigner-desktop-frontend",
   "private": true,
   "type": "module",
   "scripts": {

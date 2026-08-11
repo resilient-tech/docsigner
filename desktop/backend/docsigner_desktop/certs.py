@@ -1,4 +1,4 @@
-"""Signing identities: DSC tokens (via the OpenSigner host, PKCS#11) and
+"""Signing identities: DSC tokens (via the DocSigner host, PKCS#11) and
 server-held PKCS#12 keys. A self-signed test key is created on first run so
 the app works without a token; plug a token in and its certificates appear.
 """
@@ -21,7 +21,7 @@ def ensure_default_key(keys_dir: Path) -> Path:
     keys_dir.mkdir(parents=True, exist_ok=True)
     default = keys_dir / "local-test-key.p12"
     if not default.exists():
-        _make_self_signed(default, "OpenSigner Local Test")
+        _make_self_signed(default, "DocSigner Local Test")
     return default
 
 

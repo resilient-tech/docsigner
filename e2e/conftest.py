@@ -64,7 +64,7 @@ def _make_server_p12(path: Path, passphrase: str):
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     name = x509.Name([
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, os.environ.get("E2E_SIGNER_ORG", "OpenSigner Tests")),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, os.environ.get("E2E_SIGNER_ORG", "DocSigner Tests")),
         x509.NameAttribute(NameOID.COMMON_NAME, os.environ.get("E2E_SIGNER_CN", "Server Key") + " (server)"),
     ])
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -81,7 +81,7 @@ def _make_server_p12(path: Path, passphrase: str):
 
 @pytest.fixture(scope="session")
 def server_base_url():
-    tmp = Path(tempfile.mkdtemp(prefix="opensigner-e2e-"))
+    tmp = Path(tempfile.mkdtemp(prefix="docsigner-e2e-"))
     port = _free_or_configured_port("E2E_SERVER_PORT", "8899")
     passphrase = os.environ.get("E2E_P12_PASSPHRASE", "admin@123")
     p12 = tmp / "server.p12"

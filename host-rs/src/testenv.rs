@@ -2,7 +2,7 @@
 //!
 //! cargo runs tests as threads inside one process, so `set_var` and
 //! `remove_var` are global mutations that race. This is not theoretical: two
-//! tests sharing `OPENSIGNER_UPDATE_URL` turned CI red on Windows while the
+//! tests sharing `DOCSIGNER_UPDATE_URL` turned CI red on Windows while the
 //! same commit passed on Linux and macOS, because one removed the variable
 //! between the other's set and read.
 //!
@@ -76,7 +76,7 @@ mod tests {
 
     // Each test below owns a distinct key, so the unguarded set_var/remove_var
     // calls used to arrange the "before" state cannot collide with anything.
-    const KEY: &str = "OPENSIGNER_TESTENV_PROBE";
+    const KEY: &str = "DOCSIGNER_TESTENV_PROBE";
 
     #[test]
     fn restores_a_variable_that_was_absent() {
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn restores_a_variable_that_was_present() {
-        const OWN: &str = "OPENSIGNER_TESTENV_PROBE_PRESENT";
+        const OWN: &str = "DOCSIGNER_TESTENV_PROBE_PRESENT";
         std::env::set_var(OWN, "original");
         {
             let _guard = EnvGuard::new().set(OWN, "overridden");
@@ -102,8 +102,8 @@ mod tests {
 
     #[test]
     fn handles_several_variables_and_a_repeated_key() {
-        const A: &str = "OPENSIGNER_TESTENV_PROBE_A";
-        const B: &str = "OPENSIGNER_TESTENV_PROBE_B";
+        const A: &str = "DOCSIGNER_TESTENV_PROBE_A";
+        const B: &str = "DOCSIGNER_TESTENV_PROBE_B";
         std::env::remove_var(A);
         std::env::remove_var(B);
         {
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn restores_on_panic() {
-        const OWN: &str = "OPENSIGNER_TESTENV_PROBE_PANIC";
+        const OWN: &str = "DOCSIGNER_TESTENV_PROBE_PANIC";
         std::env::remove_var(OWN);
         let result = std::panic::catch_unwind(|| {
             let _guard = EnvGuard::new().set(OWN, "set");

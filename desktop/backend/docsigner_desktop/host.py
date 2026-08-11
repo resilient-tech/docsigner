@@ -1,4 +1,4 @@
-"""Reach the DSC token through the OpenSigner host, run as a fresh subprocess
+"""Reach the DSC token through the DocSigner host, run as a fresh subprocess
 per call (the same model the browser extension uses).
 
 Running the host fresh each time sidesteps the per-process slot state some token
@@ -19,9 +19,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-ENV_HOST_BIN = "OPENSIGNER_HOST_BIN"
+ENV_HOST_BIN = "DOCSIGNER_HOST_BIN"
 
-BINARY_NAME = "opensigner-host.exe" if sys.platform == "win32" else "opensigner-host"
+BINARY_NAME = "docsigner-host.exe" if sys.platform == "win32" else "docsigner-host"
 
 
 class TokenError(Exception):
@@ -45,7 +45,7 @@ def _candidates() -> list[Path]:
         return [root / BINARY_NAME for root in roots if str(root)]
 
     # From source: host-rs/target/{release,debug}/ relative to the repo root,
-    # which is three parents up from desktop/backend/opensigner_desktop/.
+    # which is three parents up from desktop/backend/docsigner_desktop/.
     repo = here.parents[3]
     target = repo / "host-rs" / "target"
     return [target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME]
@@ -54,7 +54,7 @@ def _candidates() -> list[Path]:
 def host_binary() -> str:
     """Absolute path to the host binary. Raises HostNotFound if there is none.
 
-    OPENSIGNER_HOST_BIN overrides the search, which is how a build under test
+    DOCSIGNER_HOST_BIN overrides the search, which is how a build under test
     is pointed at a specific binary.
     """
     override = os.environ.get(ENV_HOST_BIN)
@@ -67,7 +67,7 @@ def host_binary() -> str:
     if found:
         return found
     raise HostNotFound(
-        "the opensigner-host binary was not found. Build it with "
+        "the docsigner-host binary was not found. Build it with "
         "`cargo build --release --manifest-path host-rs/Cargo.toml`, or set "
         f"{ENV_HOST_BIN} to its path."
     )
@@ -111,6 +111,6 @@ def sign_hashes(thumbprint: str, digests: list[bytes], algorithm: str = "sha256"
     args = ["sign", "--thumbprint", thumbprint, "--alg", algorithm]
     for d in digests:
         args += ["--hash", base64.b64encode(d).decode("ascii")]
-    env = {**os.environ, "OPENSIGNER_PIN": pin} if pin else None
+    env = {**os.environ, "DOCSIGNER_PIN": pin} if pin else None
     result = _run(args, timeout=300, env=env)
     return [base64.b64decode(s) for s in result.get("signatures", [])]

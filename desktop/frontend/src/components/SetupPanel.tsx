@@ -91,7 +91,7 @@ export function SetupPanel(props: {
             </option>
           ))}
         </select>
-        {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (OPENSIGNER_TRUST_DIR).</span>}
+        {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (DOCSIGNER_TRUST_DIR).</span>}
       </div>
 
       {std?.needsConfig && (

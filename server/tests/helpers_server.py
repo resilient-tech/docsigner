@@ -19,7 +19,7 @@ def make_self_signed_cert(common_name, timestamping=False):
     name = x509.Name(
         [
             x509.NameAttribute(NameOID.COMMON_NAME, common_name),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "OpenSigner Tests"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "DocSigner Tests"),
         ]
     )
     now = datetime.datetime.now(datetime.timezone.utc)

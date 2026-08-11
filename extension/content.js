@@ -1,12 +1,12 @@
 // Page <-> extension bridge (CONTRACTS.md section 3).
-// Listens for "org.opensigner.request" CustomEvents on window, forwards them
-// to the background, and answers with "org.opensigner.response". Nothing else
+// Listens for "org.docsigner.request" CustomEvents on window, forwards them
+// to the background, and answers with "org.docsigner.response". Nothing else
 // crosses this boundary.
 
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
-  const REQUEST_EVENT = "org.opensigner.request";
-  const RESPONSE_EVENT = "org.opensigner.response";
+  const REQUEST_EVENT = "org.docsigner.request";
+  const RESPONSE_EVENT = "org.docsigner.response";
 
   window.addEventListener(REQUEST_EVENT, (event) => {
     let detail;

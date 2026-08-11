@@ -202,14 +202,14 @@ Error codes: `USER_CANCELLED`, `PIN_INCORRECT`, `PIN_LOCKED`, `TOKEN_NOT_FOUND`,
 
 ### getVersion
 
-Result: `{ "version": "0.1.0", "protocolVersion": 1, "logPath": "~/.config/opensigner/host.log" }`
+Result: `{ "version": "0.1.0", "protocolVersion": 1, "logPath": "~/.config/docsigner/host.log" }`
 
 `logPath` is the absolute path of the host's log file, so support can ask for one file by name.
 
 ### checkUpdate
 
 Params: `{}`. The host compares its running version against a published one
-fetched from `OPENSIGNER_UPDATE_URL` (a JSON feed `{ "version": "...", "url": "..." }`).
+fetched from `DOCSIGNER_UPDATE_URL` (a JSON feed `{ "version": "...", "url": "..." }`).
 Version-check only — the host never downloads or installs. Network, HTTP, and
 parse failures are soft: they return `updateAvailable: false` with an
 explanatory `message`, never an error response.
@@ -296,7 +296,7 @@ The result always carries `diagnostics` — per-source counters that make an emp
 
 Reading it: `modulesConfigured: 0` — no PKCS#11 driver found on disk; `modulesLoaded: 0` with modules configured — a driver exists but would not load; `tokens: 0` with a module loaded — driver up, token absent (or held by another process: a vendor utility, another browser's host, or a competing signing host); `tokens > 0` with `pkcs11Certificates: 0` — the token answered but its certificates could not be read, which usually means a single-session driver lock and a replug clears it.
 
-Two optional fields sharpen the empty-list cases. `stuckModules` (module basenames): drivers that did not answer within the host's per-module scan budget (20 s) and were abandoned — a replug or host restart clears the wedged driver. `competingProcesses` (display names): running programs known to hold a token's single PKCS#11 session (vendor utilities, a competing signing host, another OpenSigner host), checked only when the PKCS#11 scan found nothing:
+Two optional fields sharpen the empty-list cases. `stuckModules` (module basenames): drivers that did not answer within the host's per-module scan budget (20 s) and were abandoned — a replug or host restart clears the wedged driver. `competingProcesses` (display names): running programs known to hold a token's single PKCS#11 session (vendor utilities, a competing signing host, another DocSigner host), checked only when the PKCS#11 scan found nothing:
 
 ```json
 {
@@ -331,7 +331,7 @@ Result: `{ "signatures": ["<b64>", "..."] }`
 
 Signature values are CMS-ready: PKCS#1 v1.5 block for RSA (host wraps digest in DigestInfo, mechanism `CKM_RSA_PKCS`), DER-encoded `ECDSA-Sig-Value` for EC (host converts the raw r||s from `CKM_ECDSA`).
 
-On each successful signHash the host shows a best-effort desktop notification (macOS/Linux) naming the certificate, so a signing attempt is visible even when the PIN cache means no dialog appeared. It never blocks or fails the call. Set `OPENSIGNER_NO_NOTIFY` to disable it.
+On each successful signHash the host shows a best-effort desktop notification (macOS/Linux) naming the certificate, so a signing attempt is visible even when the PIN cache means no dialog appeared. It never blocks or fails the call. Set `DOCSIGNER_NO_NOTIFY` to disable it.
 
 ---
 
@@ -340,7 +340,7 @@ On each successful signHash the host shows a best-effort desktop notification (m
 Page dispatches on `window`:
 
 ```js
-window.dispatchEvent(new CustomEvent("org.opensigner.request", {
+window.dispatchEvent(new CustomEvent("org.docsigner.request", {
   detail: { requestId: "<string>", command: "<name>", params: {} }
 }));
 ```
@@ -348,7 +348,7 @@ window.dispatchEvent(new CustomEvent("org.opensigner.request", {
 Content script replies on `window`:
 
 ```js
-new CustomEvent("org.opensigner.response", {
+new CustomEvent("org.docsigner.response", {
   detail: { requestId: "<same>", result: {...} }   // or error: {code, message}
 });
 ```
@@ -364,7 +364,7 @@ First `listCertificates` or `signHash` from an unknown origin triggers the exten
 Single ES module file, no dependencies. Load it with `<script type="module">` or a bundler.
 
 ```js
-const signer = new OpenSigner();
+const signer = new DocSigner();
 
 await signer.init({ timeout: 2000 });       // rejects: EXTENSION_NOT_INSTALLED
 // certificates: array from §2, same fields. readers: PC/SC readers from §2,
@@ -375,15 +375,15 @@ const { signatures } = await signer.signHash({
 });
 ```
 
-All rejections are `OpenSignerError` with `.code` from the codes above. Nothing else in the API. Server calls (start/complete) are plain `fetch` in application code; the demo shows the wiring.
+All rejections are `DocSignerError` with `.code` from the codes above. Nothing else in the API. Server calls (start/complete) are plain `fetch` in application code; the demo shows the wiring.
 
 ---
 
 ## 5. Names
 
-- Native messaging host name: `com.opensigner.host`
-- Host binary name: `opensigner-host` (`.exe` on Windows)
-- Page bridge events: `org.opensigner.request` / `org.opensigner.response`
+- Native messaging host name: `com.docsigner.host`
+- Host binary name: `docsigner-host` (`.exe` on Windows)
+- Page bridge events: `org.docsigner.request` / `org.docsigner.response`
 - Extension IDs go into the host's native messaging manifests at install time; installers keep them in one place (a template variable), never hardcoded in code.
 
 ## 6. Shared conventions

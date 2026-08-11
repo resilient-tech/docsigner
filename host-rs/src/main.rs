@@ -1,4 +1,4 @@
-//! OpenSigner native messaging host.
+//! DocSigner native messaging host.
 //!
 //! With no arguments it runs the stdio loop the browser drives. With arguments
 //! it runs the terminal CLI, which is also how the desktop app calls it.

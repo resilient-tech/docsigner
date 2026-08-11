@@ -3,12 +3,12 @@
 //! A notification on every token signature makes a silent signing attempt
 //! visible to the user, whose only other UI is the PIN dialog (and the PIN
 //! cache means some signatures happen with no prompt at all). Set
-//! `OPENSIGNER_NO_NOTIFY` to turn it off.
+//! `DOCSIGNER_NO_NOTIFY` to turn it off.
 //!
 //! notify-rust covers all three platforms, so unlike notify.py this is no
 //! longer a no-op on Windows.
 
-pub const ENV_DISABLE: &str = "OPENSIGNER_NO_NOTIFY";
+pub const ENV_DISABLE: &str = "DOCSIGNER_NO_NOTIFY";
 
 pub fn notify(title: &str, body: &str) {
     if std::env::var_os(ENV_DISABLE).is_some() {
@@ -79,7 +79,7 @@ mod tests {
         // No assertion available on "nothing appeared"; what this pins is that
         // the disabled path returns rather than reaching the OS notifier, which
         // in CI has no session bus and would otherwise log on every call.
-        notify("OpenSigner", "should not appear");
+        notify("DocSigner", "should not appear");
     }
 
     /// Notifying with the switch unset must still not fail the signature: CI
@@ -87,6 +87,6 @@ mod tests {
     #[test]
     fn notifying_without_a_daemon_is_harmless() {
         let _guard = crate::testenv::EnvGuard::new().unset(ENV_DISABLE);
-        notify("OpenSigner", "best effort only");
+        notify("DocSigner", "best effort only");
     }
 }

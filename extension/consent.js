@@ -6,7 +6,7 @@ const origin = new URLSearchParams(location.search).get("origin") || "";
 document.getElementById("origin").textContent = origin;
 
 function decide(allow) {
-  Promise.resolve(api.runtime.sendMessage({ type: "org.opensigner.consent", origin, allow }))
+  Promise.resolve(api.runtime.sendMessage({ type: "org.docsigner.consent", origin, allow }))
     .catch(() => {})
     .finally(() => window.close()); // background also closes us, whichever wins
 }

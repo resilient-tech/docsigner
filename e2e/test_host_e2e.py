@@ -1,10 +1,10 @@
 """Live host e2e against the real binary, independent of the server.
 
 Two layers:
-  1. The shipped `opensigner-host` binary over its stdio framing — proves the
+  1. The shipped `docsigner-host` binary over its stdio framing — proves the
      actual process and the native messaging wire work, including request
      multiplexing and the error shape.
-  2. A real-DSC path gated by OPENSIGNER_E2E_REAL_TOKEN=1 — plug the token in,
+  2. A real-DSC path gated by DOCSIGNER_E2E_REAL_TOKEN=1 — plug the token in,
      run it on your own machine. Signatures are verified against the
      certificate's public key, so a wrong CMS wrapping fails here.
 
@@ -13,7 +13,7 @@ Python host's own modules, which verified signatures with no hardware. That
 went with host/. The Rust host's `cargo test` covers dispatch, parameter
 validation and the DigestInfo and ECDSA encodings, but nothing exercises a
 token without hardware any more. Provisioning SoftHSM2 in CI and pointing
-OPENSIGNER_PKCS11_MODULES at it would restore that layer; until then the
+DOCSIGNER_PKCS11_MODULES at it would restore that layer; until then the
 signature path is only proven on a real token.
 """
 
@@ -33,13 +33,13 @@ from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import load_der_x509_certificate
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-BINARY_NAME = "opensigner-host.exe" if sys.platform == "win32" else "opensigner-host"
-PIN = os.environ.get("OPENSIGNER_PIN", "admin@123")
+BINARY_NAME = "docsigner-host.exe" if sys.platform == "win32" else "docsigner-host"
+PIN = os.environ.get("DOCSIGNER_PIN", "admin@123")
 
 
 def host_binary() -> Path:
     """The built host binary, release before debug."""
-    override = os.environ.get("OPENSIGNER_HOST_BIN")
+    override = os.environ.get("DOCSIGNER_HOST_BIN")
     if override:
         return Path(override)
     target = REPO_ROOT / "host-rs" / "target"
@@ -138,8 +138,8 @@ def test_host_rejects_a_malformed_sign_request(host):
 # ------------------------------------------------------------ 2. real DSC (gated)
 
 @pytest.mark.skipif(
-    os.environ.get("OPENSIGNER_E2E_REAL_TOKEN") != "1",
-    reason="real DSC token path: set OPENSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
+    os.environ.get("DOCSIGNER_E2E_REAL_TOKEN") != "1",
+    reason="real DSC token path: set DOCSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
 )
 def test_host_real_token(host):
     """Runs on your machine: lists the token's certificates and signs a digest
@@ -166,8 +166,8 @@ def test_host_real_token(host):
 
 
 @pytest.mark.skipif(
-    os.environ.get("OPENSIGNER_E2E_REAL_TOKEN") != "1",
-    reason="real DSC token path: set OPENSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
+    os.environ.get("DOCSIGNER_E2E_REAL_TOKEN") != "1",
+    reason="real DSC token path: set DOCSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
 )
 def test_host_real_token_signs_a_batch_in_one_login(host):
     """The one-PIN-per-batch promise: several digests, one signHash, each

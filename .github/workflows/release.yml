@@ -113,7 +113,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          binary=target/${{ matrix.target }}/release/opensigner-host
+          binary=target/${{ matrix.target }}/release/docsigner-host
           file "$binary"
           file "$binary" | grep -q 'x86.64' || { echo "::error::not an x86_64 binary"; exit 1; }
 
@@ -124,7 +124,7 @@ jobs:
         if: runner.os != 'macOS'
         shell: bash
         run: |
-          binary=target/${{ matrix.target }}/release/opensigner-host
+          binary=target/${{ matrix.target }}/release/docsigner-host
           [ "${{ runner.os }}" = "Windows" ] && binary="$binary.exe"
           "$binary" version
           "$binary" version | grep -q '"protocolVersion": 1'
@@ -133,12 +133,12 @@ jobs:
         shell: bash
         run: |
           version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-          stage="opensigner-host-${version}-${{ matrix.name }}"
+          stage="docsigner-host-${version}-${{ matrix.name }}"
           mkdir -p "dist/$stage"
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/${{ matrix.target }}/release/opensigner-host.exe "dist/$stage/"
+            cp target/${{ matrix.target }}/release/docsigner-host.exe "dist/$stage/"
           else
-            cp target/${{ matrix.target }}/release/opensigner-host "dist/$stage/"
+            cp target/${{ matrix.target }}/release/docsigner-host "dist/$stage/"
           fi
           cp README.md "dist/$stage/"
           cp -r packaging "dist/$stage/packaging"

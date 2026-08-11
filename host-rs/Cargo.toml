@@ -1,13 +1,13 @@
 [package]
-name = "opensigner-host"
+name = "docsigner-host"
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.82"
-description = "OpenSigner native messaging host: DSC token access over PKCS#11 and the OS certificate stores"
+description = "DocSigner native messaging host: DSC token access over PKCS#11 and the OS certificate stores"
 license = "Apache-2.0"
 
 [[bin]]
-name = "opensigner-host"
+name = "docsigner-host"
 path = "src/main.rs"
 
 [dependencies]

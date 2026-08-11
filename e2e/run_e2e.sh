@@ -6,8 +6,8 @@
 #
 # Config comes from e2e/.env.e2e (copy e2e/.env.e2e.example if missing).
 # Gated paths (off by default), enable per run:
-#   OPENSIGNER_E2E_REAL_TOKEN=1  real DSC over the host (token plugged in + driver)
-#   OPENSIGNER_E2E_BROWSER=1     Chrome + playwright extension run
+#   DOCSIGNER_E2E_REAL_TOKEN=1  real DSC over the host (token plugged in + driver)
+#   DOCSIGNER_E2E_BROWSER=1     Chrome + playwright extension run
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

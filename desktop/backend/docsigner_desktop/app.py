@@ -12,7 +12,7 @@ import signer_core
 from . import certs, config, picker, signing, store
 from .models import Settings, SignRequest
 
-app = FastAPI(title="OpenSigner Desktop")
+app = FastAPI(title="DocSigner Desktop")
 config.setup_logging()
 
 
@@ -95,7 +95,7 @@ app.mount("/fonts", StaticFiles(directory=str(_fonts)), name="fonts")
 
 def _bundle_root() -> Path:
     # Frozen (PyInstaller) unpacks data under sys._MEIPASS; from source, this
-    # file is desktop/backend/opensigner_desktop/app.py, so parents[2] is desktop/.
+    # file is desktop/backend/docsigner_desktop/app.py, so parents[2] is desktop/.
     if getattr(sys, "frozen", False):
         return Path(sys._MEIPASS)
     return Path(__file__).resolve().parents[2]
