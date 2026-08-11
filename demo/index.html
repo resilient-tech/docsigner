@@ -7,7 +7,7 @@
   <link rel="icon" href="../assets/icon.svg">
   <!--
     Token signing, end to end. Needs 3 things running:
-      1. docsigner-server on http://localhost:8000 (see server/)
+      1. docsigner-server on http://localhost:8001 (see server/)
       2. the DocSigner extension loaded in this browser (see extension/)
       3. the native host installed (see host/)
     Serve the repo root over HTTP, e.g.:  python3 -m http.server 8080
@@ -157,7 +157,7 @@
     <label for="pin">Token PIN (optional — leave empty to use the native prompt)</label>
     <input type="password" id="pin" autocomplete="off" placeholder="Prompted by the token app if empty">
     <label for="server">Server URL</label>
-    <input type="text" id="server" value="http://127.0.0.1:8989">
+    <input type="text" id="server" value="http://127.0.0.1:8001">
   </fieldset>
 
   <button id="sign" type="button" disabled>Sign</button>
