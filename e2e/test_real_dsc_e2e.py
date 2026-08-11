@@ -9,17 +9,19 @@ which is the bar Adobe applies for "LTV enabled".
 
 import asyncio
 import io
+import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "host"))
 sys.path.insert(0, str(REPO_ROOT / "core"))
 
 from helpers import b64, has_cca_revinfo, read_dss  # noqa: E402
+from test_host_e2e import host_binary  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("OPENSIGNER_E2E_REAL_TOKEN") != "1",
@@ -30,12 +32,25 @@ PIN = os.environ.get("OPENSIGNER_PIN", "admin@123")
 LTV_PROFILES = ["B-LT", "B-LTA", "CCA-LTV", "CCA-LTA"]
 
 
+def _host(*args):
+    """Run the host binary's CLI and return its parsed result.
+
+    The PIN goes through the environment, never the argument list, so it does
+    not land in a process listing.
+    """
+    proc = subprocess.run(
+        [str(host_binary()), *args],
+        capture_output=True, text=True, timeout=300,
+        env={**os.environ, "OPENSIGNER_PIN": PIN, "OPENSIGNER_NO_NOTIFY": "1"},
+    )
+    payload = json.loads(proc.stdout or "{}")
+    assert "result" in payload, payload.get("error") or proc.stderr
+    return payload["result"]
+
+
 def _signing_cert():
     """The token's first certificate that can sign (digitalSignature/nonRepudiation)."""
-    from signer_host import protocol
-
-    resp = protocol.handle_message({"id": "L", "command": "listCertificates", "params": {}})
-    certs = resp.get("result", {}).get("certificates", [])
+    certs = _host("list").get("certificates", [])
     assert certs, "no certificates on the token; plug it in and install the driver"
     for cert in certs:
         usage = cert.get("keyUsage") or {}
@@ -45,13 +60,9 @@ def _signing_cert():
 
 
 def _token_sign(thumbprint, to_sign_hash_b64, digest):
-    from signer_host import protocol
-
-    resp = protocol.handle_message({"id": "S", "command": "signHash", "params": {
-        "thumbprint": thumbprint, "hashes": [to_sign_hash_b64],
-        "digestAlgorithm": digest, "pin": PIN}})
-    assert "result" in resp, resp
-    return resp["result"]["signatures"][0]
+    result = _host("sign", "--thumbprint", thumbprint,
+                   "--hash", to_sign_hash_b64, "--alg", digest)
+    return result["signatures"][0]
 
 
 def _download(api, url):

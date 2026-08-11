@@ -29,7 +29,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `server/` | `signer-server`, a small FastAPI reference server |
 | `js/` | `opensigner.js`, the page-side library (single file, no deps) |
 | `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
-| `host/` | `opensigner-host`, the native messaging app that talks to tokens |
+| `host-rs/` | `opensigner-host`, the native messaging binary that talks to tokens (Rust, ~1 MB) |
 | `desktop/` | `opensigner-desktop`, a local app to batch-sign a folder of PDFs with a placed signature |
 | `demo/` | A working demo page, also the integration example |
 | `spike/` | Phase 0 proof scripts, kept as executable documentation |
@@ -98,34 +98,30 @@ Firefox: run `python scripts/build_firefox_extension.py` first (Firefox runs the
 
 ## Install the native host
 
-The host needs Python or a built binary, plus your token's driver installed (the driver ships the PKCS#11 module the host loads).
+The host is a self-contained Rust binary of about 1 MB. It needs no runtime, only your token's driver installed (the driver ships the PKCS#11 module the host loads).
 
-From source, for development:
+Build it:
 
 ```bash
-pip install -e ./host
-opensigner-host-cli list         # should print your token's certificates
+cargo build --release --manifest-path host-rs/Cargo.toml
 ```
 
-Build a single-file binary for your OS:
-
 ```bash
-pip install pyinstaller
-pyinstaller host/packaging/opensigner-host.spec
+host-rs/target/release/opensigner-host list    # should print your token's certificates
 ```
 
 Then register it with your browsers (pass your extension ID):
 
 ```bash
-host/packaging/install.sh <chrome-extension-id>     # macOS / Linux
-host\packaging\install.bat <chrome-extension-id>    # Windows
+host-rs/packaging/install.sh <chrome-extension-id>     # macOS / Linux
+host-rs\packaging\install.bat <chrome-extension-id>    # Windows
 ```
 
-The installer copies the binary and writes the native messaging manifests for Chrome, Chromium, Edge, Brave, and Firefox.
+The installer copies the binary and writes the native messaging manifests for Chrome, Chromium, Edge, Brave, and Firefox. Details, including the driver quirks the host works around, are in [`host-rs/README.md`](host-rs/README.md).
 
 ### Token support
 
-The host also reports connected smart-card readers through the OS smart-card service (PC/SC), which sees the token even when its driver is missing — so `opensigner-host-cli list` can tell you "ProxKey detected, driver not installed" instead of showing nothing. How the strategies compare across products: `docs/host.md`.
+The host also reports connected smart-card readers through the OS smart-card service (PC/SC), which sees the token even when its driver is missing — so `opensigner-host list` can tell you "ProxKey detected, driver not installed" instead of showing nothing. How the strategies compare across products: `docs/host.md`.
 
 Two discovery paths, merged into one certificate list:
 
@@ -163,13 +159,15 @@ or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.
 ## Tests
 
 ```bash
-pip install -e ./core -e ./server -e ./host   # if not already installed
-pip install -r requirements-dev.txt           # pytest + test-only deps
-pytest core/tests server/tests host/tests     # 87 tests
-cd js && node --test                          # 10 tests
+pip install -e ./core -e ./server              # if not already installed
+pip install -r requirements-dev.txt            # pytest + test-only deps
+pytest core/tests server/tests                 # 76 tests
+PYTHONPATH=desktop/backend pytest desktop/backend/tests   # 11 tests
+cargo test --manifest-path host-rs/Cargo.toml  # 72 tests
+cd js && node --test                           # 10 tests
 ```
 
-Everything runs without hardware: token logic is tested against a fake PKCS#11 layer that does real RSA math, and the whole HTTP flow is tested with in-memory keys. Testing with a real DSC token is a manual step before releases: plug it in and run `opensigner-host-cli list`, then sign through the demo.
+Everything runs without hardware: the whole HTTP flow is tested with in-memory keys, and the host's tests assert invariants that hold whether or not a token is plugged in. Testing with a real DSC token is a manual step before releases: plug it in, run `opensigner-host list`, then sign through the demo. The end-to-end suite has a gated real-token path, `OPENSIGNER_E2E_REAL_TOKEN=1 pytest e2e/test_host_e2e.py`.
 
 ## Before publishing
 

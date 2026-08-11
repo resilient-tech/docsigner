@@ -10,7 +10,7 @@ Files: `manifest.json`, `background.js` (native messaging relay), `content.js`
 `icons/`.
 
 This extension does nothing on its own. The native host must be installed and
-registered with this extension's ID (see [`../host/README.md`](../host/README.md)).
+registered with this extension's ID (see [`../host-rs/README.md`](../host-rs/README.md)).
 
 ## Load it (development)
 

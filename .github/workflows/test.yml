@@ -14,14 +14,13 @@ jobs:
           python-version: "3.11"
       - name: Install
         run: |
-          pip install -e ./core -e ./server -e ./host
+          pip install -e ./core -e ./server
           pip install -r requirements-dev.txt
       - name: Test core
         run: pytest core/tests -q
       - name: Test server
         run: pytest server/tests -q
-      - name: Test host
-        run: pytest host/tests -q
+      # The token host is Rust now; its tests live in the rust-host job below.
       # The desktop backend is not pip-installed here: these tests cover the
       # token cache and the host-binary seam, which need only cryptography.
       - name: Test desktop backend

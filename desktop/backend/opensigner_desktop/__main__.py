@@ -43,12 +43,8 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
 
 
 def main() -> None:
-    # In a frozen build the app re-execs itself as the signing host (host.py),
-    # since a PyInstaller bundle can't run `python -m signer_host.cli`.
-    if len(sys.argv) > 1 and sys.argv[1] == "--host-cli":
-        from signer_host.cli import main as host_cli
-
-        raise SystemExit(host_cli(sys.argv[2:]))
+    # No --host-cli re-exec here any more: the signing host is its own binary
+    # (host-rs), carried as a sidecar in packaged builds and found by host.py.
     if "--server" in sys.argv:
         _serve(DEV_PORT)
         return

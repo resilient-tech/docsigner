@@ -7,7 +7,7 @@
 # Run as a normal user for a per-user install (~/.local/opensigner), or as
 # root for a system-wide install (/usr/local/opensigner).
 #
-# Build the binary first:  pyinstaller packaging/opensigner-host.spec
+# Build the binary first:  cargo build --release
 # Or point OPENSIGNER_BINARY at an existing build.
 
 set -eu
@@ -22,10 +22,14 @@ if [ "$CHROME_EXT_ID" = "__EXTENSION_ID__" ]; then
     echo "         Rerun with the real ID once the extension is installed." >&2
 fi
 
-# Locate the built binary.
+# Locate the built binary. Release first: a stale debug build must not be
+# installed just because someone ran `cargo build` once.
 BINARY="${OPENSIGNER_BINARY:-}"
 if [ -z "$BINARY" ]; then
-    for candidate in "$HERE/../dist/opensigner-host" "$HERE/dist/opensigner-host"; do
+    for candidate in \
+        "$HERE/../target/release/opensigner-host" \
+        "$HERE/../target/debug/opensigner-host" \
+        "$HERE/opensigner-host"; do
         if [ -f "$candidate" ]; then
             BINARY="$candidate"
             break
@@ -34,7 +38,7 @@ if [ -z "$BINARY" ]; then
 fi
 if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
     echo "error: opensigner-host binary not found." >&2
-    echo "       Build it with: pyinstaller packaging/opensigner-host.spec" >&2
+    echo "       Build it with: cargo build --release" >&2
     echo "       or set OPENSIGNER_BINARY to its path." >&2
     exit 1
 fi

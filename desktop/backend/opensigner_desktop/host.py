@@ -5,13 +5,23 @@ Running the host fresh each time sidesteps the per-process slot state some token
 drivers cache, which otherwise wedges a long-lived scan. The host's CLI already
 merges PKCS#11 tokens with the OS keychain and handles the PIN dialog, so this
 is a thin wrapper over its `list` and `sign` commands.
+
+The host is `host-rs`, a self-contained Rust binary of about 1 MB. It ships
+beside the app in a packaged build and is found in the cargo target directory
+when running from source.
 """
 
 import base64
 import json
 import os
+import shutil
 import subprocess
 import sys
+from pathlib import Path
+
+ENV_HOST_BIN = "OPENSIGNER_HOST_BIN"
+
+BINARY_NAME = "opensigner-host.exe" if sys.platform == "win32" else "opensigner-host"
 
 
 class TokenError(Exception):
@@ -21,31 +31,51 @@ class TokenError(Exception):
         self.code = code
 
 
-ENV_HOST_BIN = "OPENSIGNER_HOST_BIN"
+class HostNotFound(TokenError):
+    """The host binary is missing, which is a setup problem, not a token one."""
 
 
-def _host_argv() -> list[str]:
-    """How to launch the signing host as a fresh process.
+def _candidates() -> list[Path]:
+    """Where to look for the host binary, most specific first."""
+    here = Path(__file__).resolve()
+    if getattr(sys, "frozen", False):
+        # PyInstaller unpacks bundled binaries into _MEIPASS; the onedir build
+        # also leaves them beside the executable.
+        roots = [Path(getattr(sys, "_MEIPASS", "")), Path(sys.executable).parent]
+        return [root / BINARY_NAME for root in roots if str(root)]
 
-    From source `python -m signer_host.cli` works. A PyInstaller build has no
-    `-m`, so the frozen app re-execs itself with a --host-cli switch that
-    __main__ routes into the host CLI. Either way it's a fresh process, which is
-    what keeps the token drivers from wedging.
+    # From source: host-rs/target/{release,debug}/ relative to the repo root,
+    # which is three parents up from desktop/backend/opensigner_desktop/.
+    repo = here.parents[3]
+    target = repo / "host-rs" / "target"
+    return [target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME]
 
-    OPENSIGNER_HOST_BIN points at a host binary to run instead. It speaks the
-    same CLI (`list`, `sign`, `version`) and prints the same JSON, so this is
-    how the Rust host is exercised against the real app before it replaces the
-    Python one:
 
-        OPENSIGNER_HOST_BIN=../../host-rs/target/release/opensigner-host \\
-            ./.venv/bin/python -m opensigner_desktop --server
+def host_binary() -> str:
+    """Absolute path to the host binary. Raises HostNotFound if there is none.
+
+    OPENSIGNER_HOST_BIN overrides the search, which is how a build under test
+    is pointed at a specific binary.
     """
     override = os.environ.get(ENV_HOST_BIN)
     if override:
-        return [override]
-    if getattr(sys, "frozen", False):
-        return [sys.executable, "--host-cli"]
-    return [sys.executable, "-m", "signer_host.cli"]
+        return override
+    for candidate in _candidates():
+        if candidate.is_file():
+            return str(candidate)
+    found = shutil.which(BINARY_NAME)
+    if found:
+        return found
+    raise HostNotFound(
+        "the opensigner-host binary was not found. Build it with "
+        "`cargo build --release --manifest-path host-rs/Cargo.toml`, or set "
+        f"{ENV_HOST_BIN} to its path."
+    )
+
+
+def _host_argv() -> list[str]:
+    """How to launch the signing host as a fresh process."""
+    return [host_binary()]
 
 
 def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:

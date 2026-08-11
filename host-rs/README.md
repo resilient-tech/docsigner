@@ -107,7 +107,16 @@ Never script a PIN guess. These tokens lock after a small number of wrong attemp
 
 On a WatchData ProxKey carrying three Capricorn DSCs (2026-08-11, macOS arm64):
 
-**Listing.** `listCertificates` returns a payload byte-identical to the Python host's: 10886 bytes from each, zero field-level differences across all three certificates, matching `readers` and `diagnostics`. Reproduce with `scripts/compare_hosts.py`.
+**Listing.** `listCertificates` returned a payload byte-identical to the Python host's: 10886 bytes from each, zero field-level differences across all three certificates, matching `readers` and `diagnostics`.
+
+That comparison ran against `host/`, the Python host this replaced, which was removed once the Rust one became the default. To reproduce it, check the Python host and the harness out of history:
+
+```bash
+git checkout 4c45006 -- host scripts/compare_hosts.py
+pip install -e ./host && python scripts/compare_hosts.py
+```
+
+The harness drives the Rust host over real native messaging framing and diffs every command's JSON against the Python host's, comparing certificates order-independently.
 
 **Signing.** Every signature was checked three ways: it verifies against the certificate's public key, it is byte-identical to the Python host's (PKCS#1 v1.5 is deterministic, so it has to be), and a batch keeps its order.
 

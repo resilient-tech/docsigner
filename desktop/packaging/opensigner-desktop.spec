@@ -8,10 +8,11 @@
 # real-token sign, the same way the host binary is verified before release.
 #
 # Handled here:
-#   - Token path: host.py re-execs the frozen app as `--host-cli`, so signing
-#     still happens in a fresh process (no `python -m` needed). __main__ routes it.
+#   - Token path: the host-rs binary rides along as a sidecar and host.py finds
+#     it beside the executable. Still a fresh process per call, which is what
+#     keeps the token drivers from wedging.
 #   - Trust anchors: repo trust/ is bundled and config.py reads it from _MEIPASS.
-#   - Signing libs (pyHanko, pypdfium2, cryptography, python-pkcs11, …) collected.
+#   - Signing libs (pyHanko, pypdfium2, cryptography, …) collected.
 #   - macOS: emits a double-clickable .app via BUNDLE().
 #
 # Still per-OS / manual:
@@ -36,25 +37,39 @@ TRUST = os.path.join(REPO, "trust")
 entry = os.path.join(BACKEND, "run_desktop.py")
 ICON = os.path.join(SPECPATH, "OpenSigner.icns")
 
-# signer_core / signer_host are installed editable (PEP 660), which PyInstaller's
-# static analysis can't follow. Point pathex at their source so they resolve as
-# ordinary packages.
+# signer_core is installed editable (PEP 660), which PyInstaller's static
+# analysis can't follow. Point pathex at its source so it resolves as an
+# ordinary package.
 CORE = os.path.join(REPO, "core")
-HOST = os.path.join(REPO, "host")
+
+# The token host is a separate Rust binary, ~1 MB, carried as a sidecar.
+# host.py looks for it in _MEIPASS and beside the executable, in that order.
+HOST_BINARY_NAME = "opensigner-host.exe" if sys.platform == "win32" else "opensigner-host"
+HOST_BINARY = os.path.join(REPO, "host-rs", "target", "release", HOST_BINARY_NAME)
+if not os.path.isfile(HOST_BINARY):
+    raise SystemExit(
+        "the host binary is missing: %s\n"
+        "Build it first:  cargo build --release --manifest-path host-rs/Cargo.toml"
+        % HOST_BINARY
+    )
 
 datas = [(FRONTEND_DIST, os.path.join("frontend", "dist"))]
 if os.path.isdir(TRUST):
     datas += [(TRUST, "trust")]
 
-binaries = []
+# "." puts it at the bundle root, where _MEIPASS points.
+binaries = [(HOST_BINARY, ".")]
 hiddenimports = collect_submodules("uvicorn")
 
 # Everything the signing path and the window need, with their data files and
 # native libs. Wrapped so an absent optional package doesn't break the build.
+#
+# No python-pkcs11 and no signer_host: talking to the token is the Rust
+# binary's job now, and nothing in this process loads a PKCS#11 module.
 for pkg in (
     "webview", "pyhanko", "pyhanko_certvalidator", "asn1crypto", "cryptography",
-    "pypdfium2", "pypdfium2_raw", "qrcode", "PIL", "pkcs11", "oscrypto",
-    "signer_core", "signer_host",
+    "pypdfium2", "pypdfium2_raw", "qrcode", "PIL", "oscrypto",
+    "signer_core",
 ):
     try:
         d, b, h = collect_all(pkg)
@@ -113,16 +128,15 @@ excludes = ["lxml", "PIL._avif", "PIL._webp", "PIL._imagingcms"]
 # they are missing, so exclude them here and the trim holds either way.
 excludes += ["uvloop", "watchfiles", "httptools", "websockets"]
 
-# ponytail: tkinter is the PIN dialog on Windows and Linux (host pin.py falls
-# back to it when the caller supplies no PIN); macOS uses osascript, so it is
-# dead weight there only. Drop the platform check once the Rust host owns the
-# dialog on every OS, and this becomes unconditional.
-if sys.platform == "darwin":
-    excludes += ["tkinter", "PIL.ImageTk", "PIL._imagingtk"]
+# tkinter used to be the PIN dialog on Windows and Linux. The Rust host owns
+# that on every OS now (osascript, a PowerShell WinForms box, zenity/kdialog/
+# pinentry), so nothing in this process opens a Tk window. Worth ~7.7 MB with
+# the tcl and tk data directories.
+excludes += ["tkinter", "PIL.ImageTk", "PIL._imagingtk"]
 
 a = Analysis(
     [entry],
-    pathex=[BACKEND, CORE, HOST],
+    pathex=[BACKEND, CORE],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,

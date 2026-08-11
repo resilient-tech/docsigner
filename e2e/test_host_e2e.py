@@ -1,18 +1,27 @@
-"""Live host e2e, independent of the server.
+"""Live host e2e against the real binary, independent of the server.
 
-Three layers:
-  1. The real host binary over its stdio framing (getVersion) — proves the
-     actual process + native-messaging wire works.
-  2. listCertificates / signHash driven through the real framing codec and
-     protocol dispatcher against a fake PKCS#11 token, PIN = OPENSIGNER_PIN.
-     Signatures are verified against the certificate's public key, so a wrong
-     CMS wrapping fails here.
-  3. A real-DSC path gated by OPENSIGNER_E2E_REAL_TOKEN=1 — plug the token in,
-     point OPENSIGNER_PKCS11_MODULES at its driver, run on your own machine.
+Two layers:
+  1. The shipped `opensigner-host` binary over its stdio framing — proves the
+     actual process and the native messaging wire work, including request
+     multiplexing and the error shape.
+  2. A real-DSC path gated by OPENSIGNER_E2E_REAL_TOKEN=1 — plug the token in,
+     run it on your own machine. Signatures are verified against the
+     certificate's public key, so a wrong CMS wrapping fails here.
+
+What used to sit between them was a fake PKCS#11 token driven through the
+Python host's own modules, which verified signatures with no hardware. That
+went with host/. The Rust host's `cargo test` covers dispatch, parameter
+validation and the DigestInfo and ECDSA encodings, but nothing exercises a
+token without hardware any more. Provisioning SoftHSM2 in CI and pointing
+OPENSIGNER_PKCS11_MODULES at it would restore that layer; until then the
+signature path is only proven on a real token.
 """
 
-import io
+import base64
+import json
 import os
+import secrets
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -21,180 +30,169 @@ import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
+from cryptography.x509 import load_der_x509_certificate
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HOST_TESTS = REPO_ROOT / "host" / "tests"
-sys.path.insert(0, str(HOST_TESTS))
-sys.path.insert(0, str(REPO_ROOT / "host"))
-
-from signer_host import framing, modules, pkcs11_ops, protocol  # noqa: E402
-# Reuse the fake PKCS#11 stack the host unit tests already ship.
-from test_pkcs11_ops import ec_token, make_cert, rsa_token  # noqa: E402
-
+BINARY_NAME = "opensigner-host.exe" if sys.platform == "win32" else "opensigner-host"
 PIN = os.environ.get("OPENSIGNER_PIN", "admin@123")
 
 
-def _roundtrip(message: dict) -> dict:
-    """Encode a request as a frame, decode it, dispatch it, encode the response
-    as a frame, decode it back — the full wire path, in process."""
-    out = io.BytesIO()
-    framing.write_message(out, message)
-    out.seek(0)
-    request = framing.read_message(out)
-    response = protocol.handle_message(request)
-    back = io.BytesIO()
-    framing.write_message(back, response)
-    back.seek(0)
-    return framing.read_message(back)
+def host_binary() -> Path:
+    """The built host binary, release before debug."""
+    override = os.environ.get("OPENSIGNER_HOST_BIN")
+    if override:
+        return Path(override)
+    target = REPO_ROOT / "host-rs" / "target"
+    for candidate in (target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME):
+        if candidate.is_file():
+            return candidate
+    pytest.skip(
+        "host binary not built: cargo build --release --manifest-path host-rs/Cargo.toml"
+    )
 
 
-@pytest.fixture(autouse=True)
-def _clear_pin_cache():
-    """The PIN cache is process-wide; keep tests independent of order."""
-    pkcs11_ops.clear_pin_cache()
-    yield
-    pkcs11_ops.clear_pin_cache()
+# Chrome native messaging framing, inlined: the host is no longer a Python
+# package we can import a codec from, which is the point of this test.
+def _send(proc, message: dict) -> None:
+    payload = json.dumps(message).encode()
+    proc.stdin.write(struct.pack("<I", len(payload)) + payload)
+    proc.stdin.flush()
+
+
+def _recv(proc) -> dict:
+    header = proc.stdout.read(4)
+    assert len(header) == 4, "host closed the pipe without a reply"
+    (length,) = struct.unpack("<I", header)
+    return json.loads(proc.stdout.read(length).decode())
+
+
+class Host:
+    """One host process, spoken to over real framing."""
+
+    def __init__(self):
+        self.proc = subprocess.Popen(
+            [str(host_binary())],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+
+    def ask(self, command: str, params: dict | None = None, request_id="1") -> dict:
+        _send(self.proc, {"id": request_id, "command": command, "params": params or {}})
+        return _recv(self.proc)
+
+    def close(self, timeout=30):
+        self.proc.stdin.close()
+        self.proc.wait(timeout=timeout)
 
 
 @pytest.fixture
-def fake_token(monkeypatch):
-    """Install a fake token behind a fake module path; PIN = OPENSIGNER_PIN."""
-    def install(kind="rsa"):
-        if kind == "ec":
-            key = ec.generate_private_key(ec.SECP256R1())
-            der = make_cert(key, os.environ.get("E2E_SIGNER_CN", "EC Signer"))
-            token = ec_token(key, der)
-        else:
-            from cryptography.hazmat.primitives.asymmetric import rsa
-            key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-            der = make_cert(key, os.environ.get("E2E_SIGNER_CN", "RSA Signer"))
-            token = rsa_token(key, der)
-        token.expected_pin = PIN
-        from test_pkcs11_ops import FakeLib
-        lib = FakeLib([token])
-        monkeypatch.setattr(modules, "discover_modules", lambda: ["/fake/pkcs11.so"])
-        monkeypatch.setattr(pkcs11_ops, "load_library", lambda path: lib)
-        return key, der
-    return install
-
-
-# ------------------------------------------------------------ 1. real process
-
-def test_host_process_getversion():
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "signer_host"],
-        cwd=str(REPO_ROOT / "host"),
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
+def host():
+    h = Host()
     try:
-        framing.write_message(proc.stdin, {"id": "1", "command": "getVersion"})
-        response = framing.read_message(proc.stdout)
+        yield h
     finally:
-        proc.stdin.close()
-        proc.wait(timeout=5)
+        try:
+            h.close()
+        except Exception:
+            h.proc.kill()
+
+
+# ------------------------------------------------------------ 1. the real binary
+
+def test_host_process_getversion(host):
+    response = host.ask("getVersion")
     assert response["id"] == "1"
     assert response["result"]["protocolVersion"] == 1
     assert response["result"]["version"]
+    assert response["result"]["logPath"].endswith("host.log")
 
 
-# ------------------------------------------------------------ 2. wire + fake token
-
-def test_host_list_certificates_wire(fake_token):
-    key, der = fake_token("rsa")
-    resp = _roundtrip({"id": "L", "command": "listCertificates", "params": {}})
-    certs = resp["result"]["certificates"]
-    assert len(certs) == 1
-    import base64
-    import hashlib
-    assert certs[0]["thumbprint"] == hashlib.sha1(der).hexdigest()
-    assert base64.b64decode(certs[0]["certificate"]) == der
-    assert certs[0]["keyType"] == "RSA"
-    assert os.environ.get("E2E_SIGNER_CN", "RSA Signer") in certs[0]["subject"]
+def test_host_unknown_command(host):
+    response = host.ask("noSuchCommand", request_id="x")
+    assert response["id"] == "x"
+    assert response["error"]["code"] == "UNSUPPORTED"
 
 
-@pytest.mark.parametrize("kind", ["rsa", "ec"])
-def test_host_sign_hash_wire(fake_token, kind):
-    import base64
-    import hashlib
-    import secrets
-
-    key, der = fake_token(kind)
-    thumbprint = hashlib.sha1(der).hexdigest()
-    digest = secrets.token_bytes(32)  # a fake sha256 message imprint
-    resp = _roundtrip({"id": "S", "command": "signHash", "params": {
-        "thumbprint": thumbprint,
-        "hashes": [base64.b64encode(digest).decode()],
-        "digestAlgorithm": "sha256",
-        "pin": PIN,
-    }})
-    sig = base64.b64decode(resp["result"]["signatures"][0])
-    pub = key.public_key()
-    if kind == "ec":
-        pub.verify(sig, digest, ec.ECDSA(Prehashed(hashes.SHA256())))  # DER Sig-Value
-    else:
-        pub.verify(sig, digest, padding.PKCS1v15(), Prehashed(hashes.SHA256()))
+def test_host_multiplexes_request_ids(host):
+    """One process, several requests, replies matched by id, including a
+    non-string id. The extension relies on this."""
+    for request_id in ("a", 42, "c"):
+        response = host.ask("getVersion", request_id=request_id)
+        assert response["id"] == request_id
 
 
-def test_host_wrong_pin_rejected(fake_token):
-    import base64
-    import hashlib
-    import secrets
-
-    key, der = fake_token("rsa")
-    resp = _roundtrip({"id": "W", "command": "signHash", "params": {
-        "thumbprint": hashlib.sha1(der).hexdigest(),
-        "hashes": [base64.b64encode(secrets.token_bytes(32)).decode()],
-        "pin": "wrong-pin",
-    }})
-    assert resp["error"]["code"] == "PIN_INCORRECT"
+def test_host_list_certificates_always_answers(host):
+    """With or without a token, listCertificates returns a shaped result and
+    diagnostics that explain an empty list."""
+    result = host.ask("listCertificates")["result"]
+    assert isinstance(result["certificates"], list)
+    for key in ("modulesConfigured", "modulesLoaded", "tokens",
+                "pkcs11Certificates", "osStoreCertificates"):
+        assert isinstance(result["diagnostics"][key], int), f"missing {key}"
 
 
-def test_host_unknown_command():
-    resp = _roundtrip({"id": "U", "command": "frobnicate", "params": {}})
-    assert resp["error"]["code"] == "UNSUPPORTED"
+def test_host_rejects_a_malformed_sign_request(host):
+    response = host.ask("signHash", {"hashes": ["AA=="]})
+    assert response["error"]["code"] == "INTERNAL"
 
 
-# ------------------------------------------------------------ 3. real DSC (gated)
+# ------------------------------------------------------------ 2. real DSC (gated)
 
 @pytest.mark.skipif(
     os.environ.get("OPENSIGNER_E2E_REAL_TOKEN") != "1",
     reason="real DSC token path: set OPENSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
 )
-def test_host_real_token():
-    """Runs on your machine: lists the token's certs and signs a digest with
-    the real PIN, verifying the signature against the certificate."""
-    import base64
-    import hashlib
-    import secrets
+def test_host_real_token(host):
+    """Runs on your machine: lists the token's certificates and signs a digest
+    with the real PIN, verifying the signature against the certificate."""
+    certs = host.ask("listCertificates")["result"]["certificates"]
+    assert certs, "no certificates on the token — is it plugged in and the driver installed?"
 
-    from cryptography.x509 import load_der_x509_certificate
-
-    def send(proc, msg):
-        framing.write_message(proc.stdin, msg)
-        return framing.read_message(proc.stdout)
-
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "signer_host"], cwd=str(REPO_ROOT / "host"),
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        listed = send(proc, {"id": "1", "command": "listCertificates", "params": {}})
-        certs = listed["result"]["certificates"]
-        assert certs, "no certificates on the token — is it plugged in and the driver installed?"
-        cert = certs[0]
-        digest = secrets.token_bytes(32)
-        signed = send(proc, {"id": "2", "command": "signHash", "params": {
-            "thumbprint": cert["thumbprint"],
-            "hashes": [base64.b64encode(digest).decode()],
-            "digestAlgorithm": "sha256",
-            "pin": PIN,
-        }})
-        sig = base64.b64decode(signed["result"]["signatures"][0])
-    finally:
-        proc.stdin.close()
-        proc.wait(timeout=30)
+    cert = certs[0]
+    digest = secrets.token_bytes(32)
+    signed = host.ask("signHash", {
+        "thumbprint": cert["thumbprint"],
+        "hashes": [base64.b64encode(digest).decode()],
+        "digestAlgorithm": "sha256",
+        "pin": PIN,
+    }, request_id="2")
+    assert "error" not in signed, signed.get("error")
+    sig = base64.b64decode(signed["result"]["signatures"][0])
 
     pub = load_der_x509_certificate(base64.b64decode(cert["certificate"])).public_key()
     if cert["keyType"] == "EC":
         pub.verify(sig, digest, ec.ECDSA(Prehashed(hashes.SHA256())))
     else:
         pub.verify(sig, digest, padding.PKCS1v15(), Prehashed(hashes.SHA256()))
+
+
+@pytest.mark.skipif(
+    os.environ.get("OPENSIGNER_E2E_REAL_TOKEN") != "1",
+    reason="real DSC token path: set OPENSIGNER_E2E_REAL_TOKEN=1 with the token plugged in",
+)
+def test_host_real_token_signs_a_batch_in_one_login(host):
+    """The one-PIN-per-batch promise: several digests, one signHash, each
+    signature verifying against its own digest and not its neighbour's."""
+    certs = host.ask("listCertificates")["result"]["certificates"]
+    assert certs, "no certificates on the token"
+    cert = certs[0]
+    if cert["keyType"] != "RSA":
+        pytest.skip("batch check is written for the RSA path")
+
+    digests = [secrets.token_bytes(32) for _ in range(3)]
+    signed = host.ask("signHash", {
+        "thumbprint": cert["thumbprint"],
+        "hashes": [base64.b64encode(d).decode() for d in digests],
+        "digestAlgorithm": "sha256",
+        "pin": PIN,
+    }, request_id="batch")
+    assert "error" not in signed, signed.get("error")
+    sigs = [base64.b64decode(s) for s in signed["result"]["signatures"]]
+    assert len(sigs) == len(digests)
+
+    pub = load_der_x509_certificate(base64.b64decode(cert["certificate"])).public_key()
+    for i, (sig, digest) in enumerate(zip(sigs, digests)):
+        pub.verify(sig, digest, padding.PKCS1v15(), Prehashed(hashes.SHA256()))
+        # Order matters: signature i must not verify against a different digest.
+        with pytest.raises(Exception):
+            pub.verify(sig, digests[(i + 1) % len(digests)],
+                       padding.PKCS1v15(), Prehashed(hashes.SHA256()))

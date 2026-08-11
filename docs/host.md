@@ -72,18 +72,22 @@ flowchart TD
 
 ## For developers
 
-Install and try it against your own token:
+The host is a Rust binary of about 1 MB, with no runtime to install. Build it
+and try it against your own token:
 
 ```bash
-pip install -e ./host
-opensigner-host-cli list                     # certs on your token
-opensigner-host-cli version
+cargo build --release --manifest-path host-rs/Cargo.toml
+```
+
+```bash
+host-rs/target/release/opensigner-host list      # certs on your token
+host-rs/target/release/opensigner-host version
 ```
 
 Sign a base64 hash from the terminal:
 
 ```bash
-opensigner-host-cli sign \
+opensigner-host sign \
   --thumbprint ab12cd... \
   --hash <base64-digest> \
   --alg sha256
@@ -93,9 +97,9 @@ opensigner-host-cli sign \
 - point at a driver the built-in list misses: `export OPENSIGNER_PKCS11_MODULES=/path/to/pkcs11.so`.
 - set `OPENSIGNER_NO_NOTIFY` to silence the popup.
 
-**Adding a token backend?** Copy the shape of `os_store.py`: expose
-`list_certificates()` and `sign_hashes(thumbprint, hashes, alg)`, build entries
-with `certs.cert_info(der)`, and `protocol.py` will merge yours in.
+**Adding a token backend?** Copy the shape of `src/os_store/`: expose
+`list_der()` and `sign(thumbprint, digests, alg)`, build entries with
+`certs::cert_info(...)`, and `protocol.rs` will merge yours in.
 
-Packaging as a single binary and registering it with browsers is in the
-[host README](../host/README.md).
+Packaging and registering it with browsers is in the
+[host README](../host-rs/README.md).

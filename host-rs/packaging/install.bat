@@ -6,7 +6,7 @@ rem     install.bat [CHROME_EXTENSION_ID] [FIREFOX_EXTENSION_ID]
 rem
 rem Registers the host through HKCU registry keys (the ".reg approach"), so no
 rem admin rights are needed. Build the binary first:
-rem     pyinstaller packaging\opensigner-host.spec
+rem     cargo build --release
 
 setlocal
 
@@ -24,11 +24,14 @@ set "HERE=%~dp0"
 set "HOST_NAME=com.opensigner.host"
 set "INSTALL_DIR=%LOCALAPPDATA%\opensigner"
 
-set "BINARY=%HERE%..\dist\opensigner-host.exe"
-if not exist "%BINARY%" set "BINARY=%HERE%dist\opensigner-host.exe"
+rem Release first: a stale debug build must not be installed just because
+rem someone ran `cargo build` once.
+set "BINARY=%HERE%..\target\release\opensigner-host.exe"
+if not exist "%BINARY%" set "BINARY=%HERE%..\target\debug\opensigner-host.exe"
+if not exist "%BINARY%" set "BINARY=%HERE%opensigner-host.exe"
 if not exist "%BINARY%" (
     echo error: opensigner-host.exe not found. Build it first:
-    echo        pyinstaller packaging\opensigner-host.spec
+    echo        cargo build --release
     exit /b 1
 )
 
