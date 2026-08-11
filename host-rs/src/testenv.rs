@@ -1,14 +1,11 @@
-//! Serialised, self-restoring environment variables for tests.
+//! Environment variables for tests: one at a time, always put back.
 //!
-//! cargo runs tests as threads inside one process, so `set_var` and
-//! `remove_var` are global mutations that race. This is not theoretical: two
-//! tests sharing `DOCSIGNER_UPDATE_URL` turned CI red on Windows while the
-//! same commit passed on Linux and macOS, because one removed the variable
-//! between the other's set and read.
+//! Tests share one process, so setting a variable is a global change and two
+//! tests will race. Not theoretical: two tests sharing one variable turned CI
+//! red on Windows while the same commit passed everywhere else.
 //!
-//! Every test that touches process environment takes this guard. Holding it
-//! serialises them against each other, and dropping it puts back whatever was
-//! there before, so a panicking test cannot leak state into the next one.
+//! Take this guard in any test that touches the environment. It queues them up,
+//! and puts everything back on the way out even if the test panics.
 
 use std::ffi::OsString;
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -19,23 +16,22 @@ fn env_lock() -> &'static Mutex<()> {
 }
 
 pub struct EnvGuard {
-    // (key, what was there before), restored in reverse on drop.
+    // What was there before, put back in reverse order.
     saved: Vec<(&'static str, Option<OsString>)>,
     // Held for the guard's lifetime; the field is the point, not its value.
     _lock: MutexGuard<'static, ()>,
 }
 
 impl EnvGuard {
-    /// Take the lock and start recording.
+    /// Take the lock and start remembering what was there.
     ///
-    /// The lock is not reentrant: two live guards in one scope deadlock rather
-    /// than fail, and `let _guard = …` twice in a row shadows without dropping.
-    /// Give each guard its own block when a test needs more than one.
+    /// Two of these alive at once will hang, not fail. If a test needs more
+    /// than one, give each its own block.
     pub fn new() -> Self {
         EnvGuard {
             saved: Vec::new(),
-            // A test that panicked while holding the lock poisons it. The env
-            // is restored by Drop regardless, so the guard is still usable.
+            // A test that panicked holding this leaves the lock marked bad.
+            // Everything still gets put back, so carry on.
             _lock: env_lock().lock().unwrap_or_else(|e| e.into_inner()),
         }
     }

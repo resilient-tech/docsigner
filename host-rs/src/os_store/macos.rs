@@ -1,10 +1,8 @@
-//! macOS Keychain backend.
+//! The macOS Keychain.
 //!
-//! Identities (certificate + private key) are read with `SecItemCopyMatching`
-//! and signed with `SecKeyCreateSignature`. The `…Digest…` algorithms take the
-//! digest bytes directly: Security wraps the DigestInfo for RSA and returns a
-//! DER `ECDSA-Sig-Value` for EC, which is exactly the shape the contract wants,
-//! so unlike the PKCS#11 and CNG paths nothing needs converting afterwards.
+//! Ask it for certificates that have keys, and hand it the hash to sign. macOS
+//! does the wrapping and the repackaging itself, so unlike the token and
+//! Windows paths, nothing needs fixing up afterwards.
 
 use security_framework::identity::SecIdentity;
 use security_framework::item::{ItemClass, ItemSearchOptions, Limit, Reference, SearchResult};
@@ -15,14 +13,14 @@ use crate::error::{HostError, Result};
 
 pub const STORE_LABEL: &str = "keychain";
 
-/// `errSecItemNotFound`. An empty keychain is not a failure, and Security
-/// reports it as an error status rather than an empty result.
+/// "nothing there". An empty keychain is not a failure, but macOS reports it
+/// as an error rather than an empty list.
 const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
 
-/// `errSecUserCanceled`, the user dismissing the Keychain access prompt.
+/// The user closing the Keychain prompt.
 const ERR_SEC_USER_CANCELED: i32 = -128;
 
-/// (identity, DER) for every identity in the user's keychains.
+/// Every certificate-with-a-key in the user's keychains.
 fn identities() -> Result<Vec<(SecIdentity, Vec<u8>)>> {
     let results = match ItemSearchOptions::new()
         .class(ItemClass::identity())
@@ -87,8 +85,7 @@ pub fn sign(thumbprint: &str, digests: &[Vec<u8>], alg: DigestAlg) -> Result<Vec
         .iter()
         .map(|digest| {
             key.create_signature(algorithm, digest).map_err(|e| {
-                // The user dismissing the Keychain prompt is a cancellation,
-                // not a failure.
+                // Closing the prompt is a cancel, not a failure.
                 if e.code() == ERR_SEC_USER_CANCELED as isize {
                     HostError::cancelled("Keychain access was cancelled")
                 } else {

@@ -1,8 +1,7 @@
-//! Discovery of PKCS#11 module paths.
+//! Finding token drivers on disk.
 //!
-//! Priority order: the `DOCSIGNER_PKCS11_MODULES` env var, the user config
-//! file, then a built-in list of well-known install paths for common tokens.
-//! Only paths that exist on disk are returned.
+//! In order: the env var, the user's config file, then the built-in list of
+//! places common tokens install themselves. Only paths that really exist.
 
 use std::path::{Path, PathBuf};
 
@@ -12,8 +11,7 @@ pub const ENV_VAR: &str = "DOCSIGNER_PKCS11_MODULES";
 
 pub use crate::logging::config_dir;
 
-/// Paths harvested from vendor driver documentation and bench testing; see
-/// docs/host.md.
+/// Gathered from vendor docs and real machines. Grows by user report.
 #[cfg(target_os = "windows")]
 fn well_known() -> Vec<PathBuf> {
     let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
@@ -154,8 +152,7 @@ fn well_known() -> Vec<PathBuf> {
     .collect()
 }
 
-/// Module paths from the user config file. Accepts a bare list or
-/// `{"modules": [...]}`.
+/// Driver paths from the user's config file. A bare list or `{"modules": [...]}`.
 fn config_modules() -> Vec<PathBuf> {
     let path = config_dir().join("modules.json");
     let Ok(raw) = std::fs::read_to_string(&path) else {
@@ -185,8 +182,7 @@ fn config_modules() -> Vec<PathBuf> {
     }
 }
 
-/// Expand a leading `~` the way Python's `os.path.expanduser` does, so a
-/// config file written for the Python host keeps working.
+/// Turn a leading `~` into the user's home folder.
 fn expand_user(path: PathBuf) -> PathBuf {
     let Some(text) = path.to_str() else {
         return path;
@@ -207,12 +203,12 @@ fn expand_user(path: PathBuf) -> PathBuf {
     }
 }
 
-/// PKCS#11 module paths that exist on disk, deduplicated, in priority order.
+/// Every driver we can actually find, best first, no duplicates.
 pub fn discover_modules() -> Vec<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
 
     if let Some(raw) = std::env::var_os(ENV_VAR) {
-        // std::env::split_paths handles the platform separator (':' / ';').
+        // This knows which separator the platform uses.
         candidates.extend(std::env::split_paths(&raw).filter(|p| !p.as_os_str().is_empty()));
     }
     candidates.extend(config_modules());
@@ -232,8 +228,7 @@ pub fn discover_modules() -> Vec<PathBuf> {
     found
 }
 
-/// Lowercased basenames of the modules currently installed, joined into one
-/// string. `pcsc::detect_readers` substring-matches driver hints against it.
+/// The installed driver filenames as one lowercase blob, for searching.
 pub fn installed_basenames() -> String {
     discover_modules()
         .iter()
@@ -294,8 +289,8 @@ mod tests {
     #[test]
     fn missing_env_var_still_returns_the_well_known_scan() {
         temp_env(ENV_VAR, None, || {
-            // No assertion on contents: a dev machine has no token driver. The
-            // point is that discovery runs and never panics.
+            // Nothing to assert about contents: a dev machine has no driver.
+            // The point is that the search runs and never blows up.
             let _ = discover_modules();
         });
     }

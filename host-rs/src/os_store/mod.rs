@@ -1,14 +1,11 @@
-//! OS certificate store backend: macOS Keychain and Windows MY store.
+//! The other way to find a certificate: ask the operating system.
 //!
-//! Worth reading before PKCS#11: token drivers usually register the token's
-//! certificate in the OS store on install, so the certificate is found with no
-//! driver-path configuration at all, and the private-key operation routes back
-//! through the same OS API, which forwards it to the token. Linux has no
-//! universal OS store; there it lists nothing and PKCS#11 stays the only path.
+//! Token drivers usually register the token's certificate with the OS when they
+//! install, so this path finds it with no driver path configured at all, and
+//! signing routes back through the OS to the same token. Linux has no such
+//! store, so there it finds nothing and the driver path is the only way.
 //!
-//! Same contract shape as `pkcs11`: entries carry `source = "os-store"`,
-//! `moduleName = "os-store"`, `tokenLabel` = store name. The OS shows its own
-//! unlock/PIN dialog during signing, so `pin.rs` is never involved here.
+//! The OS shows its own PIN dialog here, so pin.rs never gets involved.
 
 use crate::certs::{self, CertInfo, DigestAlg, Source};
 use crate::error::{HostError, Result};
@@ -25,10 +22,10 @@ fn entry(der: &[u8], token_label: &str) -> Result<CertInfo> {
     certs::cert_info(der, token_label, "os-store", Source::OsStore)
 }
 
-/// Contract-shaped entries from the OS store; empty where none exists.
+/// What the OS store holds. Empty where there is no such store.
 ///
-/// Tolerant like the PKCS#11 scan: a broken store read is logged and yields
-/// nothing rather than hiding certificates found on tokens.
+/// Forgiving, like the token scan: a broken read is logged and returns nothing,
+/// rather than hiding the certificates the other half found.
 pub fn list_certificates() -> Vec<CertInfo> {
     let ders = match platform::list_der() {
         Ok(ders) => ders,
@@ -49,10 +46,10 @@ pub fn list_certificates() -> Vec<CertInfo> {
         .collect()
 }
 
-/// Sign raw digests with the OS-store key matching the thumbprint.
+/// Sign hashes with a key the OS holds.
 ///
-/// Raises `CERT_NOT_FOUND` when the platform has no OS store or the certificate
-/// is not in it, so callers can fall back or report cleanly.
+/// Says "not found" when there is no store or the certificate is not in it, so
+/// the caller can try elsewhere or report it plainly.
 pub fn sign_hashes(thumbprint: &str, digests: &[Vec<u8>], alg: DigestAlg) -> Result<Vec<Vec<u8>>> {
     if digests.is_empty() {
         return Err(HostError::internal("hashes must be a non-empty list"));
@@ -64,8 +61,8 @@ pub fn sign_hashes(thumbprint: &str, digests: &[Vec<u8>], alg: DigestAlg) -> Res
 mod tests {
     use super::*;
 
-    /// Runs against whatever this machine's store holds. On Linux it must be
-    /// empty; elsewhere every entry must be contract-shaped and signing-capable.
+    /// Runs against whatever this machine holds. Empty on Linux; elsewhere
+    /// every entry must be well formed and able to sign.
     #[test]
     fn listing_is_contract_shaped_on_every_platform() {
         let found = list_certificates();

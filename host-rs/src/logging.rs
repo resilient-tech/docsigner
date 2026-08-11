@@ -1,8 +1,7 @@
-//! File logging to the per-user config directory, with stderr as the fallback.
+//! One timestamped line, appended to one file in the user's config folder.
 //!
-//! A dependency-free `log` sink: the alternatives (simplelog, fern, env_logger)
-//! all pull a formatter stack for what is one timestamped line appended to one
-//! file. `getVersion` reports the path so support can ask for one file by name.
+//! Hand-rolled: every logging crate drags in a formatter stack for what is one
+//! line of text. `getVersion` reports the path, so support can ask for one file.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -12,8 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::{Level, LevelFilter, Metadata, Record};
 
-/// Per-user config directory: `~/.config/docsigner` on POSIX,
-/// `%APPDATA%\docsigner` on Windows. Matches modules.py `config_dir()`.
+/// Where our settings live: `~/.config/docsigner`, or `%APPDATA%\docsigner`.
 pub fn config_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
@@ -101,7 +99,7 @@ fn timestamp() -> String {
     )
 }
 
-/// Howard Hinnant's civil_from_days, the standard days-since-epoch to Y/M/D.
+/// Days since 1970 to a calendar date. The standard algorithm for it.
 fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -119,8 +117,8 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 pub fn init() {
     let sink = build_sink();
     let logger = Box::new(HostLogger { sink });
-    // set_boxed_logger only fails if a logger is already installed, which in a
-    // single-binary host means the CLI already called this.
+    // This only fails when a logger already exists, which means the CLI
+    // already set one up. Nothing to do.
     if log::set_boxed_logger(logger).is_ok() {
         log::set_max_level(LevelFilter::Info);
     }

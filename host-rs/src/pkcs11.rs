@@ -1,9 +1,8 @@
-//! PKCS#11 operations: certificate listing and hash signing via cryptoki.
+//! Talking to the token through its driver: read certificates, sign hashes.
 //!
-//! Three behaviours here came out of live testing against real Indian DSC
-//! tokens and must survive any refactor. Each is marked at its call site:
-//! fresh `C_Initialize` per scan, per-slot iteration that skips bad slots, and
-//! the per-module watchdog.
+//! Three things here were learned the hard way against real Indian tokens and
+//! must survive any refactor. Each is explained where it happens: a fresh start
+//! per scan, walking slots one at a time, and the watchdog.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -23,18 +22,15 @@ use crate::certs::{self, CertInfo, DigestAlg, KeyType, Source};
 use crate::error::{Code, HostError, Result};
 use crate::modules;
 
-/// A hung driver call (stuck C_Initialize, dead USB state) must not cost the
-/// browser its 120 s native timeout.
+/// A wedged driver must not burn the browser's whole 2-minute patience.
 ///
 /// ponytail: flat per-module budget; the abandoned thread stays alive holding
 /// the module. The process-level fix is the user replugging or the host
 /// restarting on reconnect (see `protocol::State::restart_requested`).
 const SCAN_TIMEOUT: Duration = Duration::from_secs(20);
 
-/// Successful PINs, cached per token label so a batch of separate signHash
-/// calls costs one prompt. Memory-only: the cache lives exactly as long as the
-/// host process, i.e. as long as the extension keeps its native messaging port
-/// open.
+/// PINs that worked, remembered per token, so several signs cost one prompt.
+/// In memory only. Dies with the process, and nothing writes it anywhere.
 ///
 /// ponytail: flat 10-minute TTL, make it configurable if anyone asks.
 const PIN_CACHE_TTL: Duration = Duration::from_secs(600);
@@ -71,43 +67,39 @@ fn forget_pin(label: &str) {
     }
 }
 
-/// Counters that let a caller report WHY a certificate list came back empty.
+/// Numbers that explain why a list came back empty.
 #[derive(Debug, Default, Clone)]
 pub struct ScanStats {
     pub configured: usize,
     pub loaded: usize,
     pub tokens: usize,
-    /// Module basenames abandoned after `SCAN_TIMEOUT`.
+    /// Drivers we gave up waiting on.
     pub stuck: Vec<String>,
 }
 
-/// What one module's scan produced, sent back from the watchdog thread.
-/// Only plain data crosses the channel: `Session` is deliberately `!Send`.
+/// What one driver's scan found. Only plain data comes back from the worker.
 struct ModuleScan {
     certificates: Vec<CertInfo>,
     loaded: bool,
     tokens: usize,
 }
 
-/// Load a PKCS#11 module and run `C_Initialize`.
+/// Load a driver and start it up.
 ///
-/// A fresh `Pkcs11` per scan is the fix for WatchData ProxKey, which
-/// enumerates the token only at `C_Initialize`: after a replug or a USB sleep a
-/// cached handle reports the token gone forever. Dropping the context calls
-/// `C_Finalize`, so each scan starts clean. The Python host needed an explicit
-/// `reinitialize()` here because python-pkcs11 cached the module process-wide.
+/// Fresh every scan, on purpose. A ProxKey only looks for the token at startup,
+/// so a reused handle keeps saying "no token" forever after a replug or a sleep.
+/// Dropping this shuts the driver down, so the next scan starts clean.
 fn load_module(path: &Path) -> std::result::Result<Pkcs11, P11Error> {
     let context = Pkcs11::new(path)?;
     context.initialize(CInitializeArgs::OsThreads)?;
     Ok(context)
 }
 
-/// Slots that report a token, one at a time, skipping the ones that raise.
+/// Every slot holding a token, checked one at a time, bad ones skipped.
 ///
-/// Some drivers (WatchData ProxKey) expose several reader slots and return
-/// `CKR_DEVICE_REMOVED` for the empty ones. A bulk `get_slots_with_token()`
-/// aborts the whole scan on the first such slot, which hides a real token
-/// sitting in another slot. Walk every slot individually instead.
+/// A ProxKey shows several slots and errors on the empty ones. Asking for them
+/// all at once dies on the first empty slot and hides a real token sitting in
+/// the next one. So walk them individually.
 fn tokens_on(context: &Pkcs11, path: &Path) -> Vec<(Slot, String)> {
     let slots = match context.get_all_slots() {
         Ok(slots) => slots,
@@ -128,7 +120,7 @@ fn tokens_on(context: &Pkcs11, path: &Path) -> Vec<(Slot, String)> {
     found
 }
 
-/// Every certificate on an open session, as (handle, DER).
+/// Every certificate the open session can see.
 fn certs_on_session(session: &Session) -> Vec<(ObjectHandle, Vec<u8>)> {
     let handles = match session.find_objects(&[Attribute::Class(ObjectClass::CERTIFICATE)]) {
         Ok(handles) => handles,
@@ -153,7 +145,7 @@ fn certs_on_session(session: &Session) -> Vec<(ObjectHandle, Vec<u8>)> {
     found
 }
 
-/// Contract entries for every certificate on one module's tokens.
+/// Everything on the tokens behind one driver, in the shape the caller wants.
 fn scan_module(path: &Path) -> ModuleScan {
     let context = match load_module(path) {
         Ok(context) => context,
@@ -198,12 +190,10 @@ fn scan_module(path: &Path) -> ModuleScan {
     }
 }
 
-/// Scan all configured modules and return contract-shaped certificate entries.
+/// Look at every driver we know about and collect what they see.
 ///
-/// Broken modules and unreadable tokens are logged and skipped so one bad
-/// driver does not hide certificates on a healthy token. Each module scan runs
-/// under `SCAN_TIMEOUT`; a stuck driver is abandoned and named in
-/// `stats.stuck`.
+/// A broken driver is logged and skipped, so one bad one cannot hide a healthy
+/// token. A driver that hangs gets abandoned and named in `stats.stuck`.
 pub fn list_certificates(stats: &mut ScanStats) -> Vec<CertInfo> {
     let mut found: Vec<CertInfo> = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -214,8 +204,8 @@ pub fn list_certificates(stats: &mut ScanStats) -> Vec<CertInfo> {
 
         let (sender, receiver) = mpsc::channel();
         let worker_path = path.clone();
-        // The worker owns the whole PKCS#11 lifetime: Session is !Send, so
-        // nothing but finished data may cross back.
+        // The worker owns the driver from start to finish. Only finished data
+        // comes back across; the session itself cannot leave this thread.
         std::thread::spawn(move || {
             let _ = sender.send(scan_module(&worker_path));
         });
@@ -254,11 +244,10 @@ pub fn list_certificates(stats: &mut ScanStats) -> Vec<CertInfo> {
     found
 }
 
-/// Map a PKCS#11 return value to a contract code.
+/// Driver failure to one of our error codes.
 ///
-/// Split out from `map_error` because cryptoki keeps the `Function` half of
-/// `Error::Pkcs11` private, so a test cannot build the full error but can call
-/// this.
+/// Split out from `map_error` so tests can call it: the full error type cannot
+/// be built by hand.
 fn map_rv(rv: RvError) -> HostError {
     match rv {
         RvError::PinIncorrect => HostError::new(Code::PinIncorrect, "the PIN is incorrect"),
@@ -273,7 +262,7 @@ fn map_rv(rv: RvError) -> HostError {
     }
 }
 
-/// Translate a PKCS#11 error into a `HostError` with a contract code.
+/// Driver error to one of ours.
 fn map_error(error: &P11Error) -> HostError {
     match error {
         P11Error::Pkcs11(rv, _) => map_rv(*rv),
@@ -281,18 +270,15 @@ fn map_error(error: &P11Error) -> HostError {
     }
 }
 
-/// Map a return value seen specifically while logging in.
+/// Same, but for a failure that happened while logging in.
 ///
-/// Not every driver uses the PIN-specific return values. WatchData ProxKey
-/// answers a wrong PIN with `CKR_GENERAL_ERROR` (live-tested against a
-/// Capricorn DSC), and matching the return value alone then reports INTERNAL:
-/// the page cannot tell the user their PIN was wrong, and the stale-cache retry
-/// in `login` never fires. The Python host has the same gap.
+/// Not every driver bothers with the "wrong PIN" code. A ProxKey answers a bad
+/// PIN with a generic error, which read literally means we tell the user
+/// nothing and the retry never fires. Live-tested against a Capricorn DSC.
 ///
-/// By this point the module loaded, the token answered and the certificate was
-/// found by thumbprint, so a `C_Login` failure means the PIN was not accepted.
-/// Only the vague failures are reinterpreted; anything that names a real
-/// condition still maps through `map_rv`.
+/// By this point the driver loaded, the token answered and we found the
+/// certificate. So a login failure means the PIN was refused. Only the vague
+/// codes get reread this way; a code that names a real problem is believed.
 fn map_login_rv(rv: RvError) -> HostError {
     match rv {
         RvError::GeneralError | RvError::FunctionFailed => {
@@ -302,10 +288,10 @@ fn map_login_rv(rv: RvError) -> HostError {
     }
 }
 
-/// Translate a login failure, consulting the token before the return value.
+/// Ask the token itself before believing the error code.
 ///
-/// The token's own flags are authoritative for a locked PIN, and a locked PIN
-/// must never be retried: that is what burns the last attempt.
+/// The token knows whether it is locked, and a locked PIN must never be
+/// retried. The retry is what burns the last attempt.
 fn map_login_error(context: &Pkcs11, slot: Slot, error: &P11Error) -> HostError {
     if context
         .get_token_info(slot)
@@ -323,8 +309,7 @@ fn map_login_error(context: &Pkcs11, slot: Slot, error: &P11Error) -> HostError 
     }
 }
 
-/// A located certificate, with its module context held open so the caller can
-/// log in and sign on the same slot.
+/// A certificate we found, with its driver still open so we can sign right here.
 struct Located {
     context: Pkcs11,
     slot: Slot,
@@ -334,7 +319,7 @@ struct Located {
     cka_label: Option<Vec<u8>>,
 }
 
-/// Locate a certificate by thumbprint across every module and token.
+/// Hunt for one certificate across every driver and every token.
 fn find_certificate(thumbprint: &str) -> Result<Located> {
     let mut configured = 0usize;
     let mut loaded = 0usize;
@@ -394,7 +379,7 @@ fn find_certificate(thumbprint: &str) -> Result<Located> {
     )))
 }
 
-/// CKA_ID and CKA_LABEL of a certificate object, used to match its private key.
+/// A certificate's ID and label, which is how we find its key.
 fn key_hints(session: &Session, handle: ObjectHandle) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
     let Ok(attributes) = session.get_attributes(handle, &[AttributeType::Id, AttributeType::Label])
     else {
@@ -412,8 +397,8 @@ fn key_hints(session: &Session, handle: ObjectHandle) -> (Option<Vec<u8>>, Optio
     (id, label)
 }
 
-/// Match the private key to the certificate: by CKA_ID, then label, then the
-/// only key on the token.
+/// Find the key that belongs to this certificate. Try the ID, then the label,
+/// then give up and take the only key there is.
 fn find_private_key(
     session: &Session,
     cka_id: Option<&Vec<u8>>,
@@ -441,8 +426,8 @@ fn find_private_key(
             }
         }
     }
-    // ponytail: last resort grabs the only private key; fine for single-cert
-    // DSC tokens, revisit if multi-key tokens misbehave.
+    // ponytail: last resort takes the only key on the token. Fine for the
+    // usual single-key DSC, revisit if a multi-key token misbehaves.
     let handles = session
         .find_objects(&[Attribute::Class(ObjectClass::PRIVATE_KEY)])
         .ok()?;
@@ -452,14 +437,13 @@ fn find_private_key(
     }
 }
 
-/// How the host obtains a PIN. `protocol` passes either a page-supplied value
-/// or the native dialog.
+/// Where the PIN comes from: handed to us, or asked for in a dialog.
 pub type PinProvider<'a> = &'a dyn Fn(&str) -> Result<String>;
 
-/// Sign raw digests with the private key matching a certificate thumbprint.
+/// Sign hashes with the key behind a certificate.
 ///
-/// All digests are signed inside one login session: one PIN prompt per batch.
-/// Returns raw signature bytes per digest, in order.
+/// All of them on one login, so the user types the PIN once. Answers come back
+/// in the order the hashes went in.
 pub fn sign_hashes(
     thumbprint: &str,
     digests: &[Vec<u8>],
@@ -472,8 +456,8 @@ pub fn sign_hashes(
     let thumbprint = thumbprint.trim().to_lowercase();
     let located = find_certificate(&thumbprint)?;
 
-    // Key type decides the mechanism; an unsupported one fails before we ask
-    // for a PIN.
+    // Work out how to sign first, so an unsupported key fails before we make
+    // someone type a PIN for nothing.
     let key_type = certs::cert_info(&located.der, "", "", Source::Pkcs11)?.key_type;
 
     let session = login(&located, pin_provider)?;
@@ -493,10 +477,10 @@ pub fn sign_hashes(
         .collect()
 }
 
-/// Open a session and log in, with the cached-PIN retry.
+/// Open a session and log in.
 ///
-/// A cached PIN that has gone stale (changed on the token) earns exactly one
-/// fresh prompt, never a blind retry that would burn a PIN attempt.
+/// A remembered PIN that has since been changed earns exactly one fresh
+/// prompt. Never a blind retry, which would eat an attempt.
 fn login(located: &Located, pin_provider: PinProvider<'_>) -> Result<Session> {
     let cached = cached_pin(&located.label);
     let pin = match &cached {
@@ -515,8 +499,7 @@ fn login(located: &Located, pin_provider: PinProvider<'_>) -> Result<Session> {
         Err(e) => map_login_error(&located.context, located.slot, &e),
     };
 
-    // Anything other than a rejected PIN (locked, token pulled mid-login) is
-    // the answer, not something to retry.
+    // Anything but a refused PIN is the final answer. Do not retry it.
     if failure.code != Code::PinIncorrect {
         return Err(failure);
     }
@@ -525,7 +508,7 @@ fn login(located: &Located, pin_provider: PinProvider<'_>) -> Result<Session> {
         return Err(failure);
     }
 
-    // The cached PIN went stale (changed on the token): one proper retry.
+    // The PIN changed on the token since we remembered it. One proper retry.
     let fresh = pin_provider(&located.label)?;
     if fresh.is_empty() {
         return Err(HostError::cancelled("PIN entry was cancelled"));
@@ -550,14 +533,14 @@ fn sign_one(
     alg: DigestAlg,
 ) -> Result<Vec<u8>> {
     match key_type {
-        // PKCS#1 v1.5: wrap the digest in a DigestInfo, sign with CKM_RSA_PKCS.
+        // RSA: wrap the hash in its standard envelope first.
         KeyType::Rsa => {
             let info = certs::digest_info(digest, alg)?;
             session
                 .sign(&Mechanism::RsaPkcs, key, &info)
                 .map_err(|e| map_error(&e))
         }
-        // CKM_ECDSA over the raw digest, then raw r||s converted to DER.
+        // EC: sign the bare hash, then repackage the answer.
         KeyType::Ec => {
             let raw = session
                 .sign(&Mechanism::Ecdsa, key, digest)
@@ -573,9 +556,8 @@ mod tests {
 
     #[test]
     fn pin_cache_round_trips_and_expires_on_forget() {
-        // Labels are unique per test: the cache is process-global and cargo
-        // runs these on parallel threads, so a shared key (or a clear) makes
-        // them race. CI caught exactly that.
+        // One label per test. The cache is shared and these run in parallel, so
+        // a reused label makes them race. CI caught exactly that.
         assert_eq!(cached_pin("round-trip-token"), None);
         remember_pin("round-trip-token", "1234");
         assert_eq!(cached_pin("round-trip-token").as_deref(), Some("1234"));
@@ -622,9 +604,8 @@ mod tests {
         }
     }
 
-    /// The distinction protocol.rs relies on: a wrong or locked PIN is the
-    /// user's answer and must surface, while a missing token or module lets the
-    /// OS store have a try.
+    /// The split protocol.rs leans on: a PIN problem is the user's answer and
+    /// must be shown, while a missing token lets the OS store have a go.
     #[test]
     fn only_not_found_errors_allow_the_os_store_fallback() {
         assert!(!map_rv(RvError::PinIncorrect).allows_os_store_fallback());
@@ -633,9 +614,8 @@ mod tests {
         assert!(map_rv(RvError::DeviceRemoved).allows_os_store_fallback());
     }
 
-    /// Live-tested regression: a WatchData ProxKey rejects a wrong PIN with
-    /// CKR_GENERAL_ERROR, not CKR_PIN_INCORRECT. Reading that as INTERNAL tells
-    /// the user nothing and stops the stale-cache retry from ever firing.
+    /// Found on real hardware: a ProxKey refuses a wrong PIN with a generic
+    /// error. Believing it literally tells the user nothing and kills the retry.
     #[test]
     fn vague_login_failures_are_read_as_a_rejected_pin() {
         for rv in [RvError::GeneralError, RvError::FunctionFailed] {
@@ -645,11 +625,11 @@ mod tests {
                 "{rv:?} at login time means the PIN was not accepted"
             );
         }
-        // Away from login the same return value is still just an internal error.
+        // Outside login, the same code still means what it says.
         assert_eq!(map_rv(RvError::GeneralError).code, Code::Internal);
     }
 
-    /// Reinterpreting the vague codes must not swallow the specific ones.
+    /// Rereading the vague codes must not swallow the clear ones.
     #[test]
     fn login_mapping_keeps_the_specific_return_values() {
         assert_eq!(map_login_rv(RvError::PinIncorrect).code, Code::PinIncorrect);
@@ -664,8 +644,7 @@ mod tests {
         );
     }
 
-    /// A locked PIN must never be retried: the retry is what burns the last
-    /// attempt. Only PinIncorrect reaches the second prompt in `login`.
+    /// Never retry a locked PIN. The retry is what burns the last attempt.
     #[test]
     fn a_locked_pin_is_not_a_retryable_outcome() {
         assert_ne!(map_login_rv(RvError::PinLocked).code, Code::PinIncorrect);
@@ -675,9 +654,9 @@ mod tests {
         );
     }
 
-    /// Runs against whatever the machine has: no driver, a driver with no
-    /// token, or a real token. The invariants hold in all three cases, so this
-    /// is meaningful in CI and on a developer's desk with a DSC plugged in.
+    /// Runs against whatever the machine has: nothing, a driver with no token,
+    /// or a real token. Holds in all three, so it means something in CI and at
+    /// a desk with a DSC plugged in.
     #[test]
     fn a_scan_always_reports_self_consistent_stats() {
         let mut stats = ScanStats::default();

@@ -1,7 +1,7 @@
-//! Turn a certificate into the JSON fields CONTRACTS.md section 2 wants.
+//! Turn a raw certificate into the fields the caller wants.
 //!
-//! Shared by both signing backends: PKCS#11 tokens (`pkcs11.rs`) and the OS
-//! store (`os_store/`). Kept here so neither backend reaches into the other.
+//! Used by both backends, tokens and the OS store, so neither has to reach
+//! into the other.
 
 use der::asn1::{
     Ia5StringRef, OctetString, PrintableStringRef, TeletexStringRef, UintRef, Utf8StringRef,
@@ -16,25 +16,22 @@ use x509_cert::Certificate;
 
 use crate::error::{Code, HostError, Result};
 
-/// The digest algorithms CONTRACTS.md section 2 allows. `DigestAlg::parse` is
-/// the gate; this list exists so the test can walk it.
+/// The hash algorithms we accept. `parse` is the gate; this list lets a test
+/// walk them all.
 #[cfg(test)]
 pub const DIGEST_ALGORITHMS: [&str; 3] = ["sha256", "sha384", "sha512"];
 
-/// OID -> rendered name, so the subject string is byte-identical to what the
-/// Python host produced. This string is shown to users in the certificate
-/// picker, so parity matters more than elegance here.
+/// How each part of a certificate's name is spelled out.
 ///
-/// The first block is certs.py `_NAME_SHORT`. The second is the fallback
-/// certs.py inherited from asn1crypto, whose `.native` yields a snake_case
-/// friendly name for anything the short table misses; those spellings are
-/// reproduced exactly. Real Indian DSCs carry `telephone_number`, so the
-/// fallback is a live path, not a theoretical one.
+/// This string goes in the certificate picker, in front of a human, so the
+/// spellings are pinned rather than pretty. The first block is the short forms
+/// everyone knows, the second the long ones. Indian DSCs really do carry
+/// `telephone_number`, so the second block is a live path.
 ///
-/// Anything in neither block renders as a dotted OID, which is what RFC 4514
-/// does and what asn1crypto falls back to for genuinely unknown attributes.
+/// Anything in neither shows up as a dotted number, which is the standard
+/// answer for an attribute nobody recognises.
 const NAME_SHORT: [(&str, &str); 25] = [
-    // certs.py _NAME_SHORT
+    // The short forms.
     ("2.5.4.3", "CN"),
     ("2.5.4.10", "O"),
     ("2.5.4.11", "OU"),
@@ -50,7 +47,7 @@ const NAME_SHORT: [(&str, &str); 25] = [
     ("2.5.4.65", "PSEUDONYM"),
     ("2.5.4.9", "STREET"),
     ("2.5.4.17", "POSTALCODE"),
-    // asn1crypto friendly names, snake_case, as certs.py emitted them
+    // The long forms, for everything the short table misses.
     ("2.5.4.20", "telephone_number"),
     ("1.2.840.113549.1.9.2", "unstructured_name"),
     ("1.2.840.113549.1.9.8", "unstructured_address"),
@@ -122,7 +119,7 @@ impl DigestAlg {
         }
     }
 
-    /// Digest length in bytes, used to split a raw r||s ECDSA signature.
+    /// How long the hash is. Used to cut an EC signature in half.
     pub fn len(self) -> usize {
         match self {
             DigestAlg::Sha256 => 32,
@@ -171,7 +168,7 @@ pub struct CertInfo {
     pub source: Source,
 }
 
-/// SHA-1 of the DER, lowercase hex. The identifier every command keys on.
+/// The short fingerprint every command uses to name a certificate.
 pub fn thumbprint(der: &[u8]) -> String {
     let digest = Sha1::digest(der);
     let mut out = String::with_capacity(40);
@@ -182,8 +179,7 @@ pub fn thumbprint(der: &[u8]) -> String {
     out
 }
 
-/// Contract fields for one DER certificate. `token_label`, `module_name` and
-/// `source` are filled in by the backend that found it.
+/// One certificate, unpacked. Whoever found it fills in where it came from.
 pub fn cert_info(
     der: &[u8],
     token_label: &str,
@@ -212,11 +208,10 @@ pub fn parse(der: &[u8]) -> Result<Certificate> {
         .map_err(|e| HostError::internal(format!("certificate is not readable DER: {e}")))
 }
 
-/// `CN=..., O=..., C=...`, most specific first.
+/// The certificate's name as one line, most specific part first.
 ///
-/// Deliberately not `RdnSequence`'s own `Display`: that applies RFC 4514
-/// escaping and hex-encodes unknown attributes, neither of which the Python
-/// host did, and this string is shown to users in the certificate picker.
+/// Built by hand rather than using the library's own formatting, which escapes
+/// things and hex-encodes anything it does not know. A human reads this.
 pub fn name_to_string(name: &Name) -> String {
     let mut parts = Vec::new();
     for rdn in name.0.iter().rev() {
@@ -233,8 +228,8 @@ pub fn name_to_string(name: &Name) -> String {
     parts.join(", ")
 }
 
-/// Decode a directory-string attribute value. Indian DSCs turn up with
-/// PrintableString, UTF8String and BMPString in the wild.
+/// Read one piece of text out of a certificate. Indian DSCs use three
+/// different encodings in the wild, so handle all of them.
 fn attribute_value(value: &der::Any) -> String {
     match value.tag() {
         Tag::PrintableString => PrintableStringRef::try_from(value)
@@ -249,12 +244,11 @@ fn attribute_value(value: &der::Any) -> String {
         Tag::TeletexString => TeletexStringRef::try_from(value)
             .map(|s| s.as_str().to_string())
             .unwrap_or_default(),
-        // BMPString is UTF-16BE. der exposes no borrowed ref type for it, and
-        // decoding the pairs directly is shorter than round-tripping through
-        // an owned BmpString.
+        // Two bytes per character. Decoding the pairs by hand is shorter than
+        // going through the library's own type.
         Tag::BmpString => utf16be_to_string(value.value()),
-        // Anything else: show the bytes rather than nothing, never fail a scan
-        // over one odd attribute.
+        // Anything else: show what we can. Never fail a whole scan over one
+        // strange field.
         _ => String::from_utf8_lossy(value.value()).into_owned(),
     }
 }
@@ -296,8 +290,7 @@ fn key_type(cert: &Certificate) -> Result<KeyType> {
     }
 }
 
-/// Key-usage booleans; all false when the extension is absent or unreadable,
-/// matching certs.py.
+/// What this key is allowed to do. All false if the certificate does not say.
 pub fn key_usage(cert: &Certificate) -> KeyUsageFlags {
     let usage = cert
         .tbs_certificate
@@ -319,9 +312,8 @@ pub fn key_usage(cert: &Certificate) -> KeyUsageFlags {
     }
 }
 
-/// Whether a certificate's key usage allows signing, or it carries no key-usage
-/// extension at all. The OS store holds encryption and authentication certs
-/// too; listing those would only confuse the picker.
+/// Can this one sign? The OS store also holds encryption and login
+/// certificates, and offering those would only confuse the picker.
 pub fn signing_capable(der: &[u8]) -> bool {
     let Ok(cert) = parse(der) else { return false };
     match cert.tbs_certificate.get::<KeyUsage>() {
@@ -329,16 +321,16 @@ pub fn signing_capable(der: &[u8]) -> bool {
             use x509_cert::ext::pkix::KeyUsages as U;
             usage.0.contains(U::DigitalSignature) || usage.0.contains(U::NonRepudiation)
         }
-        // Absent extension: keep it, same as os_store.py.
+        // Says nothing about what it can do, so assume it can sign.
         Ok(None) => true,
         Err(_) => false,
     }
 }
 
-/// PKCS#1 v1.5 DigestInfo: `SEQUENCE { AlgorithmIdentifier, OCTET STRING }`.
+/// The envelope an RSA signature expects around a hash.
 ///
-/// Built rather than pasted as a magic hex prefix so the structure is visible;
-/// `digest_info_matches_rfc8017_prefixes` pins it against the known-good bytes.
+/// Built out in the open rather than pasted as a magic hex string, so it can be
+/// read. A test pins it against the bytes everyone else uses.
 #[derive(Sequence)]
 struct DigestInfo {
     algorithm: AlgorithmIdentifierOwned,
@@ -372,10 +364,10 @@ pub fn digest_info(digest: &[u8], alg: DigestAlg) -> Result<Vec<u8>> {
         .map_err(|e| HostError::internal(format!("cannot encode DigestInfo: {e}")))
 }
 
-/// Raw `r || s` ECDSA signature -> DER `ECDSA-Sig-Value`.
+/// Repackage an EC signature.
 ///
-/// PKCS#11 `CKM_ECDSA` and Windows CNG both return the raw pair; CMS wants the
-/// DER SEQUENCE.
+/// Both the token and Windows hand back two numbers glued together. The
+/// signature format wants them wrapped properly.
 pub fn ecdsa_raw_to_der(raw: &[u8]) -> Result<Vec<u8>> {
     if raw.is_empty() || raw.len() % 2 != 0 {
         return Err(HostError::internal(format!(
@@ -384,8 +376,8 @@ pub fn ecdsa_raw_to_der(raw: &[u8]) -> Result<Vec<u8>> {
         )));
     }
     let half = raw.len() / 2;
-    // UintRef applies the DER INTEGER rules for us: leading zeros stripped, one
-    // zero byte prepended when the high bit would make the value read negative.
+    // This applies the fiddly number rules for us: strip leading zeros, and add
+    // one back when the value would otherwise read as negative.
     let r =
         UintRef::new(&raw[..half]).map_err(|e| HostError::internal(format!("bad ECDSA r: {e}")))?;
     let s =
@@ -399,7 +391,7 @@ pub fn ecdsa_raw_to_der(raw: &[u8]) -> Result<Vec<u8>> {
     Ok(der_sequence(&body))
 }
 
-/// Wrap already-encoded DER contents in a SEQUENCE header.
+/// Put a header on the front of some already-encoded bytes.
 fn der_sequence(contents: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(contents.len() + 4);
     out.push(0x30);
@@ -441,9 +433,8 @@ mod tests {
         assert_eq!(thumbprint(b"").len(), 40);
     }
 
-    /// The RFC 8017 A.2.4 DigestInfo prefixes every PKCS#1 v1.5 implementation
-    /// agrees on. If the built structure ever drifts from these, signatures
-    /// stop verifying everywhere, so pin the exact bytes.
+    /// The exact bytes every other RSA implementation agrees on. Drift from
+    /// these and our signatures stop verifying everywhere, so pin them.
     #[test]
     fn digest_info_matches_rfc8017_prefixes() {
         let cases: [(DigestAlg, &[u8]); 3] = [

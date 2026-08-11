@@ -1,10 +1,10 @@
-//! Programs that can hold a token's single PKCS#11 session.
+//! Finding out who else is hogging the token.
 //!
-//! ePass/ProxKey-class drivers allow one process on the token at a time; a
-//! vendor utility, another browser's host, or a third-party signing host
-//! silently makes every scan come back empty. Naming the culprit beats
-//! "replug and retry".
-//! Tolerant like `pcsc_readers`: any failure means "nothing found", never an error.
+//! These drivers allow one program on the token at a time. A vendor utility or
+//! another browser holding it makes every scan come back empty with no clue
+//! why. Naming the program to close beats "replug and try again".
+//!
+//! Forgiving: any failure means "found nobody", never an error.
 //!
 //! ponytail: shells out to ps/tasklist rather than pulling sysinfo, which is
 //! ~500 KB of crate for one process list on a path that only runs when a scan
@@ -12,7 +12,8 @@
 
 use std::process::Command;
 
-/// Lowercase needle in the process name -> what to tell the user to close.
+/// What to look for in a program's name, and what to call it when we ask the
+/// user to close it.
 const KNOWN: &[(&str, &str)] = &[
     ("docsigner-host", "another DocSigner host"),
     ("webpki", "a Web PKI signing host"),
@@ -25,10 +26,10 @@ const KNOWN: &[(&str, &str)] = &[
     ("trustkey", "the TrustKey tool"),
 ];
 
-/// Display names of running programs likely holding the token, deduplicated.
+/// Running programs that are probably holding the token, no duplicates.
 ///
-/// Our own process is excluded. ponytail: self = this pid only; Rust has no
-/// PyInstaller parent/child pair to filter, unlike the Python host.
+/// We skip ourselves. ponytail: just this one process; there is no parent to
+/// filter out as well.
 pub fn competing() -> Vec<String> {
     let own = std::process::id();
     let mut found: Vec<String> = Vec::new();
@@ -45,7 +46,7 @@ pub fn competing() -> Vec<String> {
     found
 }
 
-/// (pid, lowercased process name) for every visible process; empty on failure.
+/// Every program we can see running. Empty if we cannot ask.
 fn process_list() -> Vec<(u32, String)> {
     #[cfg(target_os = "windows")]
     let output = Command::new("tasklist")

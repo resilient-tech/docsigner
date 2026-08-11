@@ -1,7 +1,7 @@
-//! DocSigner native messaging host.
+//! The little program that reaches the USB token.
 //!
-//! With no arguments it runs the stdio loop the browser drives. With arguments
-//! it runs the terminal CLI, which is also how the desktop app calls it.
+//! No arguments: sit and talk to the browser. With arguments: run as a terminal
+//! tool, which is also how the desktop app calls it.
 
 mod certs;
 mod cli;
@@ -38,10 +38,10 @@ fn main() -> ExitCode {
     }
 }
 
-/// Read framed requests from stdin, write framed responses to stdout, until EOF.
+/// Answer requests until the browser goes away.
 ///
-/// stdout carries protocol frames only. Everything else goes to the log file,
-/// which is why nothing outside `cli` ever prints.
+/// Only replies go out. Everything else goes to the log file, which is why
+/// nothing outside `cli` ever prints.
 fn serve() -> ExitCode {
     let stdin = io::stdin();
     let stdout = io::stdout();

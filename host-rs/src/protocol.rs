@@ -1,7 +1,7 @@
-//! Request dispatch per CONTRACTS.md section 2.
+//! Read the command, do the work, always answer.
 //!
-//! `{id, command, params}` in, `{id, result}` or `{id, error: {code, message}}`
-//! out. Dispatch never panics out: every failure becomes an error response.
+//! Nothing escapes this file as a crash. Every failure becomes a reply the
+//! caller can read. Shapes are in CONTRACTS.md section 2.
 
 use std::cell::Cell;
 use std::time::Instant;
@@ -15,17 +15,16 @@ use crate::{notify, os_store, pcsc_readers, pin, pkcs11, procs, update};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
-/// Longest origin worth showing: 253 for a DNS name, plus scheme and port.
+/// Longest site name worth showing in a dialog.
 const MAX_ORIGIN_LEN: usize = 300;
 
 #[derive(Debug, Default)]
 pub struct State {
-    /// Set when a scan looked wedged: module loaded, reader or token present,
-    /// zero certificates. `main` exits after the reply so the extension's next
-    /// request spawns a fresh process (full `C_Initialize`). WatchData's driver
-    /// caches its slot state per process; neither re-initialising nor a replug
-    /// clears it, only a fresh process does (live-tested: an extension reload
-    /// fixed what a replug could not).
+    /// Set when a scan looked wedged: driver loaded, token there, no
+    /// certificates. We exit after replying, so the next request gets a brand
+    /// new process. WatchData's driver holds its bad state for the life of a
+    /// process, and only a new one clears it. Live-tested: reloading the
+    /// extension fixed what unplugging the token could not.
     pub restart_requested: Cell<bool>,
 }
 
@@ -86,16 +85,15 @@ fn get_version() -> Value {
     })
 }
 
-/// PKCS#11 tokens plus the OS store, deduplicated by thumbprint.
+/// Everything from the tokens and the OS store, with duplicates removed.
 ///
-/// A token certificate its driver also registered in the OS store shows up
-/// once, as `pkcs11`, keeping the Python host's behaviour for existing users.
+/// Drivers usually register the token's certificate with the OS too, so the
+/// same one turns up twice. The token copy wins.
 ///
-/// Each source is isolated: the Keychain and the PC/SC reader scan can behave
-/// differently when the browser spawns the host (session and permission context
-/// differ from a terminal), and a failure there must not hide the tokens
-/// PKCS#11 found. The per-source counts are logged so a browser-side empty
-/// result can be told apart from a host-side one.
+/// Each source is walled off from the others. The OS store behaves differently
+/// when the browser starts us than when a terminal does, and a failure there
+/// must not hide the tokens we did find. Counts per source are logged, so an
+/// empty answer can be traced to whichever half went quiet.
 fn list_certificates(state: &State) -> Value {
     let started = Instant::now();
     let mut stats = pkcs11::ScanStats::default();
@@ -124,8 +122,8 @@ fn list_certificates(state: &State) -> Value {
         diagnostics.insert("stuckModules".into(), json!(stats.stuck));
     }
     if pkcs11_count == 0 {
-        // Only when the scan came back empty: the process listing is pointless
-        // when the token answered, and this keeps the happy path fast.
+        // Only bother when we found nothing. Asking who else is holding the
+        // token is pointless when the token just answered us.
         let competing = procs::competing();
         if !competing.is_empty() {
             diagnostics.insert("competingProcesses".into(), json!(competing));
@@ -202,16 +200,14 @@ fn sign_hash(params: &Value) -> Result<Value> {
     }))
 }
 
-/// Validate the origin the browser attached to a signHash request.
+/// Check the site name the browser sent us.
 ///
-/// The extension fills this from `sender.origin`, so a page cannot forge it,
-/// and the host checks the shape anyway: this string goes in front of a human
-/// in the PIN dialog, and one carrying a path, a newline or userinfo could
-/// dress itself up as a site it is not.
+/// The extension takes it from the browser, so a page cannot fake it. We check
+/// the shape anyway, because this string is put in front of a human in the PIN
+/// dialog, and one carrying a path or a newline could dress up as another site.
 ///
-/// An origin is a scheme, a host and an optional port. Anything else is
-/// refused. https always, http only for loopback, which is the secure-context
-/// carve-out browsers themselves make and where the demo server runs.
+/// A site name is a scheme, a host, maybe a port. Nothing else. https always,
+/// http only for localhost, which is the same exception browsers make.
 ///
 /// ponytail: hand-rolled rather than pulling a URL crate in for a shape check.
 fn clean_origin(value: Option<&Value>) -> Result<Option<String>> {
@@ -224,19 +220,17 @@ fn clean_origin(value: Option<&Value>) -> Result<Option<String>> {
 
     let reject = || HostError::internal(format!("{origin:?} is not a bare web origin"));
 
-    // A DNS name maxes out at 253 characters, plus "https://" and ":65535".
-    // Anything longer is not a real origin and would only run off the edge of
-    // the dialog, pushing the part that matters out of sight.
+    // Longer than any real site name can be. A giant one would only run off
+    // the edge of the dialog and push the part that matters out of sight.
     if origin.len() > MAX_ORIGIN_LEN {
         return Err(reject());
     }
 
-    // ASCII only. Browsers hand `sender.origin` over as punycode, so a
-    // non-ASCII origin did not come from one. Refusing it closes two ways of
-    // dressing up as another site in the dialog that the checks below cannot
-    // see: homograph letters (Cyrillic "е" for "e") and bidi overrides like
-    // U+202E, which reverse how everything after them renders. Neither counts
-    // as a control character, so `is_control` alone lets both through.
+    // Plain ASCII only. A browser always hands us the encoded form, so anything
+    // else did not come from a browser. This shuts two tricks the checks below
+    // cannot see: letters from another alphabet that look identical on screen
+    // (Cyrillic "е" for "e"), and characters that reverse how the rest of the
+    // line reads. Neither is a control character, so nothing else catches them.
     if !origin.is_ascii() {
         return Err(reject());
     }
@@ -249,7 +243,7 @@ fn clean_origin(value: Option<&Value>) -> Result<Option<String>> {
         return Err(reject());
     }
 
-    // Split a trailing :port off, leaving IPv6 brackets and bare hosts alone.
+    // Take a trailing port off, without tripping over IPv6 brackets.
     let host = rest.rsplit_once(':').map_or(rest, |(host, port)| {
         if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) {
             host
@@ -266,14 +260,14 @@ fn clean_origin(value: Option<&Value>) -> Result<Option<String>> {
     }
 }
 
-/// Tokens first, then the OS store.
+/// Try the token, then the OS store.
 ///
-/// Only not-found outcomes trigger the fallback; PIN and cancellation errors
-/// surface as-is. When neither side has the certificate, the PKCS#11 error
-/// wins: it distinguishes "no module", "no token" and "no certificate".
+/// Only "not found" moves on to the second try. A wrong PIN or a cancel is the
+/// user's answer and goes straight back. If neither has it, the token's error
+/// wins, because it can tell "no driver" from "no token" from "no certificate".
 ///
-/// A page-supplied pin (CONTRACTS.md section 2) replaces the native dialog on
-/// the PKCS#11 path; the os-store path always uses the OS's own dialog.
+/// A PIN handed to us skips the dialog on the token path. The OS store always
+/// uses the OS's own dialog.
 fn sign_with_fallback(
     thumbprint: &str,
     digests: &[Vec<u8>],
@@ -387,7 +381,7 @@ mod tests {
             );
         }
 
-        // Absent, null and empty all mean "the caller is not a browser".
+        // Missing, null or empty all mean the caller is not a browser.
         for absent in [None, Some(json!(null)), Some(json!(""))] {
             assert_eq!(clean_origin(absent.as_ref()).unwrap(), None);
         }
@@ -410,28 +404,26 @@ mod tests {
         }
     }
 
-    /// The origin is the only text in the PIN dialog that names who is asking,
-    /// so it has to be text that cannot pretend to be a different site.
-    /// `is_control` does not catch either of these: both are ordinary
-    /// printable characters as far as Rust is concerned.
+    /// This is the only line in the PIN dialog naming who is asking, so it must
+    /// not be able to pretend. Neither trick below is a control character, so
+    /// nothing else would stop them.
     #[test]
     fn an_origin_cannot_disguise_itself_in_the_dialog() {
-        // U+202E reverses how everything after it renders.
+        // This character flips how everything after it reads.
         let bidi = "https://example.com\u{202E}liave.knab-evil";
         assert!(
             clean_origin(Some(&json!(bidi))).is_err(),
             "a bidi override must not reach the dialog"
         );
 
-        // Cyrillic "е" for Latin "e": identical on screen, different domain.
+        // A Cyrillic "е" instead of a Latin one. Same on screen, different site.
         let homograph = "https://\u{0435}xample.com";
         assert!(
             clean_origin(Some(&json!(homograph))).is_err(),
             "a homograph must not reach the dialog"
         );
 
-        // Browsers hand sender.origin over already punycoded, so the real
-        // article still passes.
+        // A browser hands it over already encoded, so the real thing passes.
         assert_eq!(
             clean_origin(Some(&json!("https://xn--xample-9uf.com"))).unwrap(),
             Some("https://xn--xample-9uf.com".to_string())
@@ -451,8 +443,8 @@ mod tests {
         );
     }
 
-    /// Browsers lowercase the scheme in sender.origin, so an uppercase one did
-    /// not come from a browser. Pinned because it is easy to "fix" by accident.
+    /// A browser always sends this lowercase, so an uppercase one did not come
+    /// from a browser. Pinned because it is easy to "fix" by accident.
     #[test]
     fn the_scheme_is_matched_exactly() {
         for bad in ["HTTPS://example.com", "Https://example.com"] {

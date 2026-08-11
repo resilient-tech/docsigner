@@ -1,7 +1,6 @@
-//! The eight error codes CONTRACTS.md section 2 allows on the wire, and nothing else.
+//! The 8 things that can go wrong, and nothing else.
 //!
-//! Dispatch never propagates an error out of the process: `protocol::handle`
-//! turns every `HostError` into an `{id, error: {code, message}}` response.
+//! None of them escape as a crash. Every one becomes a reply the caller reads.
 
 use std::fmt;
 
@@ -57,11 +56,10 @@ impl HostError {
         HostError::new(Code::UserCancelled, message)
     }
 
-    /// Whether a PKCS#11 failure should let the OS store have a try.
+    /// Should we let the OS store have a go after this?
     ///
-    /// Mirrors protocol.py `_sign_with_fallback`: only not-found outcomes fall
-    /// through. A wrong or locked PIN, or a cancelled dialog, is the user's
-    /// answer and must surface as-is.
+    /// Only "not found" moves on. A wrong PIN, a locked PIN or a cancel is the
+    /// user's answer and goes straight back to them.
     pub fn allows_os_store_fallback(&self) -> bool {
         matches!(
             self.code,

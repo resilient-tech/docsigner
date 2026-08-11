@@ -1,15 +1,15 @@
-//! Chrome native messaging framing: 4-byte little-endian length prefix + UTF-8 JSON.
+//! How the browser wraps a message: 4 bytes of length, then the JSON.
 
 use std::io::{self, Read, Write};
 
-/// Chrome's own cap on a single message. A corrupt length prefix would
-/// otherwise have us allocate whatever 4 bytes of garbage asked for.
+/// The browser's own limit. Without it, 4 garbage bytes could ask us to
+/// allocate anything at all.
 const MAX_FRAME_BYTES: u32 = 64 * 1024 * 1024;
 
-/// Read one framed payload.
+/// Read one message.
 ///
-/// `Ok(None)` is a clean EOF at a frame boundary. An EOF inside a frame is an
-/// error, the same distinction framing.py draws.
+/// None means the stream ended cleanly between messages. Ending in the middle
+/// of one is an error.
 pub fn read_frame(stream: &mut impl Read) -> io::Result<Option<Vec<u8>>> {
     let mut header = [0u8; 4];
     match read_exact_or_eof(stream, &mut header)? {
@@ -56,8 +56,7 @@ pub fn write_message(stream: &mut impl Write, value: &impl serde::Serialize) -> 
     write_frame(stream, &payload)
 }
 
-/// Fill `buffer`, looping over short reads. Returns how many bytes landed;
-/// less than `buffer.len()` means the stream ended.
+/// Keep reading until the buffer is full. A short answer means the stream ended.
 fn read_exact_or_eof(stream: &mut impl Read, buffer: &mut [u8]) -> io::Result<usize> {
     let mut filled = 0;
     while filled < buffer.len() {

@@ -1,8 +1,7 @@
-//! Linux and everything else: no universal OS certificate store.
+//! Linux and everything else: no OS certificate store to ask.
 //!
-//! PKCS#11 is the only path here, so listing yields nothing and signing reports
-//! `CERT_NOT_FOUND`, which is what lets `protocol` keep the PKCS#11 error as the
-//! one it surfaces.
+//! The driver is the only way in here, so this finds nothing and says so. That
+//! is what lets the token's own error be the one the user sees.
 
 use crate::certs::DigestAlg;
 use crate::error::{HostError, Result};

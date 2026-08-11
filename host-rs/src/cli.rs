@@ -1,7 +1,5 @@
-//! Terminal tool speaking the same dispatch layer as the browser host.
-//!
-//! Also the interface the desktop app uses: it runs this binary as a fresh
-//! subprocess per call and reads one JSON object from stdout.
+//! The same commands, from a terminal. Also how the desktop app calls us: one
+//! fresh process per call, one JSON object back.
 //!
 //!     docsigner-host version
 //!     docsigner-host list
@@ -46,8 +44,7 @@ pub fn run(args: &[String]) -> ExitCode {
     let state = State::default();
     let response = protocol::handle_message(&message, &state);
 
-    // Pretty-printed like the Python CLI: a human reads this, and the desktop
-    // app parses it either way.
+    // Laid out for a human. The desktop app parses it either way.
     match serde_json::to_string_pretty(&response) {
         Ok(text) => println!("{text}"),
         Err(e) => {

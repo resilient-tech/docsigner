@@ -1,10 +1,8 @@
-//! PIN acquisition chain: env var (CLI and tests), then a local dialog.
+//! Getting the PIN: an environment variable first, then a dialog.
 //!
-//! PINs never cross the native messaging protocol; the host prompts locally.
-//! Every platform shells out to a dialog the OS already ships, which is how the
-//! Python host worked on macOS. Doing the same on Windows and Linux is what
-//! lets this binary drop tkinter, worth 7.7 MB in the packaged desktop app and
-//! absent entirely on a minimal Linux install.
+//! The PIN never travels over the wire. We ask for it here, on the user's own
+//! machine. Every platform borrows a dialog the OS already ships, which is why
+//! this binary carries no UI toolkit of its own.
 
 use std::process::Command;
 
@@ -15,12 +13,11 @@ pub const ENV_VAR: &str = "DOCSIGNER_PIN";
 /// Long enough for someone to find the token and read the label off it.
 const DIALOG_TIMEOUT_SECONDS: u64 = 300;
 
-/// Return the token PIN. `USER_CANCELLED` when none is available.
+/// Get the PIN. Reports a cancel when there is none.
 ///
-/// `origin` is the website the browser says asked for this signature, already
-/// validated by `protocol::clean_origin`. It goes in the dialog so the one
-/// moment a human authorises a signature names who is asking. `None` for the
-/// CLI and the desktop app, where the person at the keyboard is the caller.
+/// `origin` is the site asking, checked already. It goes in the dialog, so the
+/// one moment a human approves a signature says who it is for. None from the
+/// CLI and the desktop app, where the person at the keyboard is the asker.
 pub fn get_pin(token_label: &str, origin: Option<&str>) -> Result<String> {
     if let Ok(pin) = std::env::var(ENV_VAR) {
         if !pin.is_empty() {
@@ -41,8 +38,7 @@ fn label_or_default(token_label: &str) -> &str {
     }
 }
 
-/// The dialog's message. Built once here so all three platforms say the same
-/// thing and only have to escape it for their own shell.
+/// What the dialog says. Written once, so all three platforms match.
 fn prompt_text(token_label: &str, origin: Option<&str>) -> String {
     let label = label_or_default(token_label);
     match origin {
@@ -53,8 +49,8 @@ fn prompt_text(token_label: &str, origin: Option<&str>) -> String {
 
 #[cfg(target_os = "macos")]
 fn prompt(text: &str) -> Option<String> {
-    // AppleScript error -128 is the user pressing Cancel, which the handler
-    // turns into an empty string so the caller sees a cancellation, not a crash.
+    // That error number is the user pressing Cancel. Turn it into an empty
+    // answer so the caller sees a cancel, not a crash.
     let text = text
         .replace('\\', r"\\")
         .replace('"', "\\\"")
@@ -72,12 +68,11 @@ fn prompt(text: &str) -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn prompt(text: &str) -> Option<String> {
-    // A WinForms masked box through PowerShell. The host is spawned by the
-    // browser with no console, so Read-Host is not an option.
+    // A password box drawn by PowerShell. The browser starts us with no console,
+    // so asking on the command line is not an option.
     //
-    // A single-quoted PowerShell string cannot carry a newline or a quote, so
-    // the text is escaped for quotes and rebuilt as a concatenation with
-    // [char]10 wherever a line break belongs.
+    // PowerShell strings cannot hold a newline or a quote, so the message is
+    // escaped and glued back together around each line break.
     let label = text
         .split('\n')
         .map(|line| line.replace('\'', "''"))
@@ -111,8 +106,7 @@ if ($f.ShowDialog() -eq 'OK') {{ [Console]::Out.Write($t.Text) }}"#
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn prompt(text: &str) -> Option<String> {
-    // zenity on GNOME, kdialog on KDE, pinentry as the GPG-era fallback that is
-    // present on most headful Linux boxes. First one that answers wins.
+    // Whichever of the three the desktop happens to have. First one wins.
     if let Some(pin) = run_dialog(
         Command::new("zenity")
             .arg("--password")
@@ -133,8 +127,7 @@ fn prompt(text: &str) -> Option<String> {
     pinentry(text)
 }
 
-/// pinentry speaks Assuan on stdio: `SETDESC`, `GETPIN`, and the answer comes
-/// back on a `D ` line.
+/// pinentry has its own little protocol: set the message, ask, read the reply.
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn pinentry(text: &str) -> Option<String> {
     use std::io::Write;
@@ -148,8 +141,8 @@ fn pinentry(text: &str) -> Option<String> {
         .ok()?;
     {
         let stdin = child.stdin.as_mut()?;
-        // Assuan is line-based, so a literal newline would end the command.
-        // Percent-encoding is how the protocol carries one (and %, in turn).
+        // One command per line, so a real newline would cut it short. The
+        // protocol's own escaping carries one instead.
         let desc = text.replace('%', "%25").replace('\n', "%0A");
         let _ = writeln!(stdin, "SETTITLE DocSigner");
         let _ = writeln!(stdin, "SETDESC {desc}");
@@ -162,10 +155,10 @@ fn pinentry(text: &str) -> Option<String> {
         .find_map(|line| line.strip_prefix("D ").map(str::to_string))
 }
 
-/// Run a dialog command and take its stdout as the PIN.
+/// Run a dialog and take what it prints as the PIN.
 ///
-/// `None` means the tool is absent, failed, or the user cancelled; the caller
-/// treats all three the same way.
+/// None covers all three of: no such tool, it broke, the user said no. The
+/// caller treats them the same.
 fn run_dialog(command: &mut Command) -> Option<String> {
     let child = command
         .stdin(std::process::Stdio::null())
@@ -209,8 +202,8 @@ mod tests {
 
     use crate::testenv::EnvGuard;
 
-    /// The env var is the path the CLI, the desktop app and the tests use, and
-    /// the only one that can be exercised without a human at the screen.
+    /// The only path that works with nobody at the screen, so it is the one
+    /// the CLI, the desktop app and the tests use.
     #[test]
     fn env_var_short_circuits_the_dialog() {
         let _guard = EnvGuard::new().set(ENV_VAR, "123456");
@@ -222,13 +215,13 @@ mod tests {
         );
     }
 
-    /// An empty variable is not a PIN. Treating it as one would send an empty
-    /// string to the token and burn an attempt.
+    /// An empty variable is not a PIN. Sending it to the token would burn an
+    /// attempt for nothing.
     #[test]
     fn an_empty_env_var_does_not_count_as_a_pin() {
         let _guard = EnvGuard::new().set(ENV_VAR, "");
-        // No dialog tool answers in a test process, so this cancels rather
-        // than hanging; what matters is that "" was not returned as the PIN.
+        // No dialog answers in a test, so this cancels instead of hanging. The
+        // point is that "" never came back as a PIN.
         match get_pin("WD PROXKey", None) {
             Ok(pin) => assert!(!pin.is_empty(), "an empty PIN must never be returned"),
             Err(e) => assert_eq!(e.code, crate::error::Code::UserCancelled),

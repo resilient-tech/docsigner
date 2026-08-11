@@ -1,18 +1,17 @@
-//! Token identification via PC/SC smart-card reader names.
+//! Working out which token is plugged in, even with no driver installed.
 //!
-//! The trick: every USB token is a CCID device, and the OS smart-card service
-//! reads its reader name from the USB descriptor with no vendor driver
-//! installed. So we can tell WHICH token is plugged in even when its PKCS#11
-//! driver is missing, and say "install driver X" instead of showing an empty list.
+//! The trick: the OS reads a name off the USB device itself, with no vendor
+//! software involved. So we can say "that is a ProxKey, install its driver"
+//! instead of showing an empty list and shrugging.
 //!
-//! Everything here is tolerant: any failure means "no readers", never an error.
+//! Forgiving throughout: any failure means "no readers", never an error.
 
 use serde::Serialize;
 
 use crate::modules;
 
-/// (needles in the lowercased reader name, token model, module-basename hints).
-/// Reader names harvested from vendor documentation and bench testing.
+/// What to look for in a reader name, which token that means, and what its
+/// driver is called. Gathered from vendor docs and real machines.
 const KNOWN: &[(&[&str], &str, &[&str])] = &[
     (
         &["watchdata", "wdind", "proxkey"],
@@ -63,7 +62,7 @@ pub fn identify(reader_name: &str) -> (Option<&'static str>, &'static [&'static 
     (None, &[])
 }
 
-/// Connected smart-card reader names; empty on any failure (no service, no lib).
+/// Reader names the OS can see. Empty if the smart-card service is not running.
 pub fn reader_names() -> Vec<String> {
     let context = match pcsc::Context::establish(pcsc::Scope::System) {
         Ok(context) => context,
@@ -93,10 +92,8 @@ pub fn reader_names() -> Vec<String> {
     }
 }
 
-/// Contract-shaped reader entries: name, token model guess, driver status.
-///
-/// `driverFound` means a module matching the token's known driver basenames is
-/// installed (per `modules::discover_modules`); false for unrecognised readers.
+/// What is plugged in: the reader's name, our guess at the token, and whether
+/// its driver is installed. Unknown readers always report no driver.
 pub fn detect_readers() -> Vec<Reader> {
     let names = reader_names();
     if names.is_empty() {

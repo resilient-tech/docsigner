@@ -1,17 +1,14 @@
-//! Update check: compare the running version against a published one.
+//! "Is there a newer version?" Nothing more: we never download anything.
 //!
-//! A version-check only, no self-download. Native hosts installed by hand go
-//! stale silently and there is no store to push a new build; this lets a page
-//! tell the user a newer host exists and point them at the installer.
+//! Installed by hand means nobody can push an update, so a host quietly goes
+//! stale forever. This lets a page say so and point at the installer.
 //!
-//! The source is a JSON URL, `DOCSIGNER_UPDATE_URL` (falls back to the module
-//! default, empty until a release feed exists), returning at least:
+//! Reads a JSON file at `DOCSIGNER_UPDATE_URL` holding at least:
 //!
 //!     {"version": "0.2.0", "url": "https://…/download"}
 //!
-//! Network and parse failures are soft: they come back as `updateAvailable:
-//! false` with a message, never as a protocol error, so a check never breaks
-//! the page.
+//! Anything that goes wrong comes back as "no update", never as an error, so a
+//! check can never break the page.
 
 use std::time::Duration;
 
@@ -47,9 +44,8 @@ impl UpdateStatus {
     }
 }
 
-/// Split a version into its integer parts, ignoring any suffix. Mirrors the
-/// Python's `re.findall(r"\d+")`, so `1.2.3-rc1` and `1.2.3` compare equal on
-/// the parts that exist.
+/// Pull the numbers out of a version, ignoring anything else. So `1.2.3-rc1`
+/// and `1.2.3` come out the same.
 fn version_parts(text: &str) -> Vec<u64> {
     let mut parts = Vec::new();
     let mut current = String::new();
@@ -89,10 +85,10 @@ pub fn check_update() -> UpdateStatus {
     check_update_at(&configured_url())
 }
 
-/// The check itself, against an explicit feed.
+/// The check itself, against a URL you pass in.
 ///
-/// Separate from `check_update` so tests can drive every branch without
-/// touching process environment, which cargo's parallel test threads share.
+/// Split out so tests can drive every branch without touching environment
+/// variables, which every test thread shares.
 pub fn check_update_at(url: &str) -> UpdateStatus {
     if url.is_empty() {
         return UpdateStatus::unavailable("no update source configured");
@@ -105,9 +101,9 @@ pub fn check_update_at(url: &str) -> UpdateStatus {
         .get(url)
         .call();
 
-    // Network, HTTP and JSON failures are all soft. Both error types collapse to
-    // a string first: ureq::Error is large enough that carrying it in a Result
-    // is its own lint, and only the message is wanted here.
+    // Every failure here is soft. Flattened to a string straight away, because
+    // only the message is wanted and the error type is big enough to complain
+    // about carrying around.
     let data: Value = match response
         .map_err(|e| e.to_string())
         .and_then(|r| r.into_json::<Value>().map_err(|e| e.to_string()))

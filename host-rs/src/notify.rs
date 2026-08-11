@@ -1,12 +1,8 @@
-//! Best-effort desktop notification. Never raises, never blocks the caller.
+//! A popup after every signature. Never fails, never holds anyone up.
 //!
-//! A notification on every token signature makes a silent signing attempt
-//! visible to the user, whose only other UI is the PIN dialog (and the PIN
-//! cache means some signatures happen with no prompt at all). Set
-//! `DOCSIGNER_NO_NOTIFY` to turn it off.
-//!
-//! notify-rust covers all three platforms, so unlike notify.py this is no
-//! longer a no-op on Windows.
+//! The PIN dialog is the user's only other sign that anything happened, and a
+//! remembered PIN means some signatures show no dialog at all. This is what
+//! stops a signature being invisible. `DOCSIGNER_NO_NOTIFY` turns it off.
 
 pub const ENV_DISABLE: &str = "DOCSIGNER_NO_NOTIFY";
 
@@ -22,9 +18,8 @@ pub fn notify(title: &str, body: &str) {
 fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
     let mut notification = notify_rust::Notification::new();
     notification.summary(title).body(body);
-    // Windows toasts need an AppUserModelID; without one the OS drops them
-    // silently. PowerShell is present on every supported Windows and is the
-    // ID Microsoft's own samples use for unregistered senders.
+    // Windows silently throws away a popup from a sender it does not know.
+    // Borrowing PowerShell's identity is what Microsoft's own samples do.
     #[cfg(target_os = "windows")]
     notification
         .app_id("{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe");
@@ -35,8 +30,8 @@ fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
 pub fn signed_message(count: usize, thumbprint: &str, origin: Option<&str>) -> String {
     let plural = if count == 1 { "" } else { "es" };
     let short: String = thumbprint.chars().take(12).collect();
-    // The origin matters most here: with a cached PIN no dialog appears, so
-    // this notification is the only thing naming who asked.
+    // The site name matters most. With a remembered PIN there is no dialog, so
+    // this popup is the only thing that says who asked.
     match origin {
         Some(origin) => {
             format!("Signed {count} hash{plural} for {origin} with certificate {short}…")
@@ -76,9 +71,8 @@ mod tests {
     #[test]
     fn the_disable_switch_is_honoured() {
         let _guard = crate::testenv::EnvGuard::new().set(ENV_DISABLE, "1");
-        // No assertion available on "nothing appeared"; what this pins is that
-        // the disabled path returns rather than reaching the OS notifier, which
-        // in CI has no session bus and would otherwise log on every call.
+        // Cannot assert that nothing appeared. What this pins is that the
+        // switched-off path returns without bothering the OS at all.
         notify("DocSigner", "should not appear");
     }
 
