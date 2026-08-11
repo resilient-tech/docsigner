@@ -9,7 +9,7 @@ from pyhanko.pdf_utils.reader import PdfFileReader
 from pyhanko.sign.validation.dss import DocumentSecurityStore
 from pyhanko_certvalidator import ValidationContext
 
-from signer_core import SignerError, SigningSession, validate
+from docsigner_core import SignerError, SigningSession, validate
 
 
 @pytest.fixture(scope="module")

@@ -6,8 +6,8 @@ import pytest
 from asn1crypto import cms
 from helpers_core import sign_hash
 
-from signer_core import SignerError
-from signer_core.cades import CadesSession, CadesState
+from docsigner_core import SignerError
+from docsigner_core.cades import CadesSession, CadesState
 
 DATA = b"quarterly returns, attached as filed"
 

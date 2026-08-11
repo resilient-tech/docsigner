@@ -1,4 +1,4 @@
-"""End-to-end check against a live signer-server on localhost:8000.
+"""End-to-end check against a live docsigner-server on localhost:8000.
 
 Plays the browser + token roles:
   start session -> sign returned hash with an in-memory RSA key

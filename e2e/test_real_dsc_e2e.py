@@ -81,7 +81,7 @@ def _dss_verifies_offline(pdf_bytes, trust_dir):
     from pyhanko.pdf_utils.reader import PdfFileReader
     from pyhanko.sign.validation.dss import DocumentSecurityStore
     from pyhanko_certvalidator import CertificateValidator, ValidationContext
-    from signer_core.trust import load_trust_certs
+    from docsigner_core.trust import load_trust_certs
 
     def der(o):
         if isinstance(o, IndirectObject):

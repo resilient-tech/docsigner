@@ -346,7 +346,7 @@ async function post(path, body) {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new DocSignerError("INTERNAL", `Could not reach the server at ${serverUrl()}. Is signer-server running?`);
+    throw new DocSignerError("INTERNAL", `Could not reach the server at ${serverUrl()}. Is docsigner-server running?`);
   }
   const data = await response.json().catch(() => null);
   if (!response.ok) {

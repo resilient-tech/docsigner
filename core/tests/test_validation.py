@@ -5,7 +5,7 @@ from helpers_core import sign_hash
 from pyhanko.pdf_utils import generic
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 
-from signer_core import SignerError, SigningSession, validate
+from docsigner_core import SignerError, SigningSession, validate
 
 
 def test_unsigned_pdf_has_no_signatures(blank_pdf):

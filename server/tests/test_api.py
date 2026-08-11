@@ -149,7 +149,7 @@ def test_lt_completion_failure_maps_to_500(client, signer, blank_pdf, monkeypatc
     from helpers_server import make_dummy_timestamper
     from pyhanko_certvalidator import ValidationContext
 
-    import signer_server.app as app_module
+    import docsigner_server.app as app_module
 
     dummy_tsa = make_dummy_timestamper()
     # Everything is configured, so signing starts fine. But this certificate

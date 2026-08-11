@@ -2,7 +2,7 @@
 
 import os
 
-from signer_server.config import load_dotenv
+from docsigner_server.config import load_dotenv
 
 
 def test_load_dotenv_sets_and_respects_precedence(tmp_path, monkeypatch):

@@ -20,8 +20,8 @@ commands and code for whoever works on that module.
 **Understanding it**
 
 - [architecture.md](architecture.md) — how all the pieces fit, and why
-- [core.md](core.md) — `signer-core`, the signing engine
-- [server.md](server.md) — `signer-server`, the HTTP layer
+- [core.md](core.md) — `docsigner-core`, the signing engine
+- [server.md](server.md) — `docsigner-server`, the HTTP layer
 - [host.md](host.md) — `docsigner-host`, the piece that reaches the token
 - [desktop.md](desktop.md) — `docsigner-desktop`, the local batch app
 

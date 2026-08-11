@@ -7,8 +7,8 @@ from cryptography.hazmat.primitives.serialization.pkcs12 import (
 )
 from helpers_core import make_self_signed_cert
 
-from signer_core import SignerError
-from signer_core.xades import sign_xml_with_p12
+from docsigner_core import SignerError
+from docsigner_core.xades import sign_xml_with_p12
 
 PASSPHRASE = "test-passphrase"
 

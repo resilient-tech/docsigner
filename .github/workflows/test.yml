@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Test signer-js + extension checks
+      - name: Test docsigner.js + extension checks
         working-directory: js
         run: node --test
 

@@ -404,22 +404,14 @@ fn find_private_key(
     cka_id: Option<&Vec<u8>>,
     cka_label: Option<&Vec<u8>>,
 ) -> Option<ObjectHandle> {
-    if let Some(id) = cka_id {
-        let template = [
-            Attribute::Class(ObjectClass::PRIVATE_KEY),
-            Attribute::Id(id.clone()),
-        ];
-        if let Ok(handles) = session.find_objects(&template) {
-            if let Some(handle) = handles.first() {
-                return Some(*handle);
-            }
-        }
-    }
-    if let Some(label) = cka_label {
-        let template = [
-            Attribute::Class(ObjectClass::PRIVATE_KEY),
-            Attribute::Label(label.clone()),
-        ];
+    // CKA_ID first, then CKA_LABEL. Order matters: ID is the attribute PKCS#11
+    // means for pairing a certificate with its key, and a label can be shared.
+    let by = [
+        cka_id.map(|id| Attribute::Id(id.clone())),
+        cka_label.map(|label| Attribute::Label(label.clone())),
+    ];
+    for attribute in by.into_iter().flatten() {
+        let template = [Attribute::Class(ObjectClass::PRIVATE_KEY), attribute];
         if let Ok(handles) = session.find_objects(&template) {
             if let Some(handle) = handles.first() {
                 return Some(*handle);

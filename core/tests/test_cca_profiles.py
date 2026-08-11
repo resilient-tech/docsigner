@@ -13,7 +13,7 @@ from pyhanko.pdf_utils.reader import PdfFileReader
 from pyhanko.sign.validation.dss import DocumentSecurityStore
 from pyhanko_certvalidator import ValidationContext
 
-from signer_core import SignerError, SigningSession, validate
+from docsigner_core import SignerError, SigningSession, validate
 
 REVINFO_OID = "1.2.840.113583.1.1.8"
 

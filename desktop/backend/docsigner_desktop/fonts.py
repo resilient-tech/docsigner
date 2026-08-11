@@ -12,7 +12,7 @@ import base64
 import binascii
 import re
 
-from signer_core.appearance import SCRIPT_FONTS, TEXT_FONT, register_fonts
+from docsigner_core.appearance import SCRIPT_FONTS, TEXT_FONT, register_fonts
 
 from .store import FONTS_DIR
 

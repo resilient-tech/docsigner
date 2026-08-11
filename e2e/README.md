@@ -1,7 +1,7 @@
 # End-to-end tests
 
 Live e2e for DocSigner. Unlike the unit suites (which mock the token and use
-FastAPI's in-memory `TestClient`), these boot a **real** signer-server over a
+FastAPI's in-memory `TestClient`), these boot a **real** docsigner-server over a
 socket and drive the server, host, extension, and demo the way a browser and
 token would — then verify every signed output through the server's own
 `/api/validate` plus structural checks on the bytes (DSS for LTV, RFC 3161

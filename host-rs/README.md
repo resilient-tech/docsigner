@@ -144,7 +144,7 @@ One deliberate wrong-PIN attempt exposed a defect **both hosts shared**: a Watch
 
 Any future backend has the same trap waiting: a token that rejects a PIN with a generic error code, and a retry path keyed on `PIN_INCORRECT` that then never fires.
 
-**End to end.** A PDF signed through `signer-core` with the token via this host validates as `valid: true, intact: true, modifications_ok: true`, and `trusted: true` against the repo's `trust/` anchors up the Capricorn chain to CCA India.
+**End to end.** A PDF signed through `docsigner-core` with the token via this host validates as `valid: true, intact: true, modifications_ok: true`, and `trusted: true` against the repo's `trust/` anchors up the Capricorn chain to CCA India.
 
 **Through the desktop app.** With `DOCSIGNER_HOST_BIN` pointed at this binary, the desktop backend lists all three certificates and bulk-signs four files on one PIN, every signature verifying.
 

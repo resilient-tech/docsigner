@@ -5,7 +5,7 @@ import pytest
 from helpers_core import sign_hash
 from pyhanko.pdf_utils.reader import PdfFileReader
 
-from signer_core import SessionState, SignerError, SigningSession, validate
+from docsigner_core import SessionState, SignerError, SigningSession, validate
 
 
 def _round_trip(key, cert_der, pdf_bytes, options, timestamper=None):

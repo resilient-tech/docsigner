@@ -12,8 +12,8 @@ import pytest
 from helpers_core import sign_hash
 from pyhanko.pdf_utils.reader import PdfFileReader
 
-from signer_core import SignerError, SigningSession
-from signer_core.policies import POLICIES, resolve_policy
+from docsigner_core import SignerError, SigningSession
+from docsigner_core.policies import POLICIES, resolve_policy
 
 POLICY_OID = "2.16.76.1.7.1.11.1.1"  # ICP-Brasil PAdES AD-RB
 ARTIFACT = b"stand-in for ITI's published policy document"

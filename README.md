@@ -42,7 +42,7 @@ python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ./core -e ./server
 cp .env.example .env             # Windows: copy .env.example .env
-python -m signer_server          # http://127.0.0.1:8001
+python -m docsigner_server          # http://127.0.0.1:8001
 ```
 
 Run it from the repo root, since `.env` is read from the directory you launch in.
@@ -65,8 +65,8 @@ batch-signs a folder with no server and no extension.
 
 | Folder | What it is | Read first |
 |---|---|---|
-| `core/` | `signer-core`, the Python signing library (pyHanko underneath) | [docs/core.md](docs/core.md) |
-| `server/` | `signer-server`, the HTTP API + `server/openapi.json` | [docs/server.md](docs/server.md) |
+| `core/` | `docsigner-core`, the Python signing library (pyHanko underneath) | [docs/core.md](docs/core.md) |
+| `server/` | `docsigner-server`, the HTTP API + `server/openapi.json` | [docs/server.md](docs/server.md) |
 | `host-rs/` | `docsigner-host`, the native binary that talks to tokens (Rust, ~1 MB) | [docs/host.md](docs/host.md) |
 | `desktop/` | `docsigner-desktop`, batch-sign a folder locally | [docs/desktop.md](docs/desktop.md) |
 | `extension/` | WebExtension (MV3) for Chrome, Edge, Brave, Firefox | [extension/README.md](extension/README.md) |

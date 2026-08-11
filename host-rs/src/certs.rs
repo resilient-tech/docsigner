@@ -364,6 +364,13 @@ pub fn digest_info(digest: &[u8], alg: DigestAlg) -> Result<Vec<u8>> {
         .map_err(|e| HostError::internal(format!("cannot encode DigestInfo: {e}")))
 }
 
+/// RFC 3279 `ECDSA-Sig-Value`: `SEQUENCE { INTEGER r, INTEGER s }`.
+#[derive(Sequence)]
+struct EcdsaSigValue<'a> {
+    r: UintRef<'a>,
+    s: UintRef<'a>,
+}
+
 /// Repackage an EC signature.
 ///
 /// Both the token and Windows hand back two numbers glued together. The
@@ -376,38 +383,18 @@ pub fn ecdsa_raw_to_der(raw: &[u8]) -> Result<Vec<u8>> {
         )));
     }
     let half = raw.len() / 2;
-    // This applies the fiddly number rules for us: strip leading zeros, and add
-    // one back when the value would otherwise read as negative.
-    let r =
-        UintRef::new(&raw[..half]).map_err(|e| HostError::internal(format!("bad ECDSA r: {e}")))?;
-    let s =
-        UintRef::new(&raw[half..]).map_err(|e| HostError::internal(format!("bad ECDSA s: {e}")))?;
-
-    let mut body = Vec::new();
-    r.encode_to_vec(&mut body)
-        .map_err(|e| HostError::internal(format!("cannot encode ECDSA r: {e}")))?;
-    s.encode_to_vec(&mut body)
-        .map_err(|e| HostError::internal(format!("cannot encode ECDSA s: {e}")))?;
-    Ok(der_sequence(&body))
-}
-
-/// Put a header on the front of some already-encoded bytes.
-fn der_sequence(contents: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(contents.len() + 4);
-    out.push(0x30);
-    let len = contents.len();
-    if len < 0x80 {
-        out.push(len as u8);
-    } else if len <= 0xff {
-        out.push(0x81);
-        out.push(len as u8);
-    } else {
-        out.push(0x82);
-        out.push((len >> 8) as u8);
-        out.push((len & 0xff) as u8);
-    }
-    out.extend_from_slice(contents);
-    out
+    // UintRef applies the fiddly number rules for us: strip leading zeros, and
+    // add one back when the value would otherwise read as negative. The derive
+    // writes the SEQUENCE header, same as DigestInfo above.
+    let value = EcdsaSigValue {
+        r: UintRef::new(&raw[..half])
+            .map_err(|e| HostError::internal(format!("bad ECDSA r: {e}")))?,
+        s: UintRef::new(&raw[half..])
+            .map_err(|e| HostError::internal(format!("bad ECDSA s: {e}")))?,
+    };
+    value
+        .to_der()
+        .map_err(|e| HostError::internal(format!("cannot encode ECDSA signature: {e}")))
 }
 
 pub fn base64_encode(bytes: &[u8]) -> String {

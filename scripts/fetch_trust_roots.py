@@ -75,7 +75,7 @@ SOURCES = {
     "us": [
         ("FPKI-Federal-Common-Policy-G2", "http://repo.fpki.gov/fcpca/fcpcag2.crt"),
     ],
-    # Roots for every TSA in the server's registry (signer_core.trust.KNOWN_TSAS).
+    # Roots for every TSA in the server's registry (docsigner_core.trust.KNOWN_TSAS).
     # A TSA's intermediates arrive inside each timestamp token; only roots are
     # needed here, and only the LTV profiles consult them.
     "tsa": [

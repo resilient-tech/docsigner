@@ -1,5 +1,5 @@
 """Live server e2e: the full profile x flow x algorithm x format matrix, run
-against a real signer-server over HTTP, each signed output verified through the
+against a real docsigner-server over HTTP, each signed output verified through the
 server's own /api/validate plus structural checks on the returned bytes.
 
 What runs where:

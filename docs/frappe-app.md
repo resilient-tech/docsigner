@@ -4,21 +4,26 @@
 > so should this file. It's kept here because that's where it was written and
 > nothing else has a copy. Move it the next time that repo is open.
 >
-> What the app takes from *this* repo: `signer-core` as a pip dependency, the
+> What the app takes from *this* repo: `docsigner-core` as a pip dependency, the
 > extension and host for token signing, and the trust anchors in `trust/`. The
 > two core features it's still waiting on are in [roadmap.md](roadmap.md).
 
 Branch: `develop`. One commit per milestone. Status column updated as work lands — this file is where the next session looks.
 
-**2026-07-08 — moved and renamed.** The app now lives in its own repo
+**2026-07-08 — moved out.** The app lives in its own repo
 (`apps/docsigner_integration` on the bench, branch `develop`), python package
-`docsigner_integration`, module `Docsigner Integration`, license AGPL-3.0
-(from the bench scaffold), `use_json_request_body` on. Everything else below
-still describes the shipped design; read `frappe/` paths as the app repo, and
-dotted paths as `docsigner_integration.*`. Unchanged on purpose: the
-`docsigner_` custom-field prefix, the `docsigner:session:` cache prefix, the
-`bootinfo.docsigner` key, and the `/os_verify` route — they name the product,
-not the package.
+`docsigner_integration`, module `Docsigner Integration`, license AGPL-3.0 (from
+the bench scaffold), `use_json_request_body` on. Everything else below still
+describes the shipped design; read `frappe/` paths as the app repo, and dotted
+paths as `docsigner_integration.*`.
+
+**2026-08-11 — one name.** The app had drifted to OpenSigner while this repo
+stayed DocSigner. DocSigner wins, so the app is renamed back: package, app
+title, doctypes, the `docsigner_` custom-field prefix, the `docsigner:session:`
+cache prefix and the `bootinfo.docsigner` key. The `/os_verify` route keeps its
+spelling — it is a public URL in printed QR codes, and breaking those to gain
+two letters is not a trade. Same day, `signer-core` became `docsigner-core`, so
+the app imports `docsigner_core`.
 
 ## Goal
 
@@ -28,12 +33,12 @@ A Frappe app that signs any doctype's print format PDF with a DSC token (browser
 
 | # | Decision | Why |
 |---|----------|-----|
-| D1 | Fresh app `docsigner`, publisher Resilient Tech. Built on our own stack, not adapted from an existing Frappe signing app. | The alternatives ship a parallel signing ceremony (a bridge agent, pairing, HMAC). We already have extension + host + signer-core. One flow, one implementation. |
-| D2 | signer-core embedded as pip dep. No FastAPI server in the bench. | Same Python process, no second service. The FastAPI server remains the non-Frappe reference. |
+| D1 | Fresh app `docsigner`, publisher Resilient Tech. Built on our own stack, not adapted from an existing Frappe signing app. | The alternatives ship a parallel signing ceremony (a bridge agent, pairing, HMAC). We already have extension + host + docsigner-core. One flow, one implementation. |
+| D2 | docsigner-core embedded as pip dep. No FastAPI server in the bench. | Same Python process, no second service. The FastAPI server remains the non-Frappe reference. |
 | D3 | Signing sessions in `frappe.cache()` (redis), `SessionState.to_bytes()`, 15 min TTL, pop-on-read. | Survives worker restarts; no files inside bench. |
 | D4 | Per-print-format config = custom fields on Print Format (`docsigner_` prefix). No Rule/Template doctypes in v1. | Config lives where the document layout lives. Fewer doctypes. |
 | D5 | Per-user default certificate = browser localStorage (last-used thumbprint auto-preselected). No server-side mapping. | The token is plugged into a machine, not a site. Right scope, zero config. |
-| D6 | Handwritten stamp + QR composed server-side into one PNG (PIL) in signer-core; passed through the existing `background` path. | One renderer for name/details/QR/image; no new pyHanko surface; testable with PIL alone. |
+| D6 | Handwritten stamp + QR composed server-side into one PNG (PIL) in docsigner-core; passed through the existing `background` path. | One renderer for name/details/QR/image; no new pyHanko surface; testable with PIL alone. |
 | D7 | Verify page is a capability URL: `/os_verify?code=<22+ char secret>`. Guest download allowed by code only. | Printer-friendly verify pattern. Code strength is the access control. |
 | D8 | Signature Log is append-only evidence (audit JSON from core), protected signed Files (`before_delete` guard). | Evidence survives; deleting a signed PDF is a data-loss path. |
 | D9 | Batch cap 50, session TTL 15 min: constants, not settings. | Safety rules are constants, not judgment calls. |
@@ -53,7 +58,7 @@ Desk form/list ── sign.js ──► DocSigner extension ──► host ─�
       ▼
 docsigner.api (whitelisted) ──► docsigner.signing (THE wrapper)
       │                                │
-frappe.get_print → PDF          signer-core (SigningSession / sign_with_p12)
+frappe.get_print → PDF          docsigner-core (SigningSession / sign_with_p12)
       │                                │
       ▼                                ▼
 File attach + Signature Log + timeline comment + QR → /os_verify
@@ -64,7 +69,7 @@ File attach + Signature Log + timeline comment + QR → /os_verify
 | M | Scope | Files (exclusive lanes) | Status |
 |---|-------|-------------------------|--------|
 | M0 | develop branch, this plan | `docs/` | ✅ done |
-| M1 | core: `style:"handwritten"`, `qr_url`, bundled fonts, `qrcode` dep, tests, CONTRACTS changelog | `core/signer_core/appearance.py`, `core/signer_core/fonts/`, `core/tests/test_appearance.py`, `core/pyproject.toml`, `CONTRACTS.md` | ✅ done |
+| M1 | core: `style:"handwritten"`, `qr_url`, bundled fonts, `qrcode` dep, tests, CONTRACTS changelog | `core/docsigner_core/appearance.py`, `core/docsigner_core/fonts/`, `core/tests/test_appearance.py`, `core/pyproject.toml`, `CONTRACTS.md` | ✅ done |
 | M2 | app scaffold: pyproject, hooks (correct title/publisher), modules, install (custom fields on Print Format, install+migrate) | `frappe/` | ✅ done |
 | M3 | DocSigner Settings (Single) + Signature Log doctypes | `frappe/docsigner/docsigner/doctype/` | ✅ done |
 | M4 | `signing.py` wrapper + `api.py` (get_sign_context, start, complete, start_batch, complete_batch, sign_server_side) | `frappe/docsigner/signing.py`, `api.py`, `boot.py` | ✅ done |
@@ -79,7 +84,7 @@ File attach + Signature Log + timeline comment + QR → /os_verify
 2. **Bulk token sign** — list checkboxes → `start_batch` (≤50) → ONE `signHash`, one PIN → `complete_batch` → summary.
 3. **Auto server sign** — `on_submit` (only doctypes with an auto-sign print format registered) → enqueue → `sign_server_side`.
 4. **Manual server sign** — same button when mode = Server Key; no extension needed.
-5. **Verify/e-copy** — QR on stamp → `/os_verify?code=…` → re-validate via signer-core → validity + signed PDF download.
+5. **Verify/e-copy** — QR on stamp → `/os_verify?code=…` → re-validate via docsigner-core → validity + signed PDF download.
 
 Common ceremony (never duplicated): `prepare(doc, pf)` → PDF + appearance + verification code; `finalize(pdf, …)` → File + Log + comment. Token and server paths differ only in the middle step.
 

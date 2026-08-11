@@ -162,10 +162,6 @@ export function App() {
     })
   }
 
-  function refreshIdentities() {
-    loadIdentities()
-  }
-
   async function refreshFolder() {
     if (!folderPath) return
     try {
@@ -270,7 +266,7 @@ export function App() {
 
   return (
     <div className="app">
-      {/* Faces are served from signer-core's own files, and the list grows when
+      {/* Faces are served from docsigner-core's own files, and the list grows when
           the user uploads one, so the rules are built here rather than in a
           stylesheet that cannot know a new slug. */}
       <style>{fontFaceCss(fonts.map((f) => f.slug))}</style>
@@ -437,7 +433,7 @@ export function App() {
           identities={identities}
           identityId={settings.identity_id}
           onIdentity={(id) => patch({ identity_id: id })}
-          onRefreshIdentities={refreshIdentities}
+          onRefreshIdentities={loadIdentities}
           tokenHint={tokenHint}
           profiles={settings.profiles}
           profileId={settings.profile_id}

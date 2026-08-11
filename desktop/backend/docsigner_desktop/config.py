@@ -10,7 +10,7 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from signer_core import Profile, build_validation_context, make_timestamper
+from docsigner_core import Profile, build_validation_context, make_timestamper
 
 from .store import DATA_DIR
 

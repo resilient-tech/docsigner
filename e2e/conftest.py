@@ -1,4 +1,4 @@
-"""E2E fixtures: load .env.e2e, boot a real signer-server subprocess, and
+"""E2E fixtures: load .env.e2e, boot a real docsigner-server subprocess, and
 hand tests a base URL + HTTP client. Nothing is mocked here — this is the
 actual server over a real socket.
 """
@@ -102,7 +102,7 @@ def server_base_url():
     })
 
     proc = subprocess.Popen(
-        [sys.executable, "-m", "signer_server"],
+        [sys.executable, "-m", "docsigner_server"],
         cwd=str(REPO_ROOT), env=env,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )

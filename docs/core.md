@@ -1,4 +1,4 @@
-# signer-core, in plain words
+# docsigner-core, in plain words
 
 The library that turns a PDF into a **signed** PDF. Everything else in the repo
 (server, host, desktop, the Frappe app) calls this.
@@ -45,7 +45,7 @@ No dance — the server holds the key, so it signs in one call.
 
 ## Module map (where things live)
 
-In `core/signer_core/`:
+In `core/docsigner_core/`:
 
 - `cms.py` — shared bricks both flows use (parse cert, verify sig, save/load state).
 - `pdf_sign.py` — the token two-step for PDFs.
@@ -73,7 +73,7 @@ pip install -e ./core          # add [render] for rendering.py
 **One-shot, server key:**
 
 ```python
-from signer_core import sign_with_p12
+from docsigner_core import sign_with_p12
 
 signed = sign_with_p12(pdf_bytes, "key.p12", "passphrase", {"profile": "B-B"})
 ```
@@ -81,7 +81,7 @@ signed = sign_with_p12(pdf_bytes, "key.p12", "passphrase", {"profile": "B-B"})
 **Token two-step** (the hash is signed elsewhere — a token, an HSM, a browser):
 
 ```python
-from signer_core import SigningSession
+from docsigner_core import SigningSession
 
 state, to_sign, alg = SigningSession.start(pdf_bytes, cert_der, {"profile": "B-T"})
 # ... hand `to_sign` to the token, get `signature` back ...
@@ -107,7 +107,7 @@ options = {
 **Check a signed PDF:**
 
 ```python
-from signer_core import validate
+from docsigner_core import validate
 
 for sig in validate(signed_pdf, trust_dir="trust/"):
     print(sig["signer"], sig["valid"], sig["trusted"])
@@ -116,7 +116,7 @@ for sig in validate(signed_pdf, trust_dir="trust/"):
 **Detached CAdES** (sign any file, get a `.p7s`):
 
 ```python
-from signer_core.cades import CadesSession
+from docsigner_core.cades import CadesSession
 
 state, to_sign, alg = CadesSession.start(file_bytes, cert_der, {"profile": "B-T"})
 p7s = CadesSession.complete(state, signature)

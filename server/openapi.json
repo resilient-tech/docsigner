@@ -666,7 +666,7 @@
   "info": {
     "description": "The document never leaves this server. A browser carries a 32-byte hash out and a signature back, so a 200 MB file signs as fast as a 200 KB one.\n\nThe protocol is frozen in CONTRACTS.md section 1. Generate a client from this document rather than hand-writing one.",
     "summary": "Sign PDFs, any file (CAdES) and XML (XAdES) with a token or a server-held key.",
-    "title": "signer-server",
+    "title": "docsigner-server",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",

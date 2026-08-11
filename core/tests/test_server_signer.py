@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives.serialization.pkcs12 import (
     serialize_key_and_certificates,
 )
 
-from signer_core import SignerError, sign_with_p12, validate
+from docsigner_core import SignerError, sign_with_p12, validate
 
 PASSPHRASE = "p12-secret"
 

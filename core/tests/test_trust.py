@@ -4,8 +4,8 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from helpers_core import make_self_signed_cert
 
-from signer_core import SignerError
-from signer_core.trust import KNOWN_TSAS, load_trust_certs, resolve_tsa_url
+from docsigner_core import SignerError
+from docsigner_core.trust import KNOWN_TSAS, load_trust_certs, resolve_tsa_url
 
 
 def _pem(name):
@@ -35,7 +35,7 @@ def test_resolve_tsa_by_name_default_and_unknown():
 
 def test_timestamper_carries_credentials():
     """Basic and bearer credentials reach the TSA request; neither is required."""
-    from signer_core.trust import make_timestamper
+    from docsigner_core.trust import make_timestamper
 
     assert make_timestamper(None) is None
     plain = make_timestamper("http://tsa.example")

@@ -37,7 +37,7 @@ TRUST = os.path.join(REPO, "trust")
 entry = os.path.join(BACKEND, "run_desktop.py")
 ICON = os.path.join(SPECPATH, "DocSigner.icns")
 
-# signer_core is installed editable (PEP 660), which PyInstaller's static
+# docsigner_core is installed editable (PEP 660), which PyInstaller's static
 # analysis can't follow. Point pathex at its source so it resolves as an
 # ordinary package.
 CORE = os.path.join(REPO, "core")
@@ -69,7 +69,7 @@ hiddenimports = collect_submodules("uvicorn")
 for pkg in (
     "webview", "pyhanko", "pyhanko_certvalidator", "asn1crypto", "cryptography",
     "pypdfium2", "pypdfium2_raw", "qrcode", "PIL", "oscrypto",
-    "signer_core",
+    "docsigner_core",
 ):
     try:
         d, b, h = collect_all(pkg)
@@ -82,8 +82,8 @@ for pkg in (
 # Weight this app never uses. collect_all() above hands PyInstaller explicit
 # binary lists, which `excludes` does not filter, so drop them by name here.
 #
-#   lxml            only signer_core.xades imports it, and this app signs PDFs.
-#                   Verified: no lxml module loads across signer_core's signing,
+#   lxml            only docsigner_core.xades imports it, and this app signs PDFs.
+#                   Verified: no lxml module loads across docsigner_core's signing,
 #                   validation, rendering, LTV and PDF/A paths, or pyHanko's
 #                   signers and validation.
 #   PIL codecs      _avif, _webp and _imagingcms are separate extension modules
@@ -99,7 +99,7 @@ _DEAD_WEIGHT = (
 # Two bigger cuts were measured and rejected, so nobody re-derives them:
 #
 #   pdf.js for the preview, dropping pypdfium2 (6.5 MB). It does not come off:
-#   signing.py calls signer_core.page_size() per file to turn the fractional
+#   signing.py calls docsigner_core.page_size() per file to turn the fractional
 #   placement into PDF points, and that is pypdfium2. Adding pdf.js would put
 #   ~1.5 MB on top for a net loss, and push whole PDFs into the webview where
 #   today a ~5-50 KB JPEG crosses. Scanned invoices run 10-50 MB.

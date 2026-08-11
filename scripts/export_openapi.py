@@ -19,7 +19,7 @@ SPEC_PATH = REPO / "server" / "openapi.json"
 def build() -> dict:
     """Build the description. Starts no server, needs no configuration."""
     sys.path.insert(0, str(REPO / "server"))
-    from signer_server.app import app
+    from docsigner_server.app import app
 
     return app.openapi()
 

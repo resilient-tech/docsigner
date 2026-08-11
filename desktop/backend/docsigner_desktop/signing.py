@@ -12,7 +12,7 @@ import base64
 import logging
 from pathlib import Path
 
-from signer_core import SigningSession, page_size, placement_box, sign_with_p12
+from docsigner_core import SigningSession, page_size, placement_box, sign_with_p12
 
 from . import certs, config, store
 from .models import AppearanceProfile, Placement, SignRequest

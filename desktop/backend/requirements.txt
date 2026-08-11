@@ -6,7 +6,7 @@ uvicorn>=0.30
 pywebview>=5          # native desktop window (uses the OS webview)
 # The signing engine, from the repo (run pip from this backend/ directory so the
 # relative path resolves). Pulls pyHanko, cryptography, qrcode.
-# [render] adds pypdfium2 for PDF preview rasterization (signer_core.rendering).
+# [render] adds pypdfium2 for PDF preview rasterization (docsigner_core.rendering).
 -e ../../core[render]
 
 # The token host is not a Python package: it is host-rs, a Rust binary built

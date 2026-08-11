@@ -57,7 +57,7 @@ class Config:
     @classmethod
     def from_env(cls) -> "Config":
         load_dotenv()
-        default_base = Path(tempfile.gettempdir()) / "signer-server"
+        default_base = Path(tempfile.gettempdir()) / "docsigner-server"
         return cls(
             session_dir=Path(os.environ.get("SESSION_DIR", default_base / "sessions")),
             document_dir=Path(os.environ.get("DOCUMENT_DIR", default_base / "documents")),

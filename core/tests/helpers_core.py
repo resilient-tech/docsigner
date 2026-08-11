@@ -1,4 +1,9 @@
-"""Plain helpers shared by the core test modules.
+"""The fixtures every suite signs against: a blank PDF, a self-signed
+certificate, and the hash signature a PKCS#11 token would produce.
+
+This is the one home for them. server/tests and e2e/ re-export from here rather
+than keeping their own copies; `pytest.ini` puts this directory on the path.
+Anything here has to stay suite-agnostic.
 
 Kept out of conftest.py so tests can import them by a name that stays
 unique when several test suites run in one pytest invocation.

@@ -10,11 +10,11 @@ from fastapi import Body, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from signer_core import SessionState, SignerError, SigningSession, sign_with_p12, validate
-from signer_core.cades import CadesSession, CadesState, sign_cades_with_p12
-from signer_core.pdfa import detect_pdfa
-from signer_core.trust import build_validation_context, make_timestamper, resolve_tsa_url
-from signer_core.xades import sign_xml_with_p12
+from docsigner_core import SessionState, SignerError, SigningSession, sign_with_p12, validate
+from docsigner_core.cades import CadesSession, CadesState, sign_cades_with_p12
+from docsigner_core.pdfa import detect_pdfa
+from docsigner_core.trust import build_validation_context, make_timestamper, resolve_tsa_url
+from docsigner_core.xades import sign_xml_with_p12
 
 from .config import Config
 from .models import (
@@ -38,7 +38,7 @@ from .store import Expired, FileStore, Missing
 config = Config.from_env()
 
 app = FastAPI(
-    title="signer-server",
+    title="docsigner-server",
     version="1.0.0",
     summary="Sign PDFs, any file (CAdES) and XML (XAdES) with a token or a server-held key.",
     description=(

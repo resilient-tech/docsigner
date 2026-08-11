@@ -237,12 +237,10 @@ def _fit_text(draw, text, font_path, max_w, max_h):
 
 
 def _qr_image(url, height_px):
-    try:
-        import qrcode
-    except ImportError:
-        raise SignerError(
-            "INTERNAL", "appearance.qr_url needs the 'qrcode' package installed"
-        ) from None
+    # Imported here rather than at the top: only the QR path needs it. No
+    # ImportError branch, because qrcode is a hard dependency of this package.
+    import qrcode
+
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=1,
                        box_size=10)
     qr.add_data(url)

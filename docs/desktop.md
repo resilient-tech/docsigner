@@ -12,7 +12,7 @@ upload. Load a folder, drag the signature where you want it, sign everything.
 - Sign with a **USB token** (one PIN for the folder) or a **server-held key**.
 - Signed copies are written next to the originals as `name_signed.pdf`. Nothing
   is uploaded, nothing is deleted.
-- The signing is [signer-core](core.md) running in the same process, so the output
+- The signing is [docsigner-core](core.md) running in the same process, so the output
   is identical to the server's.
 
 ## How a batch runs

@@ -18,8 +18,8 @@ first live week.
 
 | # | What | Files |
 |---|------|-------|
-| C1 | **Marks on every page.** A visible mark (name, date, page x of y) on all pages plus the one cryptographic field, in one incremental revision. | new `core/signer_core/marks.py` |
-| C2 | **Caption line on the stamp.** "Reviewed by" / "Approved by" above the name. Additive appearance field, needs a CONTRACTS changelog entry. | `core/signer_core/appearance.py` |
+| C1 | **Marks on every page.** A visible mark (name, date, page x of y) on all pages plus the one cryptographic field, in one incremental revision. | new `core/docsigner_core/marks.py` |
+| C2 | **Caption line on the stamp.** "Reviewed by" / "Approved by" above the name. Additive appearance field, needs a CONTRACTS changelog entry. | `core/docsigner_core/appearance.py` |
 
 Both are asked for by the Frappe app's phases 9 and 9.5, so they land here first.
 

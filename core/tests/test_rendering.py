@@ -3,7 +3,7 @@
 Rasterization (page_size/render_page) needs the optional pypdfium2 extra and a
 real PDF, so it is exercised by the desktop app, not here."""
 
-from signer_core import placement_box
+from docsigner_core import placement_box
 
 
 def test_placement_box_maps_top_left_fraction_to_pdf_points():

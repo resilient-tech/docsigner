@@ -7,8 +7,8 @@ import pytest
 from helpers_core import make_blank_pdf
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 
-from signer_core.appearance import build_appearance
-from signer_core.errors import SignerError
+from docsigner_core.appearance import build_appearance
+from docsigner_core.errors import SignerError
 
 
 def _writer():
@@ -56,7 +56,7 @@ def test_reason_substituted_into_text():
 
 
 def test_title_case_lowers_all_caps_names():
-    from signer_core.appearance import title_case
+    from docsigner_core.appearance import title_case
 
     assert title_case("RAHUL SHARMA") == "Rahul Sharma"
     assert title_case("rahul sharma") == "Rahul Sharma"
@@ -117,7 +117,7 @@ def test_appearance_text_substitution_in_composed_stamp():
 def test_handwritten_font_choice_accepted():
     """Every bundled slug renders. Reads SCRIPT_FONTS rather than a copy of it,
     so dropping or adding a face cannot leave this list stale."""
-    from signer_core.appearance import SCRIPT_FONTS
+    from docsigner_core.appearance import SCRIPT_FONTS
 
     assert len(SCRIPT_FONTS) == 5, "five hands, one per personality"
     for font in SCRIPT_FONTS:
@@ -134,7 +134,7 @@ def test_register_fonts_adds_a_users_own_face(tmp_path):
     Uses a copy of a bundled face as the "uploaded" font, so this checks the
     registration path rather than PIL's tolerance for a synthetic file.
     """
-    from signer_core.appearance import SCRIPT_FONTS, register_fonts
+    from docsigner_core.appearance import SCRIPT_FONTS, register_fonts
 
     shutil.copy(SCRIPT_FONTS["caveat"], tmp_path / "my-own-hand.ttf")
     (tmp_path / "notes.txt").write_text("not a font")
@@ -151,7 +151,7 @@ def test_register_fonts_adds_a_users_own_face(tmp_path):
 
 
 def test_register_fonts_tolerates_a_missing_directory(tmp_path):
-    from signer_core.appearance import register_fonts
+    from docsigner_core.appearance import register_fonts
 
     assert register_fonts(tmp_path / "never-created") == []
 

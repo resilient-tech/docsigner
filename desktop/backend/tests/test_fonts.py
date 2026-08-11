@@ -11,7 +11,7 @@ that would take a bundled face with it.
 import base64
 
 import pytest
-from signer_core.appearance import SCRIPT_FONTS
+from docsigner_core.appearance import SCRIPT_FONTS
 
 from docsigner_desktop import fonts
 

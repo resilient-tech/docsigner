@@ -15,8 +15,8 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 
 MAPS = [
-    ("core/signer_core", "*.py", "docs/core.md"),
-    ("server/signer_server", "*.py", "docs/server.md"),
+    ("core/docsigner_core", "*.py", "docs/core.md"),
+    ("server/docsigner_server", "*.py", "docs/server.md"),
     ("desktop/backend/docsigner_desktop", "*.py", "docs/desktop.md"),
     ("host-rs/src", "*.rs", "docs/host.md"),
 ]

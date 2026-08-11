@@ -1,4 +1,4 @@
-# signer-core
+# docsigner-core
 
 The Python signing library the rest of DocSigner is built on. pyHanko does the
 PDF work underneath; this package adds interrupted signing sessions (sign a hash
@@ -24,7 +24,7 @@ pip install -e ./core          # add [render] for rendering.py
 Two entry points cover most cases. A one-shot signature with a server-held key:
 
 ```python
-from signer_core import sign_with_p12
+from docsigner_core import sign_with_p12
 
 signed = sign_with_p12(pdf_bytes, "key.p12", passphrase, options)
 ```
@@ -32,7 +32,7 @@ signed = sign_with_p12(pdf_bytes, "key.p12", passphrase, options)
 An interrupted session, where the hash is signed elsewhere (a token, a browser):
 
 ```python
-from signer_core import SigningSession
+from docsigner_core import SigningSession
 
 state, to_sign, alg = SigningSession.start(pdf_bytes, cert_der, options)
 signature = sign_somehow(to_sign)          # token, HSM, remote signer
@@ -48,15 +48,15 @@ Options, profiles and error codes are frozen in
 ## Fonts
 
 Five handwriting faces and one text face ship inside the package
-(`signer_core/fonts/`, bundled through `package-data`), so a stamp renders the
+(`docsigner_core/fonts/`, bundled through `package-data`), so a stamp renders the
 same wherever the library is installed. Details in
-[`signer_core/fonts/README.md`](signer_core/fonts/README.md).
+[`docsigner_core/fonts/README.md`](docsigner_core/fonts/README.md).
 
 `appearance.font` is a whitelist, because in a server it arrives from an HTTP
 request. An application that owns its own font folder adds to that whitelist:
 
 ```python
-from signer_core.appearance import register_fonts
+from docsigner_core.appearance import register_fonts
 
 register_fonts("~/.config/myapp/fonts")   # each .ttf/.otf stem becomes a slug
 ```
@@ -72,7 +72,7 @@ build a wheel and sdist anyway:
 
 ```bash
 pip install build
-python -m build core        # -> core/dist/signer_core-*.whl, *.tar.gz
+python -m build core        # -> core/dist/docsigner_core-*.whl, *.tar.gz
 ```
 
 ## Tests

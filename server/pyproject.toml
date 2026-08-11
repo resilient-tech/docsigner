@@ -3,17 +3,17 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "signer-server"
+name = "docsigner-server"
 version = "0.1.0"
-description = "signer-server: a small FastAPI reference server for DocSigner. Installs signer_server as a package so `python -m signer_server` runs from anywhere."
+description = "docsigner-server: a small FastAPI reference server for DocSigner. Installs docsigner_server as a package so `python -m docsigner_server` runs from anywhere."
 requires-python = ">=3.10"
 dependencies = [
     "fastapi",
     "uvicorn",
 ]
 
-# signer-core is installed separately (`pip install -e ./core`); it lives in
+# docsigner-core is installed separately (`pip install -e ./core`); it lives in
 # this repo and is not published to PyPI, so it is not listed here.
 
 [tool.setuptools.packages.find]
-include = ["signer_server*"]
+include = ["docsigner_server*"]

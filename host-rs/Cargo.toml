@@ -13,8 +13,13 @@ path = "src/main.rs"
 [dependencies]
 cryptoki = "0.10"
 pcsc = "2"
-x509-cert = { version = "0.2", features = ["pem"] }
-const-oid = { version = "0.9", features = ["db"] }
+# default-features = false leaves "pem" behind, dropping the pem-rfc7468 crate:
+# tokens and the OS store hand over DER and this binary base64s it itself, so no
+# PEM is ever read or written. Worth 16 bytes of binary, measured — LTO already
+# stripped the dead code. The point is one less crate in the graph, not size.
+# "std" is the rest of the default set and is needed. const-oid is not listed
+# either; der re-exports the parts used here.
+x509-cert = { version = "0.2", default-features = false, features = ["std"] }
 der = { version = "0.7", features = ["oid"] }
 sha1 = "0.10"
 serde = { version = "1", features = ["derive"] }

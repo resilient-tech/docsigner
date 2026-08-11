@@ -19,11 +19,11 @@ def _no_override(monkeypatch):
 
 def test_override_wins_over_everything(monkeypatch):
     monkeypatch.setenv(host.ENV_HOST_BIN, "/opt/docsigner-host")
-    assert host._host_argv() == ["/opt/docsigner-host"]
+    assert host.host_binary() == "/opt/docsigner-host"
 
     # Even in a frozen build, where a bundled sidecar would otherwise be found.
     monkeypatch.setattr(sys, "frozen", True, raising=False)
-    assert host._host_argv() == ["/opt/docsigner-host"]
+    assert host.host_binary() == "/opt/docsigner-host"
 
 
 def test_frozen_looks_beside_the_executable(monkeypatch, tmp_path):
@@ -32,7 +32,7 @@ def test_frozen_looks_beside_the_executable(monkeypatch, tmp_path):
     binary = tmp_path / host.BINARY_NAME
     binary.write_text("#!/bin/sh\n")
     binary.chmod(0o755)
-    assert host._host_argv() == [str(binary)]
+    assert host.host_binary() == str(binary)
 
 
 def test_from_source_finds_the_cargo_build(monkeypatch):
@@ -57,11 +57,11 @@ def test_a_missing_binary_is_a_setup_error_not_a_token_error(monkeypatch):
     assert isinstance(err.value, host.TokenError)
 
 
-def test_listing_degrades_to_empty_when_the_host_is_missing(monkeypatch):
+def test_scanning_degrades_to_empty_when_the_host_is_missing(monkeypatch):
     """The certificate menu shows nothing rather than crashing the app."""
     monkeypatch.setattr(host, "_candidates", lambda: [])
     monkeypatch.setattr(host.shutil, "which", lambda _name: None)
-    assert host.list_certificates() == []
+    assert host.scan() == {}
 
 
 def test_signing_surfaces_a_missing_host(monkeypatch):

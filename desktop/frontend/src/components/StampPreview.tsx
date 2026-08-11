@@ -3,12 +3,12 @@ import type { AppearanceProfile } from '../types'
 // Font slugs double as CSS family names: fontFaceCss() registers each face
 // under its own slug, so a font the user just uploaded needs no name mapping.
 
-/** signer-core's face for the detail lines under the signature. */
-export const DETAIL_FONT = 'poppins'
+/** docsigner-core's face for the detail lines under the signature. */
+const DETAIL_FONT = 'poppins'
 
 /**
  * `@font-face` rules for the detail font plus every listed hand, served by the
- * backend from the very files signer-core stamps into the PDF. Injected as one
+ * backend from the very files docsigner-core stamps into the PDF. Injected as one
  * <style> element rather than a stylesheet, because the list grows when the user
  * uploads a font and a static stylesheet cannot know the new slug.
  */

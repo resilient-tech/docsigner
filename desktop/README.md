@@ -1,7 +1,7 @@
 # DocSigner Desktop
 
 A local app for signing a folder of PDFs at once, with a signature you place
-yourself. Nothing is uploaded. The signing engine is DocSigner's `signer-core`
+yourself. Nothing is uploaded. The signing engine is DocSigner's `docsigner-core`
 (pyHanko underneath), reused in-process. The UI is built in the Sunsama-inspired
 design language.
 
@@ -29,7 +29,7 @@ To iterate on the UI with hot reload, run the backend headless and point Vite at
 
 ```bash
 ./.venv/bin/python -m docsigner_desktop --server   # http://127.0.0.1:8000
-cd ../frontend && pnpm dev                         # proxies /api and /fonts to :8000
+cd ../frontend && pnpm dev                         # proxies /api and /font-file to :8000
 ```
 
 Backend tests (token cache, host seam) need only `cryptography`:
@@ -64,8 +64,8 @@ dependency (FastAPI, pyHanko, pypdfium2, cryptography) and bundles the built
 frontend and the `trust/` anchors. The window is drawn with the OS's native
 webview, so there is no Chromium to ship (Electron would only add ~150 MB for the
 same result). The user double-clicks; no Python, pip, or venv on their machine.
-The token host runs by re-execing the app itself (`--host-cli`), so token signing
-works with no Python present.
+The token host is its own ~1 MB Rust binary carried alongside as a sidecar, so
+token signing works with no Python present.
 
 Build on the OS you are targeting. PyInstaller does not cross-compile.
 

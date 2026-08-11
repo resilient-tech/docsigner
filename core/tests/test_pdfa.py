@@ -1,6 +1,6 @@
 """PDF/A identification from XMP metadata."""
 
-from signer_core.pdfa import parse_xmp_pdfa
+from docsigner_core.pdfa import parse_xmp_pdfa
 
 ELEMENT_FORM = b"""<x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:Description xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">

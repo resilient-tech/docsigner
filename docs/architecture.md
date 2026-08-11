@@ -18,8 +18,8 @@ flowchart TB
     Ext["Browser extension"]
     Host["docsigner-host<br/>(Rust, ~1 MB)"]
     Token(["USB token<br/>/ smartcard"])
-    Server["signer-server<br/>(HTTP)"]
-    Core["signer-core<br/>(the signing engine)"]
+    Server["docsigner-server<br/>(HTTP)"]
+    Core["docsigner-core<br/>(the signing engine)"]
     P12[("server key<br/>.p12")]
     Desk["docsigner-desktop"]
 
@@ -35,8 +35,8 @@ flowchart TB
 
 | Piece | What it does | Docs |
 |---|---|---|
-| `signer-core` | Turns a PDF into a signed PDF. Everything calls this. | [core.md](core.md) |
-| `signer-server` | HTTP wrapper around core. Holds the PDF. | [server.md](server.md) |
+| `docsigner-core` | Turns a PDF into a signed PDF. Everything calls this. | [core.md](core.md) |
+| `docsigner-server` | HTTP wrapper around core. Holds the PDF. | [server.md](server.md) |
 | `docsigner-host` | Reaches the USB token. The only piece that touches hardware. | [host.md](host.md) |
 | Extension | Bridges a web page to the host. Does zero crypto. | [../extension/README.md](../extension/README.md) |
 | `docsigner.js` | The page-side API. One file, no dependencies. | [../js/README.md](../js/README.md) |

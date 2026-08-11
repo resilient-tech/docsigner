@@ -1,6 +1,6 @@
-# signer-server, in plain words
+# docsigner-server, in plain words
 
-The HTTP layer over [signer-core](core.md). It holds the PDF so the browser
+The HTTP layer over [docsigner-core](core.md). It holds the PDF so the browser
 doesn't have to.
 
 ## The gist
@@ -17,7 +17,7 @@ doesn't have to.
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant S as signer-server
+    participant S as docsigner-server
     participant D as (disk)
 
     B->>S: POST /api/signatures {pdf, certificate}
@@ -54,7 +54,7 @@ Exact bodies, fields and error codes: [CONTRACTS.md](../CONTRACTS.md) section 1.
 - `models.py` — the request and response shapes, so the OpenAPI document is worth something.
 - `config.py` — reads plain environment variables (and a `.env` file if one's there).
 - `store.py` — the file-backed session and document store, with the TTL sweep.
-- `__main__.py` — `python -m signer_server`.
+- `__main__.py` — `python -m docsigner_server`.
 
 ---
 
@@ -65,7 +65,7 @@ Run it (Python 3.10+, from the repo root):
 ```bash
 pip install -e ./core -e ./server
 cp .env.example .env
-python -m signer_server            # http://127.0.0.1:8001
+python -m docsigner_server            # http://127.0.0.1:8001
 ```
 
 Run and deploy steps, every environment variable, and how to build a wheel:
@@ -82,4 +82,4 @@ exhaustively. `server/tests/test_openapi.py` fails if the committed document
 drifts from the routes. Regenerate with `python scripts/export_openapi.py`.
 
 **Skip HTTP entirely** if you already run Python: `pip install -e ./core` and call
-[signer-core](core.md) in process. That's what the Frappe app does.
+[docsigner-core](core.md) in process. That's what the Frappe app does.

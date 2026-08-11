@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-import signer_core
+import docsigner_core
 
 from . import certs, config, fonts, picker, signing, store
 from .models import FontUpload, Settings, SignRequest
@@ -73,7 +73,7 @@ def folder(path: str) -> dict:
 @app.get("/api/page")
 def page(path: str, index: int = -1, width: int = 1000) -> dict:
     try:
-        return signer_core.render_page(str(Path(path).expanduser()), index, width)
+        return docsigner_core.render_page(str(Path(path).expanduser()), index, width)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"Could not render this page: {exc}")
 

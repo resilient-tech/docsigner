@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the end-to-end suites. From the repo root:  e2e/run_e2e.sh [pytest args]
 #
-# Boots a real signer-server, runs the server/host/extension/demo e2e matrix,
+# Boots a real docsigner-server, runs the server/host/extension/demo e2e matrix,
 # verifying every signed output through /api/validate plus structural checks.
 #
 # Config comes from e2e/.env.e2e (copy e2e/.env.e2e.example if missing).

@@ -6,7 +6,7 @@ Protocol version: 1. All binary values are base64 strings unless stated otherwis
 
 ---
 
-## 1. REST API (signer-server)
+## 1. REST API (docsigner-server)
 
 Base path `/api`. JSON in, JSON out. Errors use HTTP 4xx/5xx with body:
 
@@ -353,13 +353,13 @@ new CustomEvent("org.docsigner.response", {
 });
 ```
 
-Commands are the native protocol commands plus `ping` (result `{ "installed": true, "version": "..." }`, answered by the extension without touching the host). Extra error codes at this layer: `EXTENSION_NOT_INSTALLED` (ping timeout, raised by signer-js), `HOST_NOT_INSTALLED`, `ORIGIN_DENIED` (user rejected the consent prompt).
+Commands are the native protocol commands plus `ping` (result `{ "installed": true, "version": "..." }`, answered by the extension without touching the host). Extra error codes at this layer: `EXTENSION_NOT_INSTALLED` (ping timeout, raised by docsigner.js), `HOST_NOT_INSTALLED`, `ORIGIN_DENIED` (user rejected the consent prompt).
 
 First `listCertificates` or `signHash` from an unknown origin triggers the extension's consent prompt. The decision is remembered per origin.
 
 ---
 
-## 4. signer-js public API
+## 4. docsigner.js public API
 
 Single ES module file, no dependencies. Load it with `<script type="module">` or a bundler.
 
@@ -395,11 +395,11 @@ All rejections are `DocSignerError` with `.code` from the codes above. Nothing e
 
 ## 7. Changelog
 
-- **2026-08-11 (c)** — narrowing, REST appearance only, `protocolVersion` stays 1: `appearance.font` drops to five hands (`great-vibes`, `caveat`, `nanum-pen-script`, `cookie`, `bad-script`), one per signing personality and matching the OpenSigner Frappe app's options. `dancing-script`, `sacramento`, `allura`, `alex-brush` and `cedarville-cursive` are gone and now raise `DOCUMENT_INVALID` naming the five that remain. An app that wants another hand registers its own directory with `signer_core.appearance.register_fonts()`; the desktop app exposes that as an upload. The server registers nothing, so its set stays the five.
+- **2026-08-11 (c)** — narrowing, REST appearance only, `protocolVersion` stays 1: `appearance.font` drops to five hands (`great-vibes`, `caveat`, `nanum-pen-script`, `cookie`, `bad-script`), one per signing personality and matching the OpenSigner Frappe app's options. `dancing-script`, `sacramento`, `allura`, `alex-brush` and `cedarville-cursive` are gone and now raise `DOCUMENT_INVALID` naming the five that remain. An app that wants another hand registers its own directory with `docsigner_core.appearance.register_fonts()`; the desktop app exposes that as an upload. The server registers nothing, so its set stays the five.
 - **2026-08-11 (b)** — additive, REST only: `options.policy` embeds a signature policy identifier (ICP-Brasil AD-RB/RT/RC/RA), needs `POLICY_DIR`. `protocolVersion` stays 1.
 - **2026-08-11** — additive, `protocolVersion` stays 1: `signHash` params accept `origin`. The extension fills it from `sender.origin`; the host validates it and shows it in the PIN dialog and the signing notification. Callers that omit it get the previous prompt wording.
 - **2026-07-15** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` accepts `image`, composing the uploaded `image` (base64 or `data:` URL) as the mark above the detail lines. Existing `handwritten`/text/`image`-background behavior unchanged.
 - **2026-07-10** — no wire change: the desk sign dialog now uses §1 `options.reason` and §2 page-supplied `pin`; Signature Log and the verify page carry the reason. `protocolVersion` stays 1.
-- **2026-07-08 (b)** — additive, `protocolVersion` stays 1: `listCertificates` result carries `diagnostics` (scan counters, plus optional `stuckModules` and `competingProcesses`); `getVersion` gains `logPath`; signer-js `listCertificates()` now resolves to `{certificates, readers, diagnostics}` instead of a bare array.
+- **2026-07-08 (b)** — additive, `protocolVersion` stays 1: `listCertificates` result carries `diagnostics` (scan counters, plus optional `stuckModules` and `competingProcesses`); `getVersion` gains `logPath`; docsigner.js `listCertificates()` now resolves to `{certificates, readers, diagnostics}` instead of a bare array.
 - **2026-07-08** — additive: `appearance.font` picks the handwritten script from ten bundled OFL fonts (default `great-vibes`); `appearance.page` accepts -1 for the last page. `protocolVersion` stays 1.
 - **2026-07-07** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` (`handwritten`), `appearance.name`, `appearance.capitalize`, `appearance.bold`, `appearance.qr_url`. Native messaging and page bridge untouched.

@@ -1,7 +1,7 @@
 """Turn a page into a picture, and a spot on that picture into a spot on the page.
 
 Lives here so every app that lets you place a signature places it the same way.
-Needs the optional extra: `pip install signer-core[render]`. The import is lazy,
+Needs the optional extra: `pip install docsigner-core[render]`. The import is lazy,
 so the server and host stay light.
 """
 
@@ -17,7 +17,7 @@ def _pdfium():
     except ImportError:
         raise SignerError(
             "INTERNAL",
-            "PDF rendering needs the optional 'render' extra: pip install signer-core[render]",
+            "PDF rendering needs the optional 'render' extra: pip install docsigner-core[render]",
         ) from None
     return pdfium
 

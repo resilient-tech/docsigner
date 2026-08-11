@@ -1,9 +1,9 @@
-# signer-server
+# docsigner-server
 
 A small FastAPI reference server for DocSigner. It holds the PDF, prepares the
 signature, and hands the browser a 32-byte hash to sign, so the file never
 leaves the server. It also signs directly with a server-held key. The signing
-work is all `signer-core`; this package is the HTTP layer around it.
+work is all `docsigner-core`; this package is the HTTP layer around it.
 
 How the flow works and what each module does:
 [`../docs/server.md`](../docs/server.md). The routes and error codes are frozen
@@ -18,7 +18,7 @@ python3 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -e ./core -e ./server
 cp .env.example .env                 # Windows: copy .env.example .env
-python -m signer_server              # http://127.0.0.1:8001
+python -m docsigner_server              # http://127.0.0.1:8001
 ```
 
 `.env` is read from the directory you launch from, so run this from the repo
@@ -72,13 +72,13 @@ purpose: an LTV signature without revocation data would be an empty claim.
 
 ## Deploy it
 
-`python -m signer_server` binds `127.0.0.1` with a single worker, which suits
+`python -m docsigner_server` binds `127.0.0.1` with a single worker, which suits
 local use and development. Behind a reverse proxy that terminates TLS, run
 Uvicorn directly and add workers:
 
 ```bash
 pip install -e ./core -e ./server
-uvicorn signer_server.app:app --host 127.0.0.1 --port 8001 --workers 4
+uvicorn docsigner_server.app:app --host 127.0.0.1 --port 8001 --workers 4
 ```
 
 Keep the process bound to localhost and let the proxy (nginx, Caddy) handle TLS

@@ -61,14 +61,9 @@ def host_binary() -> str:
     )
 
 
-def _host_argv() -> list[str]:
-    """How to launch the signing host as a fresh process."""
-    return [host_binary()]
-
-
 def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
     proc = subprocess.run(
-        [*_host_argv(), *args],
+        [host_binary(), *args],
         capture_output=True, text=True, timeout=timeout, env=env,
     )
     try:
@@ -91,11 +86,6 @@ def scan() -> dict:
         return _run(["list"], timeout=30)
     except Exception:
         return {}
-
-
-def list_certificates() -> list[dict]:
-    """Just the certificates. Empty if there is no host or no token."""
-    return scan().get("certificates", [])
 
 
 def sign_hashes(thumbprint: str, digests: list[bytes], algorithm: str = "sha256",
