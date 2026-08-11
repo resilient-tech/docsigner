@@ -127,9 +127,10 @@ WebKitGTK, present on most desktops.
 - **Token driver.** The DSC vendor's PKCS#11 middleware must be installed on the user's
   machine, the same as for the Frappe flow or the browser extension. It is hardware
   middleware and cannot ride inside the app.
-- **App icon.** The icon is `packaging/DocSigner.icns` (regenerate it from the logo with
-  `packaging/make-icon.sh`). macOS caches icons hard, so a rebuilt app can still show the
-  old one in Finder or the Dock: `killall Dock Finder`, or move the app once, to refresh.
+- **App icon.** The icon is `packaging/DocSigner.icns`, generated from the one logo source
+  `assets/icon.svg` by `scripts/make_assets.py` along with the extension and host icons.
+  macOS caches icons hard, so a rebuilt app can still show the old one in Finder or the
+  Dock: `killall Dock Finder`, or move the app once, to refresh.
 
 Verify a build by opening it and signing one PDF with the actual token — that pops the
 token PIN, which only the token holder can enter.

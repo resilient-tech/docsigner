@@ -7,7 +7,7 @@ token. Works in Chrome, Edge, Brave, and Firefox.
 
 Files: `manifest.json`, `background.js` (native messaging relay), `content.js`
 (page bridge), `consent.html` / `consent.js` (per-site permission prompt),
-`icons/`.
+`icons/` (generated from `../assets/icon.svg` by `../scripts/make_assets.py`).
 
 This extension does nothing on its own. The native host must be installed and
 registered with this extension's ID (see [`../host-rs/README.md`](../host-rs/README.md)).

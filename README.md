@@ -33,6 +33,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | `desktop/` | `docsigner-desktop`, a local app to batch-sign a folder of PDFs with a placed signature |
 | `demo/` | A working demo page, also the integration example |
 | `spike/` | Phase 0 proof scripts, kept as executable documentation |
+| `assets/` | `icon.svg`, the one logo source; `scripts/make_assets.py` regenerates every icon from it |
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
 
