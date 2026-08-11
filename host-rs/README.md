@@ -30,6 +30,26 @@ cargo build --release
 
 The binary lands at `target/release/opensigner-host`. No Python, no venv, no PyInstaller spec.
 
+## Releasing
+
+Tag it. `.github/workflows/release.yml` builds every platform, publishes the archives with a `SHA256SUMS`, and writes the `latest.json` the `checkUpdate` command reads.
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+Run it from the Actions tab first (`workflow_dispatch`) to build without publishing. The job fails if the tag disagrees with `Cargo.toml`, since a binary reporting a version nobody can find is worse than no release.
+
+**One download per OS, and the architecture is not the user's problem.** Each choice is deliberate and the reasoning is written into the workflow so nobody removes it:
+
+| OS | Built for | Why not the other one |
+|---|---|---|
+| macOS | x86_64 | Runs on every Mac through Rosetta. An x86_64 process can load an x86_64-only PKCS#11 driver; an arm64 process cannot, and some Indian CA middleware still ships x86_64 only. |
+| Windows | x64 | The token middleware is x64. An ARM64-native build could not load it, while the x64 build runs emulated on ARM and loads the driver normally. |
+| Linux | oldest supported Ubuntu | glibc is backward but not forward compatible, so building on the newest runner would refuse to start on older distros. |
+
+Measured rather than assumed: the x86_64 build, cross-compiled on an arm64 Mac, lists all three certificates off a real ProxKey under Rosetta. That token's own dylib happens to be universal, so this is insurance against the vendors that have not caught up rather than a fix for that one.
+
 ## Use it
 
 ```bash

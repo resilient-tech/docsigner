@@ -22,11 +22,16 @@ if [ "$CHROME_EXT_ID" = "__EXTENSION_ID__" ]; then
     echo "         Rerun with the real ID once the extension is installed." >&2
 fi
 
-# Locate the built binary. Release first: a stale debug build must not be
-# installed just because someone ran `cargo build` once.
+# Locate the binary.
+#
+# "$HERE/.." first, which is where it sits in a downloaded release archive:
+# most people run this from an unpacked download, not a checkout. Then a cargo
+# build, release before debug so a stale debug build is never the one that gets
+# registered.
 BINARY="${OPENSIGNER_BINARY:-}"
 if [ -z "$BINARY" ]; then
     for candidate in \
+        "$HERE/../opensigner-host" \
         "$HERE/../target/release/opensigner-host" \
         "$HERE/../target/debug/opensigner-host" \
         "$HERE/opensigner-host"; do
@@ -37,9 +42,10 @@ if [ -z "$BINARY" ]; then
     done
 fi
 if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
-    echo "error: opensigner-host binary not found." >&2
-    echo "       Build it with: cargo build --release" >&2
-    echo "       or set OPENSIGNER_BINARY to its path." >&2
+    echo "error: opensigner-host binary not found next to this script." >&2
+    echo "       From a downloaded release: run this from the unpacked folder." >&2
+    echo "       From a checkout:           cargo build --release" >&2
+    echo "       Or set OPENSIGNER_BINARY to its path." >&2
     exit 1
 fi
 

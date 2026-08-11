@@ -24,14 +24,18 @@ set "HERE=%~dp0"
 set "HOST_NAME=com.opensigner.host"
 set "INSTALL_DIR=%LOCALAPPDATA%\opensigner"
 
-rem Release first: a stale debug build must not be installed just because
-rem someone ran `cargo build` once.
-set "BINARY=%HERE%..\target\release\opensigner-host.exe"
+rem "%HERE%.." first, which is where it sits in a downloaded release archive:
+rem most people run this from an unpacked download, not a checkout. Then a
+rem cargo build, release before debug so a stale debug build is never the one
+rem that gets registered.
+set "BINARY=%HERE%..\opensigner-host.exe"
+if not exist "%BINARY%" set "BINARY=%HERE%..\target\release\opensigner-host.exe"
 if not exist "%BINARY%" set "BINARY=%HERE%..\target\debug\opensigner-host.exe"
 if not exist "%BINARY%" set "BINARY=%HERE%opensigner-host.exe"
 if not exist "%BINARY%" (
-    echo error: opensigner-host.exe not found. Build it first:
-    echo        cargo build --release
+    echo error: opensigner-host.exe not found next to this script.
+    echo        From a downloaded release: run this from the unpacked folder.
+    echo        From a checkout:           cargo build --release
     exit /b 1
 )
 
