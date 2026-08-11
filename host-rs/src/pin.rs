@@ -47,7 +47,14 @@ fn prompt_text(token_label: &str, origin: Option<&str>) -> String {
     }
 }
 
-#[cfg(target_os = "macos")]
+/// A test must never put a PIN prompt on someone's screen, nor sit waiting on
+/// one for five minutes.
+#[cfg(test)]
+fn prompt(_text: &str) -> Option<String> {
+    None
+}
+
+#[cfg(all(not(test), target_os = "macos"))]
 fn prompt(text: &str) -> Option<String> {
     // That error number is the user pressing Cancel. Turn it into an empty
     // answer so the caller sees a cancel, not a crash.
@@ -66,7 +73,7 @@ fn prompt(text: &str) -> Option<String> {
     run_dialog(Command::new("osascript").arg("-e").arg(script))
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(all(not(test), target_os = "windows"))]
 fn prompt(text: &str) -> Option<String> {
     // A password box drawn by PowerShell. The browser starts us with no console,
     // so asking on the command line is not an option.
@@ -104,7 +111,7 @@ if ($f.ShowDialog() -eq 'OK') {{ [Console]::Out.Write($t.Text) }}"#
     )
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(all(not(test), not(any(target_os = "macos", target_os = "windows"))))]
 fn prompt(text: &str) -> Option<String> {
     // Whichever of the three the desktop happens to have. First one wins.
     if let Some(pin) = run_dialog(
@@ -128,7 +135,7 @@ fn prompt(text: &str) -> Option<String> {
 }
 
 /// pinentry has its own little protocol: set the message, ask, read the reply.
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(all(not(test), not(any(target_os = "macos", target_os = "windows"))))]
 fn pinentry(text: &str) -> Option<String> {
     use std::io::Write;
     use std::process::Stdio;
@@ -162,6 +169,10 @@ fn pinentry(text: &str) -> Option<String> {
 fn run_dialog(command: &mut Command) -> Option<String> {
     let child = command
         .stdin(std::process::Stdio::null())
+        // Piped, not inherited. Our stdout is the browser's channel in host
+        // mode, so an inherited one writes the PIN straight down it and leaves
+        // nothing here to read.
+        .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .spawn()
         .ok()?;
@@ -238,5 +249,17 @@ mod tests {
     #[test]
     fn a_missing_dialog_tool_is_a_cancellation_not_a_panic() {
         assert!(run_dialog(&mut Command::new("definitely-not-a-real-dialog-tool")).is_none());
+    }
+
+    /// The dialog's answer must be captured, never let out of the process.
+    ///
+    /// Without a piped stdout the child inherits ours, which in host mode is
+    /// the browser's channel: the PIN would be written there and `run_dialog`
+    /// would read nothing and call it a cancellation.
+    #[test]
+    fn the_answer_is_captured_not_printed() {
+        let mut echo = Command::new("sh");
+        echo.arg("-c").arg("printf 1234");
+        assert_eq!(run_dialog(&mut echo).as_deref(), Some("1234"));
     }
 }
