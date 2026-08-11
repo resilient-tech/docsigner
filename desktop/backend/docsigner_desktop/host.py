@@ -93,12 +93,22 @@ def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
     return payload.get("result", {})
 
 
+def scan() -> dict:
+    """Everything `listCertificates` reports: certificates, readers, diagnostics.
+
+    An empty dict when the host cannot be reached at all. The `readers` half is
+    what makes "token plugged in, driver missing" tellable from "nothing
+    plugged in", which are the same empty certificate list to the user.
+    """
+    try:
+        return _run(["list"], timeout=30)
+    except Exception:
+        return {}
+
+
 def list_certificates() -> list[dict]:
     """Token + keychain certificates, or [] if the host or a token is absent."""
-    try:
-        return _run(["list"], timeout=30).get("certificates", [])
-    except Exception:
-        return []
+    return scan().get("certificates", [])
 
 
 def sign_hashes(thumbprint: str, digests: list[bytes], algorithm: str = "sha256",

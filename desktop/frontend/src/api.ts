@@ -1,4 +1,4 @@
-import type { AppConfig, Identity, PdfFile, RenderResult, Settings, SignRequest, SignResult } from './types'
+import type { AppConfig, IdentitiesResult, PdfFile, RenderResult, Settings, SignRequest, SignResult } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
@@ -20,7 +20,8 @@ export const getSettings = (): Promise<Settings> => fetch('/api/settings').then(
 export const putSettings = (s: Settings): Promise<unknown> =>
   fetch('/api/settings', { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify(s) }).then(jsonOrThrow)
 
-export const getIdentities = (): Promise<Identity[]> => fetch('/api/identities').then(jsonOrThrow)
+export const getIdentities = (): Promise<IdentitiesResult> =>
+  fetch('/api/identities').then(jsonOrThrow)
 
 export const getConfig = (): Promise<AppConfig> => fetch('/api/config').then(jsonOrThrow)
 

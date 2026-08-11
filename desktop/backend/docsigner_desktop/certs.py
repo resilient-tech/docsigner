@@ -90,20 +90,32 @@ def _cn(name: x509.Name) -> str:
 # are about to. A stale entry after an unplug costs one failed sign, which
 # invalidates the cache and reports TOKEN_NOT_FOUND.
 _TOKEN_CACHE_TTL_SECONDS = 30
-_token_cache: tuple[float, list[dict]] | None = None
+# (expiry, identities, readers). Readers ride along so the "driver missing"
+# hint comes from the same scan the certificate list did, and the two cannot
+# disagree.
+_token_cache: tuple[float, list[dict], list[dict]] | None = None
 _token_lock = threading.Lock()
 
 
-def _token_identities() -> list[dict]:
-    """Token identities, cached briefly. The lock also collapses the concurrent
-    calls FastAPI's threadpool allows into one scan."""
+def _token_scan() -> tuple[list[dict], list[dict]]:
+    """(identities, readers), cached briefly. The lock also collapses the
+    concurrent calls FastAPI's threadpool allows into one scan."""
     global _token_cache
     with _token_lock:
         if _token_cache is not None and _token_cache[0] > time.monotonic():
-            return _token_cache[1]
-        found = _scan_token_identities()
-        _token_cache = (time.monotonic() + _TOKEN_CACHE_TTL_SECONDS, found) if found else None
-        return found
+            return _token_cache[1], _token_cache[2]
+        found, readers = _scan_token_identities()
+        # Only a productive scan is cached: someone who just plugged a token in,
+        # or just installed its driver, must see it on the next look, and an
+        # empty scan is exactly when they are about to.
+        _token_cache = (
+            (time.monotonic() + _TOKEN_CACHE_TTL_SECONDS, found, readers) if found else None
+        )
+        return found, readers
+
+
+def _token_identities() -> list[dict]:
+    return _token_scan()[0]
 
 
 def invalidate_token_cache() -> None:
@@ -113,11 +125,12 @@ def invalidate_token_cache() -> None:
         _token_cache = None
 
 
-def _scan_token_identities() -> list[dict]:
+def _scan_token_identities() -> tuple[list[dict], list[dict]]:
     from . import host
 
+    result = host.scan()
     out: list[dict] = []
-    for c in host.list_certificates():
+    for c in result.get("certificates", []):
         tp = c.get("thumbprint")
         if not tp:
             continue
@@ -131,7 +144,44 @@ def _scan_token_identities() -> list[dict]:
             "notAfter": (c.get("validTo") or "")[:10],
             "selfSigned": False,
         })
-    return out
+    return out, result.get("readers", [])
+
+
+def token_hint() -> dict | None:
+    """"Your token is plugged in, its driver is not installed", when that is
+    what happened.
+
+    The host sees readers through the OS smart-card service, which reports a
+    USB token's name from its descriptor with no vendor driver present. So an
+    empty certificate list can be told apart: nothing plugged in, or plugged in
+    and unusable. Only the second is worth interrupting someone about, and it
+    is the single most common reason signing does not work on a fresh machine.
+
+    None when there is nothing to say: certificates were found, no reader is
+    connected, or a driver is installed and the token is simply not readable
+    (a different problem, already covered by the error the sign attempt gives).
+    """
+    identities, readers = _token_scan()
+    if identities:
+        return None
+    missing = [r for r in readers if not r.get("driverFound")]
+    if not missing:
+        return None
+
+    named = [r["token"] for r in missing if r.get("token")]
+    return {
+        "token": named[0] if named else None,
+        "readers": [r.get("name", "") for r in missing],
+        # No vendor URL: an Indian DSC's driver comes from the CA that issued
+        # it, not from whoever made the hardware, and a wrong link for security
+        # middleware is worse than no link.
+        "message": (
+            f"{named[0]} detected, but its driver is not installed."
+            if named
+            else "A token is connected, but no matching driver is installed."
+        ),
+        "action": "Install the token driver from the CA that issued your DSC, then refresh.",
+    }
 
 
 def _cn_str(subject: str) -> str:

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature } from 'lucide-react'
 import * as api from './api'
-import type { AppConfig, Identity, PdfFile, Placement, RenderResult, Settings, SignResult } from './types'
+import type { AppConfig, Identity, PdfFile, Placement, RenderResult, Settings, SignResult, TokenHint } from './types'
 import { PlacementCanvas } from './components/PlacementCanvas'
 import { SetupPanel } from './components/SetupPanel'
 import { ProfileEditor } from './components/ProfileEditor'
@@ -13,6 +13,7 @@ const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, f
 export function App() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [identities, setIdentities] = useState<Identity[]>([])
+  const [tokenHint, setTokenHint] = useState<TokenHint | null>(null)
   const [cfg, setCfg] = useState<AppConfig | null>(null)
   const [folderPath, setFolderPath] = useState('')
   const [files, setFiles] = useState<PdfFile[]>([])
@@ -47,7 +48,7 @@ export function App() {
       setFolderPath(s.last_folder ?? '')
       if (s.last_folder) loadFolder(s.last_folder)
     })
-    api.getIdentities().then(setIdentities)
+    loadIdentities()
     api.getConfig().then(setCfg)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -152,8 +153,15 @@ export function App() {
     setFolderPath('') // full reset to the empty state, not a half-cleared toolbar
   }
 
+  function loadIdentities() {
+    api.getIdentities().then((r) => {
+      setIdentities(r.identities)
+      setTokenHint(r.tokenHint)
+    })
+  }
+
   function refreshIdentities() {
-    api.getIdentities().then(setIdentities)
+    loadIdentities()
   }
 
   async function refreshFolder() {
@@ -424,6 +432,7 @@ export function App() {
           identityId={settings.identity_id}
           onIdentity={(id) => patch({ identity_id: id })}
           onRefreshIdentities={refreshIdentities}
+          tokenHint={tokenHint}
           profiles={settings.profiles}
           profileId={settings.profile_id}
           profile={currentProfile}

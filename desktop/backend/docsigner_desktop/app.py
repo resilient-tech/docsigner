@@ -27,8 +27,16 @@ def get_config() -> dict:
 
 
 @app.get("/api/identities")
-def identities() -> list[dict]:
-    return certs.list_identities(store.KEYS_DIR)
+def identities() -> dict:
+    """Signing identities, plus a hint when a token is present but unusable.
+
+    Both come from one scan, so the list and the explanation for it being empty
+    cannot disagree.
+    """
+    return {
+        "identities": certs.list_identities(store.KEYS_DIR),
+        "tokenHint": certs.token_hint(),
+    }
 
 
 @app.post("/api/pick-folder")

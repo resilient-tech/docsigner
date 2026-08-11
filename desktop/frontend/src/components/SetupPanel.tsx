@@ -1,6 +1,6 @@
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, UsbIcon } from 'lucide-react'
 import { type ReactNode } from 'react'
-import type { AppearanceProfile, Identity } from '../types'
+import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
 
 export function SetupPanel(props: {
@@ -8,6 +8,7 @@ export function SetupPanel(props: {
   identityId: string | null
   onIdentity: (id: string) => void
   onRefreshIdentities: () => void
+  tokenHint: TokenHint | null
   profiles: AppearanceProfile[]
   profileId: string | null
   profile: AppearanceProfile | null
@@ -48,6 +49,26 @@ export function SetupPanel(props: {
             <RefreshCw size={15} />
           </button>
         </div>
+        {/*
+          The single most common reason signing does not work on a fresh
+          machine. Without this the menu just says "No certificates found",
+          which reads as "your token is broken" rather than "install the
+          driver". The host can tell the difference, so say which.
+        */}
+        {props.tokenHint && (
+          <div className="token-hint" role="status">
+            <UsbIcon size={15} aria-hidden />
+            <div>
+              <strong>{props.tokenHint.message}</strong>
+              <p>{props.tokenHint.action}</p>
+              {props.tokenHint.readers.length > 0 && (
+                <p className="token-hint-detail">
+                  Detected: {props.tokenHint.readers.join(', ')}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="field">
