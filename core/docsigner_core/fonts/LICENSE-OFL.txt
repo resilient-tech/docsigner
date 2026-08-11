@@ -1,4 +1,12 @@
+Every font in this directory is licensed under the SIL Open Font License 1.1.
+The copyright holders differ; the terms below are the same for all of them.
+
 Copyright 2010 The Great Vibes Pro Project Authors (https://github.com/googlefonts/great-vibes)
+Copyright 2014 The Caveat Project Authors (https://github.com/googlefonts/caveat)
+Copyright 2010 NHN Corporation (Nanum Pen Script)
+Copyright 2011 Ania Kruk (Cookie)
+Copyright 2011 The Bad Script Project Authors (https://github.com/googlefonts/badscript)
+Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

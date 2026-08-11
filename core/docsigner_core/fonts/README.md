@@ -1,7 +1,7 @@
 # Bundled fonts
 
-All licensed under the SIL Open Font License 1.1 (`GreatVibes-LICENSE-OFL.txt`
-carries the full text; the same terms apply to every font here).
+All licensed under the SIL Open Font License 1.1. `LICENSE-OFL.txt` carries the
+full text and every copyright holder.
 
 Handwriting scripts (`appearance.font` values in CONTRACTS.md). Five hands, one
 per signing personality, so choosing is a glance rather than a scroll:

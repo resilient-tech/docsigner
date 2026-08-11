@@ -1,0 +1,38 @@
+DocSigner
+Copyright 2026 Resilient Software Services LLP
+
+This product includes software developed at Resilient Software Services LLP
+(https://resilient.tech).
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+--------------------------------------------------------------------------
+Third-party material redistributed in this repository
+--------------------------------------------------------------------------
+
+Logo mark (assets/icon.svg, and every icon scripts/make_assets.py renders
+from it) is drawn from the Lucide "signature" icon.
+
+  Copyright (c) 2026 Lucide Contributors
+
+  Permission to use, copy, modify, and/or distribute this software for any
+  purpose with or without fee is hereby granted, provided that the above
+  copyright notice and this permission notice appear in all copies.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Lucide is a trademark of its maintainers, who do not endorse this project.
+
+Fonts bundled in core/docsigner_core/fonts/ are licensed under the SIL Open
+Font License 1.1. Copyright holders and the full text:
+core/docsigner_core/fonts/LICENSE-OFL.txt
+
+Runtime dependencies are installed, not vendored, and carry their own
+licenses (MIT, BSD, and Apache-2.0). Builds that bundle them -- the desktop
+.app, .dmg and .exe -- ship those notices alongside the binary.

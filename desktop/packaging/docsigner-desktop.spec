@@ -37,6 +37,16 @@ TRUST = os.path.join(REPO, "trust")
 entry = os.path.join(BACKEND, "run_desktop.py")
 ICON = os.path.join(SPECPATH, "DocSigner.icns")
 
+# One version for the whole repo, and host/Cargo.toml is where it lives: the
+# release workflow already refuses to publish when the tag disagrees with it.
+# Hardcoding it here had it drifting to 0.1.0 while everything else said 0.2.0,
+# and a bundle reporting a version nobody can find is what support asks for
+# first. The Homebrew cask's `version` has to match this too.
+with open(os.path.join(REPO, "host", "Cargo.toml")) as fh:
+    VERSION = next(
+        line.split('"')[1] for line in fh if line.startswith("version")
+    )
+
 # docsigner_core is installed editable (PEP 660), which PyInstaller's static
 # analysis can't follow. Point pathex at its source so it resolves as an
 # ordinary package.
@@ -45,17 +55,38 @@ CORE = os.path.join(REPO, "core")
 # The token host is a separate Rust binary, ~1 MB, carried as a sidecar.
 # host.py looks for it in _MEIPASS and beside the executable, in that order.
 HOST_BINARY_NAME = "docsigner-host.exe" if sys.platform == "win32" else "docsigner-host"
-HOST_BINARY = os.path.join(REPO, "host", "target", "release", HOST_BINARY_NAME)
+
+# On macOS this must be the x86_64 build, never the build machine's native one.
+# The sidecar is the only process here that loads a PKCS#11 module, and an
+# arm64 process cannot load an x86_64-only driver, which some Indian CA
+# middleware still ships. Rosetta runs the x86_64 one everywhere. The argument
+# in full is at the top of .github/workflows/release.yml; build-macos.sh builds
+# this target and checks the result with `file`.
+if sys.platform == "darwin":
+    HOST_TARGET = "x86_64-apple-darwin"
+    HOST_BINARY = os.path.join(REPO, "host", "target", HOST_TARGET, "release", HOST_BINARY_NAME)
+    BUILD_HINT = "cargo build --release --target %s --manifest-path host/Cargo.toml" % HOST_TARGET
+else:
+    HOST_BINARY = os.path.join(REPO, "host", "target", "release", HOST_BINARY_NAME)
+    BUILD_HINT = "cargo build --release --manifest-path host/Cargo.toml"
+
 if not os.path.isfile(HOST_BINARY):
     raise SystemExit(
-        "the host binary is missing: %s\n"
-        "Build it first:  cargo build --release --manifest-path host/Cargo.toml"
-        % HOST_BINARY
+        "the host binary is missing: %s\nBuild it first:  %s" % (HOST_BINARY, BUILD_HINT)
     )
 
 datas = [(FRONTEND_DIST, os.path.join("frontend", "dist"))]
 if os.path.isdir(TRUST):
     datas += [(TRUST, "trust")]
+
+# Apache-2.0 wants both travelling with the binary, not only in the repo. The
+# host's release archive carries them for the same reason.
+datas += [(os.path.join(REPO, name), ".") for name in ("LICENSE", "NOTICE")]
+
+# Apache-2.0 wants both shipped with the app, not only in the repo. The
+# bundled dependencies' own notices ride along inside their collected
+# packages, which collect_all() below already picks up.
+datas += [(os.path.join(REPO, name), ".") for name in ("LICENSE", "NOTICE")]
 
 # "." puts it at the bundle root, where _MEIPASS points.
 binaries = [(HOST_BINARY, ".")]
@@ -172,7 +203,7 @@ app = BUNDLE(
     info_plist={
         "CFBundleName": "DocSigner",
         "CFBundleDisplayName": "DocSigner",
-        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleShortVersionString": VERSION,
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "11.0",
         # The window loads http://127.0.0.1:<port>; allow local networking.

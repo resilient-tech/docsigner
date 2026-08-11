@@ -30,10 +30,12 @@ The long poles. Nothing else depends on them, but the lead times are weeks.
 | # | What | Notes |
 |---|------|-------|
 | D1 | **Extension listings.** Chrome Web Store and Firefox AMO. Store copy from the README, privacy answers from CONTRACTS (no analytics, no remote calls). | Native messaging draws extra review scrutiny. Submit early. |
-| D2 | **Signed host installers.** pkg (notarized), MSI (Authenticode), deb/rpm. | **Order the signing certificates first.** This is the gate on everything else. |
+| D2 | **Host installers.** pkg, MSI, deb/rpm. | macOS no longer waits on a certificate: the Homebrew formula installs unquarantined, so a notarized pkg is a convenience, not the gate. An unsigned MSI works too and only shows "Unknown publisher"; D7 removes that. |
 | D3 | **Update channel.** Wire the host's existing `checkUpdate` into the extension consent page. | The host side already works. |
 | D4 | **Token compatibility table.** Seeded from the known lists in `modules.rs` and `pcsc_readers.rs`. | Grows by user report. |
-| D5 | **A license file.** Pick one. | Blocks a public release. |
+| D5 | ~~**A license file.**~~ Done: Apache-2.0, with `NOTICE` for Lucide and the fonts. | Every manifest declares it and the Homebrew formula carries `license "Apache-2.0"`. The cask has no license stanza to fill; Homebrew does not define one. |
+| D6 | **A tap repo.** `resilient-tech/homebrew-tap`, with `Formula/` and `Casks/`. The release attaches both files with their checksums already filled in, so each release is a copy of two files. | Waits on the repo going public, same as D7. Until then the files are validated in place with a throwaway tap: `brew tap-new --no-git`, copy them in, `brew style`. |
+| D7 | **Windows code signing, free.** Apply to [SignPath Foundation](https://signpath.org) for a certificate at no cost, then sign the host and the desktop `.exe` in CI. | **Needs the repo public first**, plus an OSI license (D5) and a reproducible CI build. They review by hand and it takes a couple of weeks, so apply the day the repo opens. Once signed, the MSI in D2 stops saying "Unknown publisher". |
 
 Before any of it: real-token runs on all 3 operating systems, per
 [release-checklist.md](release-checklist.md).

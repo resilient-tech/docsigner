@@ -114,6 +114,15 @@ Testing with a real token before a release is a manual step, and the list is
 
 ## Before publishing
 
-A license file (pick one), extension store listings, signed host binaries
-(Authenticode on Windows, notarization on macOS), and real-token runs on all 3
-operating systems. Details in [`docs/roadmap.md`](docs/roadmap.md).
+Extension store listings, signed host binaries (Authenticode on Windows,
+notarization on macOS), and real-token runs on all 3 operating systems. Details
+in [`docs/roadmap.md`](docs/roadmap.md).
+
+## License
+
+Apache-2.0. Copyright 2026 Resilient Software Services LLP. Full text in
+[`LICENSE`](LICENSE); the attributions Apache-2.0 asks you to carry forward are
+in [`NOTICE`](NOTICE).
+
+The bundled handwriting fonts are under the SIL Open Font License 1.1, and the
+logo comes from Lucide under ISC. Both are covered in `NOTICE`.

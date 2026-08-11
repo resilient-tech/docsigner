@@ -141,6 +141,8 @@ jobs:
             cp target/${{ matrix.target }}/release/docsigner-host "dist/$stage/"
           fi
           cp README.md "dist/$stage/"
+          # Apache-2.0 wants both travelling with the binary, not just in the repo.
+          cp ../LICENSE ../NOTICE "dist/$stage/"
           cp -r packaging "dist/$stage/packaging"
           cd dist
           if [ "${{ matrix.archive }}" = "zip" ]; then
@@ -157,9 +159,70 @@ jobs:
           path: host/dist/*
           if-no-files-found: error
 
+  # The desktop .app, macOS only. Built here rather than by hand so the cask's
+  # checksum comes off a reproducible build instead of somebody's laptop, which
+  # is how an arm64 .dmg went out once.
+  #
+  # Runs on the arm64 runner but builds x86_64 throughout, the same bet the host
+  # matrix makes. That needs Rosetta, since PyInstaller bundles whichever
+  # interpreter runs it and cannot cross-compile. build-macos.sh owns all of
+  # that logic and verifies the result with `file`; this job only supplies the
+  # toolchains.
+  desktop-macos:
+    name: desktop (macos-x86_64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # arch -x86_64 needs it, and the arm64 runner images do not ship it.
+      - name: Install Rosetta
+        run: softwareupdate --install-rosetta --agree-to-license
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host
+          key: desktop-x86_64-apple-darwin
+
+      # No `version` here: desktop/frontend/package.json pins packageManager,
+      # and action-setup refuses when both say so.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - uses: astral-sh/setup-uv@v5
+
+      # The x86_64 interpreter build-macos.sh looks for.
+      - name: Install an x86_64 CPython
+        run: uv python install cpython-3.12-macos-x86_64
+
+      - name: Build
+        run: desktop/build-macos.sh
+
+      # Named for the release page. build-macos.sh emits a bare DocSigner.dmg
+      # because the cask takes the version from the tag in the URL path, not
+      # from the filename.
+      - name: Stage the artifact
+        run: |
+          mkdir -p artifacts
+          cp desktop/backend/dist/DocSigner.dmg artifacts/DocSigner.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: artifacts/*
+          if-no-files-found: error
+
   publish:
     name: publish
-    needs: host
+    needs: [host, desktop-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -176,6 +239,31 @@ jobs:
           cd artifacts
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
+
+      # The formula and cask pin their downloads by checksum, and those
+      # checksums only exist once the archives are built. Filling them in here
+      # makes updating the tap a copy of two files with nothing to compute, and
+      # a checksum nobody typed is a checksum nobody can typo.
+      - name: Fill in the Homebrew checksums
+        run: |
+          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          host_sum=$(awk '/docsigner-host-.*-macos-x86_64\.tar\.gz$/ {print $1}' artifacts/SHA256SUMS)
+          dmg_sum=$(awk '/DocSigner\.dmg$/ {print $1}' artifacts/SHA256SUMS)
+          test -n "$host_sum" && test -n "$dmg_sum"
+
+          # The cask interpolates version into its url, so two edits cover it.
+          # The formula cannot (brew style wants url before version), so its url
+          # is rewritten too. Both explained in the files themselves.
+          base="${{ github.server_url }}/${{ github.repository }}/releases/download/v$version"
+          sed -e "s/^  version \".*\"/  version \"$version\"/" \
+              -e "s/^  sha256 \".*\"/  sha256 \"$dmg_sum\"/" \
+              desktop/packaging/homebrew/docsigner.rb > artifacts/docsigner.rb
+          sed -e "s|^  url \".*\"|  url \"$base/docsigner-host-$version-macos-x86_64.tar.gz\"|" \
+              -e "s/^  version \".*\"/  version \"$version\"/" \
+              -e "s/^  sha256 \".*\"/  sha256 \"$host_sum\"/" \
+              host/packaging/homebrew/docsigner-host.rb > artifacts/docsigner-host.rb
+
+          grep -H 'version \|sha256 ' artifacts/docsigner.rb artifacts/docsigner-host.rb
 
       # The feed the host's checkUpdate command reads (CONTRACTS.md section 2).
       # `url` points at the release page rather than a file: the host never
@@ -220,4 +308,21 @@ jobs:
             Your token's own driver still has to be installed separately. It is
             hardware middleware and cannot ride inside this binary.
 
-            Verify a download against `SHA256SUMS`.
+            On macOS, Homebrew skips all of that and the Gatekeeper warning
+            with it:
+
+            ```
+            brew install resilient-tech/tap/docsigner-host
+            brew install --cask --no-quarantine resilient-tech/tap/docsigner
+            ```
+
+            `--no-quarantine` is part of the cask line, not a suggestion.
+            Homebrew stamps every cask it installs and only releases it when
+            asked, and the app is ad-hoc signed rather than notarized.
+
+            The desktop batch-signing app is `DocSigner.dmg`. It carries its
+            own copy of the host, so a `.dmg` install needs nothing else.
+
+            Verify a download against `SHA256SUMS`. The `docsigner.rb` and
+            `docsigner-host.rb` files here are the tap's, with the checksums
+            already filled in.
