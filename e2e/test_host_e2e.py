@@ -38,7 +38,14 @@ PIN = os.environ.get("DOCSIGNER_PIN", "admin@123")
 
 
 def host_binary() -> Path:
-    """The built host binary, release before debug."""
+    """The built host binary, release before debug.
+
+    Skipping when it is absent is a convenience for a developer who has not run
+    cargo yet. It is a trap anywhere else: the crate rename to docsigner-host
+    left a stale opensigner-host in target/, and every test in this file
+    silently turned into a skip while still reporting green. So on CI, and
+    whenever DOCSIGNER_E2E_REQUIRE_HOST is set, a missing binary fails.
+    """
     override = os.environ.get("DOCSIGNER_HOST_BIN")
     if override:
         return Path(override)
@@ -46,9 +53,14 @@ def host_binary() -> Path:
     for candidate in (target / "release" / BINARY_NAME, target / "debug" / BINARY_NAME):
         if candidate.is_file():
             return candidate
-    pytest.skip(
-        "host binary not built: cargo build --release --manifest-path host-rs/Cargo.toml"
+
+    message = (
+        f"{BINARY_NAME} not found under host-rs/target. Build it with:\n"
+        "  cargo build --release --manifest-path host-rs/Cargo.toml"
     )
+    if os.environ.get("CI") or os.environ.get("DOCSIGNER_E2E_REQUIRE_HOST"):
+        pytest.fail(message)
+    pytest.skip(message)
 
 
 # Chrome native messaging framing, inlined: the host is no longer a Python
