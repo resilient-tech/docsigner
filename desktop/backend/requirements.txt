@@ -9,6 +9,23 @@ pywebview>=5          # native desktop window (uses the OS webview)
 # [render] adds pypdfium2 for PDF preview rasterization (docsigner_core.rendering).
 -e ../../core[render]
 
+# cryptography 49.0.0 dropped macOS x86_64 and universal2 wheels; from there on
+# its only macOS wheels are arm64. This app is built x86_64 so that the sidecar
+# host can load an x86_64-only PKCS#11 driver, which some Indian CA middleware
+# still is, so pip would fall back to the 50.x sdist and need an x86_64 OpenSSL
+# to compile against. 48.0.1 is the last release carrying a universal2 wheel.
+#
+# The pin lives here and not in core/pyproject.toml on purpose: this is a macOS
+# x86_64 packaging constraint, and core is also the engine for the Linux server
+# and the Frappe app, where the manylinux wheels are fine. The marker keeps it
+# to the build that actually needs it.
+#
+# The ceiling: this holds until a cryptography advisory lands only in 49+. At
+# that point the pin has to go and the .app becomes arm64-native, keeping the
+# sidecar x86_64 (they are separate processes, so their architectures need not
+# match). Tracked as D8 in docs/roadmap.md.
+cryptography<49; sys_platform == "darwin" and platform_machine == "x86_64"
+
 # The token host is not a Python package: it is host, a Rust binary built
 # with `cargo build --release --manifest-path ../../host/Cargo.toml`. That
 # is also why python-pkcs11 no longer appears anywhere in this app.

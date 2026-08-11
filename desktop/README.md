@@ -71,13 +71,43 @@ Build on the OS you are targeting. PyInstaller does not cross-compile.
 
 ### macOS — `.app` and `.dmg`
 
+Needs Rust, and an **x86_64** CPython 3.12 even on an Apple Silicon Mac:
+
 ```bash
-./build-macos.sh          # -> backend/dist/DocSigner.app  and  DocSigner.dmg
+uv python install cpython-3.12-macos-x86_64    # ~24 MB; raise UV_HTTP_TIMEOUT on a slow link
+./build-macos.sh                               # -> backend/dist/DocSigner.app  and  DocSigner.dmg
 ```
 
-Builds the frontend, sets up the venv, runs PyInstaller with
+Everything is built x86_64 on purpose. The sidecar host has to be, since it is
+the only process that loads a PKCS#11 module and an arm64 process cannot load an
+x86_64-only driver. Given that, Rosetta is already required on Apple Silicon, so
+the `.app` matches and keeps working on Intel Macs too. The script verifies both
+binaries with `file` and refuses to package a mismatch, and the header comment
+carries the full argument.
+
+One consequence worth knowing before you bump dependencies: `cryptography` 49
+dropped macOS x86_64 and universal2 wheels, so `backend/requirements.txt` pins it
+below that. Without the pin, pip reaches for the sdist and the build dies needing
+an x86_64 OpenSSL to compile against.
+
+Builds the frontend and the sidecar, sets up the venv, runs PyInstaller with
 `packaging/docsigner-desktop.spec`, then packs a drag-to-Applications `.dmg` with
 `hdiutil` (built into macOS, no extra tool). Hand out the `.dmg`.
+
+The script prints the `.dmg`'s SHA-256 at the end. That goes into
+`packaging/homebrew/docsigner.rb`, the cask, which is how the app installs
+without an Apple Developer ID:
+
+```bash
+brew install --cask --no-quarantine resilient-tech/tap/docsigner
+```
+
+`--no-quarantine` is part of the install line, not a suggestion. Homebrew stamps
+`com.apple.quarantine` on every cask and only releases it when asked, so without
+the flag an ad-hoc signed app is exactly what Gatekeeper blocks. With it, the app
+opens on the first double-click. Copy the cask into the tap repo
+(`resilient-tech/homebrew-tap`, as `Casks/docsigner.rb`) and bump `version` and
+`sha256` when tagging.
 
 ### Windows — `.exe`
 
@@ -107,11 +137,22 @@ needs WebKitGTK, present on most desktops.
 
 - **Signing.** `build-macos.sh` ad-hoc signs the app so it launches on Apple
   Silicon, but ad-hoc is not a Developer ID: macOS Gatekeeper and Windows
-  SmartScreen still warn on a *downloaded* copy. For a clean install, sign and
-  notarize with an Apple Developer ID on macOS and an Authenticode certificate on
-  Windows. Until then, the recipient clears the warning once. On recent macOS the
-  right-click → Open trick is often gone; use System Settings → Privacy &
-  Security → "Open Anyway", or run `xattr -dr com.apple.quarantine DocSigner.app`.
+  SmartScreen still warn on a *downloaded* copy. Two ways past that, and only one
+  of them costs money:
+
+  | Path | Cost | What the user sees |
+  |---|---|---|
+  | Homebrew cask, `--no-quarantine` | free | nothing, it just opens |
+  | Apple Developer ID + notarization | $99/year | nothing, it just opens |
+  | Direct `.dmg` download, ad-hoc signed | free | one warning to clear |
+
+  For the direct download the recipient clears the warning once. On recent macOS
+  the right-click → Open trick is often gone; use System Settings → Privacy &
+  Security → "Open Anyway", or run
+  `xattr -dr com.apple.quarantine /Applications/DocSigner.app`.
+
+  Windows has its own free path (SignPath Foundation), not set up yet:
+  [`../docs/roadmap.md`](../docs/roadmap.md) D7.
 - **Token driver.** The DSC vendor's PKCS#11 middleware must be installed on the
   user's machine, the same as for the Frappe flow or the browser extension. It is
   hardware middleware and cannot ride inside the app.

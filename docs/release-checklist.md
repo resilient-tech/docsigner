@@ -18,6 +18,7 @@ token plugged in, the server running from the repo root.
 
 - [ ] `pytest core/tests server/tests` green
 - [ ] `PYTHONPATH=desktop/backend pytest desktop/backend/tests` green
+- [ ] On macOS, `core/tests` and `desktop/backend/tests` also green in `desktop/backend/.venv` (the x86_64 build venv). It pins `cryptography<49` while every other surface resolves 50.x, so this is the only run that exercises what the `.app` actually ships
 - [ ] `cargo test --manifest-path host/Cargo.toml` green
 - [ ] `cd js && node --test` green
 - [ ] `python scripts/export_openapi.py` leaves `server/openapi.json` unchanged
@@ -29,6 +30,19 @@ token plugged in, the server running from the repo root.
 - [ ] Token plugged in with **no driver installed** → says which token it is and that the driver is missing
 - [ ] `docsigner-host version` prints the version and the log path
 - [ ] The log file at that path shows the scans just run
+
+## Homebrew, on macOS
+
+The release attaches `docsigner.rb` and `docsigner-host.rb` with the version and
+checksums already substituted. Take those, not the copies in the repo, which
+carry placeholder zeros on purpose.
+
+- [ ] Both `.rb` files are on the release page, with a real `sha256` and the tag's version
+- [ ] Both copied into the tap repo (`Casks/` and `Formula/`) and pushed
+- [ ] `brew install resilient-tech/tap/docsigner-host` → `docsigner-host version` runs with **no** Gatekeeper prompt
+- [ ] `brew install --cask --no-quarantine resilient-tech/tap/docsigner` → the app opens on the first double-click, no prompt
+- [ ] Same cask **without** `--no-quarantine` → blocked, which confirms the flag is what does the work
+- [ ] `brew uninstall --cask docsigner` leaves `~/.config/docsigner-desktop` alone; `--zap` removes it
 
 ## Browser flow (demo page)
 
@@ -50,6 +64,7 @@ token plugged in, the server running from the repo root.
 
 ## Desktop app
 
+- [ ] `file DocSigner.app/Contents/MacOS/docsigner-desktop` says x86_64, and so does the bundled `docsigner-host` (`build-macos.sh` checks both, so this is a check on the check)
 - [ ] Load a folder, place the stamp, sign a batch with the token → one PIN for the run
 - [ ] Signed copies land beside the originals, originals untouched
 - [ ] The stamp lands where the box was, on a page size different from the one placed on
