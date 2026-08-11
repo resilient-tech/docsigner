@@ -14,14 +14,17 @@ jobs:
           python-version: "3.11"
       - name: Install
         run: |
-          pip install -e ./core -e ./server -e ./host
+          pip install -e ./core -e ./server
           pip install -r requirements-dev.txt
       - name: Test core
         run: pytest core/tests -q
       - name: Test server
         run: pytest server/tests -q
-      - name: Test host
-        run: pytest host/tests -q
+      # The token host is Rust now; its tests live in the rust-host job below.
+      # The desktop backend is not pip-installed here: these tests cover the
+      # token cache and the host-binary seam, which need only cryptography.
+      - name: Test desktop backend
+        run: PYTHONPATH=desktop/backend pytest desktop/backend/tests -q
 
   js:
     runs-on: ubuntu-latest
@@ -33,3 +36,83 @@ jobs:
       - name: Test signer-js + extension checks
         working-directory: js
         run: node --test
+
+  # The parts of the e2e suite that drive the real host binary but need neither
+  # a token nor a running server. These were only ever run by hand, which is how
+  # a stale binary silently turned every one of them into a skip.
+  #
+  # The rest of e2e/ boots a server (e2e/run_e2e.sh) or needs a DSC plugged in,
+  # and stays a manual step before releases.
+  e2e-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host-rs
+      - name: Install PC/SC headers
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
+      - name: Install
+        run: pip install -r requirements-dev.txt
+      # The tests locate this themselves and fail rather than skip when CI is
+      # set, so a build that never happened cannot pass as green.
+      - name: Build the host
+        run: cargo build --release --manifest-path host-rs/Cargo.toml
+      - name: Test the host over its real wire protocol
+        run: pytest e2e/test_host_e2e.py e2e/test_update_feed_e2e.py -q
+
+  # The Rust host is built on all three platforms because its OS-store backends
+  # are behind cfg gates: os_store/windows.rs and os_store/macos.rs never see a
+  # compiler on Linux, so a Linux-only job would wave through code that does not
+  # build. The tests need no token and pass on a bare runner.
+  rust-host:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: host-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host-rs
+      # pcsc links against libpcsclite, which is not on the Ubuntu image.
+      - name: Install PC/SC headers
+        if: matrix.name == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test
+      - name: Release build
+        run: cargo build --release
+      - name: Report binary size
+        shell: bash
+        run: |
+          binary=target/release/docsigner-host
+          [ "${{ matrix.name }}" = "windows" ] && binary="$binary.exe"
+          ls -l "$binary"
+          echo "### ${{ matrix.name }}: $(du -h "$binary" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docsigner-host-${{ matrix.name }}
+          path: host-rs/target/release/docsigner-host${{ matrix.name == 'windows' && '.exe' || '' }}
+          if-no-files-found: error

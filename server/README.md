@@ -1,6 +1,6 @@
 # signer-server
 
-A small FastAPI reference server for OpenSigner. It holds the PDF, prepares the
+A small FastAPI reference server for DocSigner. It holds the PDF, prepares the
 signature, and hands the browser a 32-byte hash to sign, so the file never
 leaves the server. It also signs directly with a server-held key. The signing
 work is all `signer-core`; this package is the HTTP layer around it.

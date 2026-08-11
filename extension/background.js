@@ -1,14 +1,14 @@
 // Background service worker (event page on Firefox).
 // Routes bridge requests to the native messaging host (CONTRACTS.md sections 2 and 3):
 // "ping" is answered here, everything else goes through an origin consent check
-// and then to com.opensigner.host.
+// and then to com.docsigner.host.
 
 const api = globalThis.browser ?? globalThis.chrome;
 
-const HOST_NAME = "com.opensigner.host";
+const HOST_NAME = "com.docsigner.host";
 const NATIVE_COMMANDS = new Set(["getVersion", "listCertificates", "signHash"]);
 const CONSENT_COMMANDS = new Set(["listCertificates", "signHash"]);
-const CONSENT_MESSAGE = "org.opensigner.consent";
+const CONSENT_MESSAGE = "org.docsigner.consent";
 // ponytail: one flat timeout for every native call. signHash includes a PIN
 // prompt, so it has to be generous. Per-command budgets if this ever bites.
 const NATIVE_TIMEOUT_MS = 120000;
@@ -100,8 +100,9 @@ async function handleRequest(message, sender) {
       return errorReply("UNSUPPORTED", `Unknown command "${command}"`);
     }
 
+    let origin = null;
     if (CONSENT_COMMANDS.has(command)) {
-      const origin = senderOrigin(sender);
+      origin = senderOrigin(sender);
       if (!origin) {
         return errorReply("ORIGIN_DENIED", "Request origin could not be determined");
       }
@@ -111,7 +112,11 @@ async function handleRequest(message, sender) {
     }
 
     const id = message.requestId || crypto.randomUUID();
-    const reply = await callNative({ id, command, params });
+    // The host puts this in the PIN dialog. It comes from sender.origin, the
+    // browser's word, and overwrites anything the page put in params: a page
+    // naming its own origin could name someone else's.
+    const nativeParams = origin ? { ...params, origin } : params;
+    const reply = await callNative({ id, command, params: nativeParams });
     if (reply && reply.error) {
       return { error: { code: reply.error.code || "INTERNAL", message: reply.error.message || "" } };
     }
@@ -119,7 +124,7 @@ async function handleRequest(message, sender) {
   } catch (e) {
     const text = String((e && e.message) || e);
     if (/native messaging host not found|no such native application|not installed/i.test(text)) {
-      return errorReply("HOST_NOT_INSTALLED", "The OpenSigner native host is not installed");
+      return errorReply("HOST_NOT_INSTALLED", "The DocSigner native host is not installed");
     }
     return errorReply("INTERNAL", text);
   }

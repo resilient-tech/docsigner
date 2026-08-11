@@ -1,16 +1,16 @@
-# OpenSigner extension
+# DocSigner extension
 
 The WebExtension (Manifest V3) that bridges a web page to the native host. A
 content script exposes the page-side API, the background service worker relays
-messages to `opensigner-host` over native messaging, and the host reads the
+messages to `docsigner-host` over native messaging, and the host reads the
 token. Works in Chrome, Edge, Brave, and Firefox.
 
 Files: `manifest.json`, `background.js` (native messaging relay), `content.js`
 (page bridge), `consent.html` / `consent.js` (per-site permission prompt),
-`icons/`.
+`icons/` (generated from `../assets/icon.svg` by `../scripts/make_assets.py`).
 
 This extension does nothing on its own. The native host must be installed and
-registered with this extension's ID (see [`../host/README.md`](../host/README.md)).
+registered with this extension's ID (see [`../host-rs/README.md`](../host-rs/README.md)).
 
 ## Load it (development)
 
@@ -34,14 +34,14 @@ access per site in the extension's settings.
 Chrome Web Store takes a zip of the unpacked folder:
 
 ```bash
-cd extension && zip -r ../dist/opensigner-extension.zip . -x '*.DS_Store'
+cd extension && zip -r ../dist/docsigner-extension.zip . -x '*.DS_Store'
 ```
 
 Firefox (AMO) takes a zip of the generated Firefox build:
 
 ```bash
 python scripts/build_firefox_extension.py
-cd dist/firefox-extension && zip -r ../opensigner-firefox.zip .
+cd dist/firefox-extension && zip -r ../docsigner-firefox.zip .
 ```
 
 Store review and signing are done in each store's dashboard. Bump `version` in

@@ -3,6 +3,7 @@
 import enum
 
 from pyhanko.sign import signers
+from pyhanko.sign.ades.api import CAdESSignedAttrSpec
 from pyhanko.sign.fields import SigSeedSubFilter
 
 from .errors import SignerError
@@ -90,6 +91,7 @@ def build_metadata(
     profile: Profile,
     field_name: str,
     validation_context=None,
+    policy=None,
 ) -> signers.PdfSignatureMetadata:
     # CCA profiles use the plain PKCS#7 subfilter; pyHanko then routes embedded
     # validation info into the pdfRevocationInfoArchival signed attribute rather
@@ -110,4 +112,10 @@ def build_metadata(
         embed_validation_info=embed,
         use_pades_lta=profile is Profile.B_LTA,
         validation_context=validation_context if embed else None,
+        # Only set when a policy was asked for: pyHanko emits the CAdES
+        # attribute block whenever a spec is present, and an empty one on a
+        # plain PAdES signature is noise a verifier has to skip past.
+        cades_signed_attr_spec=(
+            CAdESSignedAttrSpec(signature_policy_identifier=policy) if policy else None
+        ),
     )

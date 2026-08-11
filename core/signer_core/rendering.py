@@ -1,7 +1,7 @@
 """Rasterize a PDF page for a placement UI, read page sizes in points, and turn
 a fractional placement into a PDF-points box.
 
-Shared so every consumer (the desktop app, the opensigner integration) rasterizes
+Shared so every consumer (the desktop app, the docsigner integration) rasterizes
 and positions signatures the same way. Rendering needs the optional 'render'
 extra (pypdfium2); the import is lazy so `import signer_core` stays light for the
 server and host, which never rasterize:

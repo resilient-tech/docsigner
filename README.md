@@ -1,4 +1,4 @@
-# OpenSigner
+# DocSigner
 
 Open-source digital signatures for PDFs. Sign with a USB token (DSC) or smartcard from any website, or with a key held on your own server. Python backend, plain JS everywhere else.
 
@@ -11,10 +11,10 @@ Status: working end to end. Signed output validates as PAdES. Not yet published 
 ```
 Web page ──(cert, 32-byte hash, signature)── Your server (pyHanko, PDF stays here)
    │
-Extension ──(native messaging)── opensigner-host ──(PKCS#11)── USB token
+Extension ──(native messaging)── docsigner-host ──(PKCS#11)── USB token
 ```
 
-1. The page asks the extension for the user's certificates. The extension asks `opensigner-host`, a small native app that reads them from the token over PKCS#11.
+1. The page asks the extension for the user's certificates. The extension asks `docsigner-host`, a small native app that reads them from the token over PKCS#11.
 2. The page sends the chosen certificate to your server. The server prepares the signature inside the PDF and returns the hash to sign.
 3. The token signs the hash (PIN prompt happens in the native app, the PIN never touches the browser or the network).
 4. The server embeds the signature and hands back a download link.
@@ -26,19 +26,20 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | Folder | What it is |
 |---|---|
 | `core/` | `signer-core`, the Python signing library (pyHanko underneath) |
-| `server/` | `signer-server`, a small FastAPI reference server |
-| `js/` | `opensigner.js`, the page-side library (single file, no deps) |
+| `server/` | `signer-server`, the HTTP API, with its OpenAPI document in `server/openapi.json` |
+| `js/` | `docsigner.js`, the page-side library (single file, no deps) |
 | `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
-| `host/` | `opensigner-host`, the native messaging app that talks to tokens |
-| `desktop/` | `opensigner-desktop`, a local app to batch-sign a folder of PDFs with a placed signature |
+| `host-rs/` | `docsigner-host`, the native messaging binary that talks to tokens (Rust, ~1 MB) |
+| `desktop/` | `docsigner-desktop`, a local app to batch-sign a folder of PDFs with a placed signature |
 | `demo/` | A working demo page, also the integration example |
 | `spike/` | Phase 0 proof scripts, kept as executable documentation |
+| `assets/` | `icon.svg`, the one logo source; `scripts/make_assets.py` regenerates every icon from it |
 | `CONTRACTS.md` | The frozen protocol between all components |
 | `PLAN.md` | The build plan and architecture decisions |
 
-The Frappe/ERPNext app lives in its own repo, `opensigner_integration`: sign print formats from the desk, bulk one-PIN signing, auto-sign on submit, QR verification e-copies. It embeds `core/` as a pip dependency; its build plan and live-test checklist are in `plan/` here.
+The Frappe/ERPNext app lives in its own repo, `docsigner_integration`: sign print formats from the desk, bulk one-PIN signing, auto-sign on submit, QR verification e-copies. It embeds `core/` as a pip dependency; its build plan and live-test checklist are in `plan/` here.
 
-Standards: PAdES baseline profiles per ETSI EN 319 142-1, plus CCA-LTV and CCA-LTA per CCA India's Electronic Signature Application Integration Guidelines (PKCS#7 with revocation data in the pdfRevocationInfoArchival signed attribute, ESAIG 1.19). All PDF profiles work in both flows, token sessions and server-side signing. Beyond PDF: detached CAdES-BES (.p7s) over any file in both flows, and enveloped XAdES-B over XML with the server-held key. Timestamps come from `TSA_URL` or a per-request pick from the built-in registry (DigiCert, Sectigo, Certum, Entrust, SSL.com). PDF/A input is detected and reported so an invisible signature can keep conformance intact. The LTV profiles need `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
+Standards: PAdES baseline profiles per ETSI EN 319 142-1, plus CCA-LTV and CCA-LTA per CCA India's Electronic Signature Application Integration Guidelines (PKCS#7 with revocation data in the pdfRevocationInfoArchival signed attribute, ESAIG 1.19). All PDF profiles work in both flows, token sessions and server-side signing. Beyond PDF: detached CAdES-BES (.p7s) over any file in both flows, and enveloped XAdES-B over XML with the server-held key. Timestamps come from `TSA_URL` or a per-request pick from the built-in registry (DigiCert, Sectigo, Certum, Entrust, SSL.com); a paid authority that wants credentials takes `TSA_AUTH` or `TSA_BEARER`, which are sent only to `TSA_URL`. For PKIs that grade signatures on a policy attribute rather than the ETSI baseline, `options.policy` embeds a signature policy identifier; ICP-Brasil's four PAdES policies ship as names and `POLICY_DIR` holds the artifacts they hash. PDF/A input is detected and reported so an invisible signature can keep conformance intact. The LTV profiles need `TRUST_DIR`, and the CA's OCSP or CRL endpoints must be reachable from the server. RSA and ECDSA keys, SHA-256/384/512.
 
 ## Run the server
 
@@ -82,7 +83,7 @@ While completing a B-LT or B-LTA signature the server fetches revocation data fr
 
 ## Try the demo
 
-With the server running, serve the repo root (the demo imports `js/opensigner.js` from its sibling folder, and browsers block `file://` fetch):
+With the server running, serve the repo root (the demo imports `js/docsigner.js` from its sibling folder, and browsers block `file://` fetch):
 
 ```bash
 python3 -m http.server 8080
@@ -98,34 +99,30 @@ Firefox: run `python scripts/build_firefox_extension.py` first (Firefox runs the
 
 ## Install the native host
 
-The host needs Python or a built binary, plus your token's driver installed (the driver ships the PKCS#11 module the host loads).
+The host is a self-contained Rust binary of about 1 MB. It needs no runtime, only your token's driver installed (the driver ships the PKCS#11 module the host loads).
 
-From source, for development:
+Build it:
 
 ```bash
-pip install -e ./host
-opensigner-host-cli list         # should print your token's certificates
+cargo build --release --manifest-path host-rs/Cargo.toml
 ```
 
-Build a single-file binary for your OS:
-
 ```bash
-pip install pyinstaller
-pyinstaller host/packaging/opensigner-host.spec
+host-rs/target/release/docsigner-host list    # should print your token's certificates
 ```
 
 Then register it with your browsers (pass your extension ID):
 
 ```bash
-host/packaging/install.sh <chrome-extension-id>     # macOS / Linux
-host\packaging\install.bat <chrome-extension-id>    # Windows
+host-rs/packaging/install.sh <chrome-extension-id>     # macOS / Linux
+host-rs\packaging\install.bat <chrome-extension-id>    # Windows
 ```
 
-The installer copies the binary and writes the native messaging manifests for Chrome, Chromium, Edge, Brave, and Firefox.
+The installer copies the binary and writes the native messaging manifests for Chrome, Chromium, Edge, Brave, and Firefox. Details, including the driver quirks the host works around, are in [`host-rs/README.md`](host-rs/README.md).
 
 ### Token support
 
-The host also reports connected smart-card readers through the OS smart-card service (PC/SC), which sees the token even when its driver is missing — so `opensigner-host-cli list` can tell you "ProxKey detected, driver not installed" instead of showing nothing. How the strategies compare across products: `docs/host.md`.
+The host also reports connected smart-card readers through the OS smart-card service (PC/SC), which sees the token even when its driver is missing — so `docsigner-host list` can tell you "ProxKey detected, driver not installed" instead of showing nothing. How the strategies compare across products: `docs/host.md`.
 
 Two discovery paths, merged into one certificate list:
 
@@ -134,17 +131,17 @@ Two discovery paths, merged into one certificate list:
 **PKCS#11 drivers.** Any device with a PKCS#11 driver. Known module paths ship for OpenSC, ePass2003, WatchData ProxKey, SafeNet eToken, and eMudhra tokens. Yours somewhere else? Point the env var at it:
 
 ```bash
-export OPENSIGNER_PKCS11_MODULES=/path/to/your/pkcs11.so
+export DOCSIGNER_PKCS11_MODULES=/path/to/your/pkcs11.so
 ```
 
-or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.json` on Windows).
+or add it to `~/.config/docsigner/modules.json` (`%APPDATA%\docsigner\modules.json` on Windows).
 
 ## Use it from your own page
 
 ```html
 <script type="module">
-  import { OpenSigner } from "./js/opensigner.js";
-  const signer = new OpenSigner();
+  import { DocSigner } from "./js/docsigner.js";
+  const signer = new DocSigner();
   await signer.init();
   const certs = await signer.listCertificates();
   // POST /api/signatures with your PDF + certs[i].certificate,
@@ -160,16 +157,37 @@ or add it to `~/.config/opensigner/modules.json` (`%APPDATA%\opensigner\modules.
 
 `demo/demo.js` is the full worked example, including error handling for every error code in `CONTRACTS.md`.
 
+## Use it from your own backend
+
+Three ways in, depending on what you already run.
+
+**Python.** Skip HTTP entirely: `pip install -e ./core` and call `signer-core` in process. No server, no serialization, and it is what the Frappe app does.
+
+**Anything else.** Run `signer-server` and talk to it over the API frozen in `CONTRACTS.md` section 1. The document never leaves it, so a 200 MB file costs the same round trip as a 200 KB one.
+
+There are no hand-written SDKs, on purpose: one per language is one more thing to drift from the contract. The OpenAPI document is committed at [`server/openapi.json`](server/openapi.json), so generate a client in your own language and it stays current by construction.
+
+```bash
+npx openapi-typescript server/openapi.json -o signer.d.ts
+openapi-generator generate -i server/openapi.json -g go -o ./signer
+```
+
+Every request and response body is typed, and the error codes come through as an enum you can switch on exhaustively. `server/tests/test_openapi.py` fails if the committed document drifts from the routes, or if a body ever goes back to being an untyped blob. Regenerate it with `python scripts/export_openapi.py`.
+
+**A browser.** `js/docsigner.js` above. That one is hand-written because the page-to-extension bridge has no generatable equivalent.
+
 ## Tests
 
 ```bash
-pip install -e ./core -e ./server -e ./host   # if not already installed
-pip install -r requirements-dev.txt           # pytest + test-only deps
-pytest core/tests server/tests host/tests     # 87 tests
-cd js && node --test                          # 10 tests
+pip install -e ./core -e ./server              # if not already installed
+pip install -r requirements-dev.txt            # pytest + test-only deps
+pytest core/tests server/tests                 # 76 tests
+PYTHONPATH=desktop/backend pytest desktop/backend/tests   # 11 tests
+cargo test --manifest-path host-rs/Cargo.toml  # 72 tests
+cd js && node --test                           # 10 tests
 ```
 
-Everything runs without hardware: token logic is tested against a fake PKCS#11 layer that does real RSA math, and the whole HTTP flow is tested with in-memory keys. Testing with a real DSC token is a manual step before releases: plug it in and run `opensigner-host-cli list`, then sign through the demo.
+Everything runs without hardware: the whole HTTP flow is tested with in-memory keys, and the host's tests assert invariants that hold whether or not a token is plugged in. Testing with a real DSC token is a manual step before releases: plug it in, run `docsigner-host list`, then sign through the demo. The end-to-end suite has a gated real-token path, `DOCSIGNER_E2E_REAL_TOKEN=1 pytest e2e/test_host_e2e.py`.
 
 ## Before publishing
 

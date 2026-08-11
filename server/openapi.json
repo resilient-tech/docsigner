@@ -1,0 +1,1603 @@
+{
+  "components": {
+    "schemas": {
+      "AuditRecord": {
+        "description": "Machine-readable completion record, for an audit trail.",
+        "properties": {
+          "certificate_issuer": {
+            "title": "Certificate Issuer",
+            "type": "string"
+          },
+          "certificate_serial": {
+            "title": "Certificate Serial",
+            "type": "string"
+          },
+          "completed_at": {
+            "title": "Completed At",
+            "type": "string"
+          },
+          "digest_algorithm": {
+            "title": "Digest Algorithm",
+            "type": "string"
+          },
+          "document_sha256": {
+            "title": "Document Sha256",
+            "type": "string"
+          },
+          "field_name": {
+            "title": "Field Name",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "signer": {
+            "title": "Signer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signer",
+          "certificate_serial",
+          "certificate_issuer",
+          "profile",
+          "digest_algorithm",
+          "field_name",
+          "document_sha256",
+          "completed_at"
+        ],
+        "title": "AuditRecord",
+        "type": "object"
+      },
+      "BatchCompleteItem": {
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "signature"
+        ],
+        "title": "BatchCompleteItem",
+        "type": "object"
+      },
+      "BatchCompleteRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchCompleteItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BatchCompleteRequest",
+        "type": "object"
+      },
+      "BatchCompleted": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/SignatureCompleted"
+            },
+            "title": "Documents",
+            "type": "array"
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "title": "BatchCompleted",
+        "type": "object"
+      },
+      "BatchSession": {
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "to_sign_hash": {
+            "title": "To Sign Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "to_sign_hash"
+        ],
+        "title": "BatchSession",
+        "type": "object"
+      },
+      "BatchStarted": {
+        "properties": {
+          "digest_algorithm": {
+            "enum": [
+              "sha256",
+              "sha384",
+              "sha512"
+            ],
+            "title": "Digest Algorithm",
+            "type": "string"
+          },
+          "expires_at": {
+            "title": "Expires At",
+            "type": "string"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/BatchSession"
+            },
+            "title": "Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions",
+          "digest_algorithm",
+          "expires_at"
+        ],
+        "title": "BatchStarted",
+        "type": "object"
+      },
+      "CompleteRequest": {
+        "properties": {
+          "signature": {
+            "description": "The signature over `to_sign_hash`, base64. PKCS#1 v1.5 for RSA, a DER ECDSA-Sig-Value for EC.",
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature"
+        ],
+        "title": "CompleteRequest",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "enum": [
+              "DOCUMENT_INVALID",
+              "CERT_INVALID",
+              "SESSION_NOT_FOUND",
+              "SESSION_EXPIRED",
+              "SIGNATURE_INVALID",
+              "PROFILE_UNSUPPORTED",
+              "INTERNAL"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PdfaClaim": {
+        "description": "What the input claimed about PDF/A conformance, when it claimed anything.",
+        "properties": {
+          "conformance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conformance"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Part"
+          }
+        },
+        "title": "PdfaClaim",
+        "type": "object"
+      },
+      "ServerSideSigned": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "download_url": {
+            "examples": [
+              "/api/documents/abc123"
+            ],
+            "title": "Download Url",
+            "type": "string"
+          },
+          "pdfa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PdfaClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pdfa_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdfa Note"
+          }
+        },
+        "required": [
+          "document_id",
+          "download_url"
+        ],
+        "title": "ServerSideSigned",
+        "type": "object"
+      },
+      "SessionStarted": {
+        "properties": {
+          "digest_algorithm": {
+            "enum": [
+              "sha256",
+              "sha384",
+              "sha512"
+            ],
+            "title": "Digest Algorithm",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "RFC 3339, UTC.",
+            "examples": [
+              "2026-08-11T12:00:00Z"
+            ],
+            "title": "Expires At",
+            "type": "string"
+          },
+          "pdfa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PdfaClaim"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present only when the input claims PDF/A."
+          },
+          "pdfa_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present only when a visible appearance would break that claim.",
+            "title": "Pdfa Note"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "to_sign_hash": {
+            "description": "The hash to sign, base64.",
+            "title": "To Sign Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "to_sign_hash",
+          "digest_algorithm",
+          "expires_at"
+        ],
+        "title": "SessionStarted",
+        "type": "object"
+      },
+      "SignServerSideRequest": {
+        "properties": {
+          "document": {
+            "description": "The document, base64.",
+            "title": "Document",
+            "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SigningOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "SignServerSideRequest",
+        "type": "object"
+      },
+      "SignatureCompleted": {
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/AuditRecord"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "download_url": {
+            "examples": [
+              "/api/documents/abc123"
+            ],
+            "title": "Download Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "download_url",
+          "audit"
+        ],
+        "title": "SignatureCompleted",
+        "type": "object"
+      },
+      "SigningOptions": {
+        "additionalProperties": true,
+        "description": "The `options` object. Known fields are documented; the rest pass through.\n\n`extra=\"allow\"` on purpose: options grow with the standards (policies, PDF/A\nhandling, appearance) and a client that sends a newer field to an older\nserver should get \"unsupported profile\", not \"malformed request\".",
+        "properties": {
+          "appearance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Visible signature appearance. Omit to sign invisibly, which is what keeps a PDF/A document conformant.",
+            "title": "Appearance"
+          },
+          "field_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signature field name; generated when omitted.",
+            "title": "Field Name"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signature location.",
+            "title": "Location"
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signature policy identifier to embed.",
+            "title": "Policy"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PAdES/CAdES baseline profile: B-B, B-T, B-LT, B-LTA, CCA-LTV, CCA-LTA.",
+            "examples": [
+              "B-T"
+            ],
+            "title": "Profile"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signature reason.",
+            "title": "Reason"
+          },
+          "tsa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Timestamp authority by registry name; the server default when omitted.",
+            "examples": [
+              "digicert"
+            ],
+            "title": "Tsa"
+          }
+        },
+        "title": "SigningOptions",
+        "type": "object"
+      },
+      "StartBatchRequest": {
+        "properties": {
+          "certificate": {
+            "description": "One certificate for the whole batch, base64 DER.",
+            "title": "Certificate",
+            "type": "string"
+          },
+          "documents": {
+            "description": "Up to 50 PDFs, each base64.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SigningOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "documents",
+          "certificate"
+        ],
+        "title": "StartBatchRequest",
+        "type": "object"
+      },
+      "StartSignatureRequest": {
+        "properties": {
+          "certificate": {
+            "description": "The signer's certificate, base64 DER.",
+            "title": "Certificate",
+            "type": "string"
+          },
+          "document": {
+            "description": "The PDF, base64.",
+            "title": "Document",
+            "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SigningOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "document",
+          "certificate"
+        ],
+        "title": "StartSignatureRequest",
+        "type": "object"
+      },
+      "StoredDocument": {
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "download_url": {
+            "examples": [
+              "/api/documents/abc123"
+            ],
+            "title": "Download Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "download_url"
+        ],
+        "title": "StoredDocument",
+        "type": "object"
+      },
+      "ValidateRequest": {
+        "properties": {
+          "document": {
+            "description": "The signed PDF to check, base64.",
+            "title": "Document",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "ValidateRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationResult": {
+        "properties": {
+          "pdfa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PdfaClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signatures": {
+            "description": "One entry per signature: validity, intactness, trust and the signer.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Signatures",
+            "type": "array"
+          }
+        },
+        "required": [
+          "signatures"
+        ],
+        "title": "ValidationResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "The document never leaves this server. A browser carries a 32-byte hash out and a signature back, so a 200 MB file signs as fast as a 200 KB one.\n\nThe protocol is frozen in CONTRACTS.md section 1. Generate a client from this document rather than hand-writing one.",
+    "summary": "Sign PDFs, any file (CAdES) and XML (XAdES) with a token or a server-held key.",
+    "title": "signer-server",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/cades/sign-server-side": {
+      "post": {
+        "operationId": "cades_server_side_api_cades_sign_server_side_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignServerSideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Produce a .p7s with the server's own key",
+        "tags": [
+          "CAdES"
+        ]
+      }
+    },
+    "/api/cades/signatures": {
+      "post": {
+        "operationId": "start_cades_api_cades_signatures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSignatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Start a detached CAdES session over any file",
+        "tags": [
+          "CAdES"
+        ]
+      }
+    },
+    "/api/cades/signatures/{session_id}/complete": {
+      "post": {
+        "operationId": "complete_cades_api_cades_signatures__session_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Finish a CAdES session, producing a .p7s",
+        "tags": [
+          "CAdES"
+        ]
+      }
+    },
+    "/api/documents/{document_id}": {
+      "get": {
+        "operationId": "get_document_api_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/pkcs7-signature": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The signed document"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Download a signed document",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/sign-server-side": {
+      "post": {
+        "operationId": "sign_server_side_api_sign_server_side_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignServerSideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSideSigned"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Sign a PDF with the server's own key",
+        "tags": [
+          "PDF"
+        ]
+      }
+    },
+    "/api/signatures": {
+      "post": {
+        "operationId": "start_signature_api_signatures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSignatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Start a token signing session",
+        "tags": [
+          "PDF"
+        ]
+      }
+    },
+    "/api/signatures/batch": {
+      "post": {
+        "description": "N documents, one certificate, one options object: the server half of\nbulk signing. The client signs all returned hashes in one signHash call\n(one PIN prompt), then posts them to batch-complete.",
+        "operationId": "start_batch_api_signatures_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Start one session per document, sharing a certificate",
+        "tags": [
+          "PDF"
+        ]
+      }
+    },
+    "/api/signatures/batch-complete": {
+      "post": {
+        "operationId": "complete_batch_api_signatures_batch_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchCompleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Finish a batch with the token's signatures",
+        "tags": [
+          "PDF"
+        ]
+      }
+    },
+    "/api/signatures/{session_id}/complete": {
+      "post": {
+        "operationId": "complete_signature_api_signatures__session_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignatureCompleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Finish a session with the token's signature",
+        "tags": [
+          "PDF"
+        ]
+      }
+    },
+    "/api/validate": {
+      "post": {
+        "operationId": "validate_document_api_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Check the signatures on a PDF",
+        "tags": [
+          "PDF"
+        ]
+      }
+    },
+    "/api/xades/sign-server-side": {
+      "post": {
+        "operationId": "xades_server_side_api_xades_sign_server_side_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignServerSideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad document, certificate or signature"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such session or document"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Session or document expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Sign XML in place with the server's own key",
+        "tags": [
+          "XAdES"
+        ]
+      }
+    }
+  }
+}

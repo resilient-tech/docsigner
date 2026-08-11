@@ -15,12 +15,14 @@ import dataclasses
 import hashlib
 import io
 import secrets
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from asn1crypto import cms
 from asn1crypto import x509 as asn1_x509
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
+from pyhanko.sign.ades.api import CAdESSignedAttrSpec
 from pyhanko.sign.signers.pdf_byterange import PreparedByteRangeDigest
 from pyhanko.sign.signers.pdf_cms import ExternalSigner, PdfCMSSignedAttributes, Signer
 from pyhanko.sign.signers.pdf_signer import PdfTBSDocument
@@ -28,6 +30,7 @@ from pyhanko_certvalidator import CertificateValidator
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from .appearance import build_appearance, cert_common_name
+from .policies import resolve_policy
 from .cms import (
     PLACEHOLDER_SIG_SIZE,
     decode_state,
@@ -84,6 +87,7 @@ class SigningSession:
         timestamper=None,
         validation_context=None,
         strict_ltv: bool = True,
+        policy_dir=None,
     ) -> tuple[SessionState, bytes, str]:
         """Prepare a PDF for signing.
 
@@ -91,10 +95,12 @@ class SigningSession:
         the digest of the CMS signed attributes, ready for a raw PKCS#1 v1.5
         or ECDSA signature. ``strict_ltv`` keeps every gathered CRL so the
         revocation embedded for CCA profiles verifies offline; see ltv.py.
+        ``policy_dir`` holds the artifacts for ``options.policy``; see
+        policies.py.
         """
         return asyncio.run(
             _start(pdf_bytes, cert_der, options or {}, timestamper,
-                   validation_context, strict_ltv)
+                   validation_context, strict_ltv, policy_dir)
         )
 
     @staticmethod
@@ -119,9 +125,12 @@ class SigningSession:
 
 
 async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
-                 strict_ltv=True):
+                 strict_ltv=True, policy_dir=None):
     profile = Profile.parse(options.get("profile"))
     check_requirements(profile, timestamper, validation_context)
+    # Resolved before any PDF work: an unknown policy name or a missing
+    # artifact should fail on the request, not after the document is written.
+    policy = resolve_policy(options.get("policy"), policy_dir)
     # B-LT/B-LTA prepare and embed as B-T: PAdES wants the signature timestamp
     # in place before LTV data, and the DSS write plus archive timestamp are
     # key-free incremental updates that complete() adds afterwards (ltv.py).
@@ -165,6 +174,18 @@ async def _start(pdf_bytes, cert_der, options, timestamper, validation_context,
         # /Contents is hex-encoded (2 chars per byte); 32 KB of headroom covers
         # the CMS body, the signer certificate, and a CCA-LTA timestamp token.
         bytes_reserved = (len(revinfo.dump()) + 32_768) * 2
+
+    if policy is not None:
+        # The policy rides on the CAdES attribute spec, which PAdES and the CCA
+        # profiles both carry. Non-CCA profiles have no attr_settings until
+        # here, so signing_time is set to match what pyHanko would have done.
+        base = attr_settings or PdfCMSSignedAttributes(
+            signing_time=datetime.now(timezone.utc)
+        )
+        attr_settings = replace(
+            base,
+            cades_signed_attrs=CAdESSignedAttrSpec(signature_policy_identifier=policy),
+        )
 
     placeholder_signer = ExternalSigner(
         signing_cert=signer_cert,

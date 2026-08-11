@@ -26,6 +26,7 @@ from .cms import (
     verify_signature,
 )
 from .errors import SignerError
+from .policies import resolve_policy
 from .profiles import Profile, check_requirements, parse_digest_algorithm
 
 _CADES_PROFILES = (Profile.B_B, Profile.B_T)
@@ -67,18 +68,24 @@ class CadesSession:
 
     @staticmethod
     def start(
-        data: bytes, cert_der: bytes, options: dict | None = None, *, timestamper=None
+        data: bytes,
+        cert_der: bytes,
+        options: dict | None = None,
+        *,
+        timestamper=None,
+        policy_dir=None,
     ) -> tuple[CadesState, bytes, str]:
-        return asyncio.run(_start(data, cert_der, options or {}, timestamper))
+        return asyncio.run(_start(data, cert_der, options or {}, timestamper, policy_dir))
 
     @staticmethod
     def complete(state: CadesState, signature: bytes, *, timestamper=None) -> bytes:
         return asyncio.run(_complete(state, signature, timestamper))
 
 
-async def _start(data, cert_der, options, timestamper):
+async def _start(data, cert_der, options, timestamper, policy_dir=None):
     profile = _check_profile(options)
     check_requirements(profile, timestamper, None)
+    policy = resolve_policy(options.get("policy"), policy_dir)
     md_algorithm = parse_digest_algorithm(options)
     signer_cert = parse_cert(cert_der)
 
@@ -92,7 +99,7 @@ async def _start(data, cert_der, options, timestamper):
         md_algorithm,
         attr_settings=PdfCMSSignedAttributes(
             signing_time=datetime.now(timezone.utc),
-            cades_signed_attrs=CAdESSignedAttrSpec(),
+            cades_signed_attrs=CAdESSignedAttrSpec(signature_policy_identifier=policy),
         ),
         use_pades=False,
         is_pdf_sig=False,
@@ -127,9 +134,12 @@ async def _complete(state, signature, timestamper):
     return signature_cms.dump()
 
 
-def sign_cades_with_p12(data, p12_path, passphrase, options, *, timestamper=None) -> bytes:
+def sign_cades_with_p12(
+    data, p12_path, passphrase, options, *, timestamper=None, policy_dir=None
+) -> bytes:
     """One-shot detached CAdES with the server-held key."""
     profile = _check_profile(options or {})
+    policy = resolve_policy((options or {}).get("policy"), policy_dir)
     md_algorithm = parse_digest_algorithm(options or {})
     signer = load_p12_signer(p12_path, passphrase)
     signature_cms = signer.sign_general_data(
@@ -138,6 +148,6 @@ def sign_cades_with_p12(data, p12_path, passphrase, options, *, timestamper=None
         detached=True,
         timestamper=timestamper if profile.needs_timestamp else None,
         use_cades=True,
-        cades_signed_attr_meta=CAdESSignedAttrSpec(),
+        cades_signed_attr_meta=CAdESSignedAttrSpec(signature_policy_identifier=policy),
     )
     return signature_cms.dump()

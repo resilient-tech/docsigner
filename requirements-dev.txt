@@ -1,10 +1,18 @@
-# Development dependencies: everything needed to run the test suites.
-# Runtime deps come from each component's own package (core/, server/, host/).
+# Development dependencies: everything needed to run the Python test suites.
+# Runtime deps come from each component's own package (core/, server/).
 #
-#   pip install -e ./core -e ./server -e ./host
+#   pip install -e ./core -e ./server
 #   pip install -r requirements-dev.txt
-#   pytest core/tests server/tests host/tests
+#   pytest core/tests server/tests
+#   PYTHONPATH=desktop/backend pytest desktop/backend/tests
+#
+# The token host is not Python: it is host-rs, tested with `cargo test`.
 
 pytest
 httpx        # FastAPI's TestClient needs it for server/tests
-cryptography # host/tests build a self-signed cert against the fake PKCS#11 layer
+cryptography # core/tests and desktop/backend/tests build keys and certificates
+
+# Checks server/openapi.json is real OpenAPI, not just well-formed JSON. Other
+# languages generate their clients from that file, so a spec that only looks
+# valid is a broken client somewhere else.
+openapi-spec-validator

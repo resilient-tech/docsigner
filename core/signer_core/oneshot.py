@@ -9,6 +9,7 @@ from pyhanko.sign import signers
 from .appearance import build_appearance, cert_common_name
 from .cms import load_p12_signer
 from .errors import SignerError
+from .policies import resolve_policy
 from .profiles import Profile, build_metadata, check_requirements
 
 
@@ -20,10 +21,12 @@ def sign_with_p12(
     *,
     timestamper=None,
     validation_context=None,
+    policy_dir=None,
 ) -> bytes:
     options = options or {}
     profile = Profile.parse(options.get("profile"))
     check_requirements(profile, timestamper, validation_context)
+    policy = resolve_policy(options.get("policy"), policy_dir)
 
     signer = load_p12_signer(p12_path, passphrase)
 
@@ -40,7 +43,7 @@ def sign_with_p12(
         signer_name=cert_common_name(signer.signing_cert),
     )
     pdf_signer = signers.PdfSigner(
-        build_metadata(options, profile, field_name, validation_context),
+        build_metadata(options, profile, field_name, validation_context, policy),
         signer=signer,
         timestamper=timestamper if profile.needs_timestamp else None,
         stamp_style=stamp_style,

@@ -41,6 +41,24 @@ export interface Identity {
   selfSigned: boolean
 }
 
+/**
+ * Why the certificate list is empty, when the reason is fixable.
+ *
+ * The host sees smart-card readers even with no vendor driver installed, so
+ * "nothing plugged in" and "plugged in but unusable" stop looking identical.
+ */
+export interface TokenHint {
+  token: string | null
+  readers: string[]
+  message: string
+  action: string
+}
+
+export interface IdentitiesResult {
+  identities: Identity[]
+  tokenHint: TokenHint | null
+}
+
 export interface AppConfig {
   tsaUrl: string
   trustConfigured: boolean

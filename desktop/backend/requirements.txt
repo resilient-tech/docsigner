@@ -1,8 +1,14 @@
 fastapi>=0.115
-uvicorn[standard]>=0.30
+# Plain uvicorn, not [standard]: the extras (uvloop, watchfiles, httptools,
+# websockets, PyYAML) add ~3.6 MB to the bundle and buy nothing here. This
+# server handles one local user on loopback and never reloads.
+uvicorn>=0.30
 pywebview>=5          # native desktop window (uses the OS webview)
-# The signing engine and token host, from the repo (run pip from this backend/
-# directory so the relative paths resolve). Pulls pyHanko, cryptography, qrcode.
+# The signing engine, from the repo (run pip from this backend/ directory so the
+# relative path resolves). Pulls pyHanko, cryptography, qrcode.
 # [render] adds pypdfium2 for PDF preview rasterization (signer_core.rendering).
 -e ../../core[render]
--e ../../host
+
+# The token host is not a Python package: it is host-rs, a Rust binary built
+# with `cargo build --release --manifest-path ../../host-rs/Cargo.toml`. That
+# is also why python-pkcs11 no longer appears anywhere in this app.

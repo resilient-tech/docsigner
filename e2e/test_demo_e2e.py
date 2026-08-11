@@ -2,7 +2,7 @@
 
 Two halves:
   - The demo is served and its asset graph resolves: /demo/ loads, demo.js
-    loads, and the ../js/opensigner.js module it imports resolves (the exact
+    loads, and the ../js/docsigner.js module it imports resolves (the exact
     breakage the README warns about when serving the repo root).
   - The demo's no-hardware flows work end to end against the live server:
     server-side PDF, XAdES, and CAdES — the same endpoints demo.js posts to —
@@ -51,11 +51,11 @@ def test_demo_page_serves(demo_base, web):
 
 
 def test_demo_asset_graph_resolves(demo_base, web):
-    # demo.js imports ../js/opensigner.js — both must be reachable from the root.
+    # demo.js imports ../js/docsigner.js — both must be reachable from the root.
     demo_js = web.get(f"{demo_base}/demo/demo.js")
     assert demo_js.status_code == 200
-    assert 'from "../js/opensigner.js"' in demo_js.text
-    assert web.get(f"{demo_base}/js/opensigner.js").status_code == 200, "opensigner.js not served"
+    assert 'from "../js/docsigner.js"' in demo_js.text
+    assert web.get(f"{demo_base}/js/docsigner.js").status_code == 200, "docsigner.js not served"
 
 
 def test_demo_default_server_url_is_local(demo_base, web):

@@ -48,7 +48,7 @@ def make_signer_cert(key_type: str = "rsa", cn: str | None = None):
     name = x509.Name(
         [
             x509.NameAttribute(NameOID.COUNTRY_NAME, env("E2E_SIGNER_COUNTRY", "IN")),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, env("E2E_SIGNER_ORG", "OpenSigner Tests")),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, env("E2E_SIGNER_ORG", "DocSigner Tests")),
             x509.NameAttribute(NameOID.COMMON_NAME, cn or env("E2E_SIGNER_CN", "Test Signer")),
         ]
     )

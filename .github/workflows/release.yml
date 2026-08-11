@@ -1,0 +1,223 @@
+name: Release
+
+# Tag a version, get one download per operating system plus an update feed.
+#
+#     git tag v0.2.0 && git push origin v0.2.0
+#
+# Run it with workflow_dispatch first to check the builds without publishing.
+#
+# ---------------------------------------------------------------------------
+# Why one architecture per OS, deliberately
+#
+# Someone who just wants to sign a PDF should never have to know what "arm64"
+# means. Every extra download on the page is a chance to pick the wrong one, so
+# each OS gets exactly one, and the choice is made here rather than by the user.
+#
+# macOS: x86_64 only.
+#   Runs on every Mac since 2010, Apple Silicon included, through Rosetta.
+#   More importantly it is the safer side of the PKCS#11 bet: an x86_64 process
+#   can load an x86_64 driver and (through Rosetta's own translation) the
+#   x86_64 half of a universal one, while an arm64 process cannot load an
+#   x86_64-only driver at all. Some Indian CA middleware still ships x86_64
+#   only. Measured on a real WatchData ProxKey: its dylib happens to be
+#   universal and both builds reach the token, so this is insurance against the
+#   vendors that have not caught up, not a fix for that one.
+#   Verified: the x86_64 build cross-compiled on arm64 lists all three
+#   certificates off a real token under Rosetta.
+#
+# Windows: x64 only.
+#   The token middleware is x64. An ARM64-native build could not load it, and
+#   Windows on ARM runs the x64 build under emulation where the x64 driver
+#   loads normally. An arm64 build would be strictly worse.
+#
+# Linux: built on the oldest supported Ubuntu, not the newest.
+#   glibc is backward but not forward compatible, so a binary built against a
+#   new glibc refuses to start on an older distro. Building on the oldest
+#   runner sets the floor as low as the runner images allow.
+#
+# Do not "fix" any of these by adding architectures. Each one costs a download
+# choice and buys nothing the emulated path does not already cover.
+# ---------------------------------------------------------------------------
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  host:
+    name: host (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-latest is arm64; the x86_64 toolchain cross-compiles cleanly
+          # there, which avoids depending on the ageing Intel runner images.
+          - name: macos-x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+          - name: linux-x64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+    defaults:
+      run:
+        working-directory: host-rs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host-rs
+          key: ${{ matrix.target }}
+
+      # pcsc links against libpcsclite, which is not on the Ubuntu image.
+      - name: Install PC/SC headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
+
+      # A tag that disagrees with Cargo.toml would publish a binary reporting a
+      # version nobody can find, and getVersion is what support asks for first.
+      - name: Check the tag matches Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          crate=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$crate" != "$tag" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $crate"
+            exit 1
+          fi
+          echo "version $crate"
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # The binary must be the architecture we claim. A silent host-arch build
+      # would ship an arm64 macOS binary that cannot load an x86_64 driver,
+      # which is the exact failure this matrix exists to avoid.
+      - name: Verify the architecture
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          binary=target/${{ matrix.target }}/release/docsigner-host
+          file "$binary"
+          file "$binary" | grep -q 'x86.64' || { echo "::error::not an x86_64 binary"; exit 1; }
+
+      # Runs natively on Linux and Windows. Skipped on macOS: the arm64 runner
+      # has no Rosetta, so the x86_64 binary cannot execute there. It is
+      # exercised on a real Mac before release instead.
+      - name: Smoke test
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          binary=target/${{ matrix.target }}/release/docsigner-host
+          [ "${{ runner.os }}" = "Windows" ] && binary="$binary.exe"
+          "$binary" version
+          "$binary" version | grep -q '"protocolVersion": 1'
+
+      - name: Package
+        shell: bash
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          stage="docsigner-host-${version}-${{ matrix.name }}"
+          mkdir -p "dist/$stage"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp target/${{ matrix.target }}/release/docsigner-host.exe "dist/$stage/"
+          else
+            cp target/${{ matrix.target }}/release/docsigner-host "dist/$stage/"
+          fi
+          cp README.md "dist/$stage/"
+          cp -r packaging "dist/$stage/packaging"
+          cd dist
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            7z a -tzip "$stage.zip" "$stage" >/dev/null
+          else
+            tar -czf "$stage.tar.gz" "$stage"
+          fi
+          rm -rf "$stage"
+          ls -l
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: host-rs/dist/*
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: host
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # One checksum file for everything, so a download can be verified without
+      # trusting the page it came from.
+      - name: Checksums
+        run: |
+          cd artifacts
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      # The feed the host's checkUpdate command reads (CONTRACTS.md section 2).
+      # `url` points at the release page rather than a file: the host never
+      # downloads anything, it only tells the user a newer version exists, and
+      # the page is where they choose the right one for their machine.
+      - name: Build latest.json
+        run: |
+          version=$(grep -m1 '^version' host-rs/Cargo.toml | cut -d'"' -f2)
+          repo="${{ github.server_url }}/${{ github.repository }}"
+          cat > artifacts/latest.json <<JSON
+          {
+            "version": "$version",
+            "url": "$repo/releases/latest",
+            "published": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          cat artifacts/latest.json
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          body: |
+            One download per operating system. Pick yours; there is no
+            architecture to choose.
+
+            | Your machine | File |
+            |---|---|
+            | Any Mac, Intel or Apple Silicon | `macos-x86_64.tar.gz` |
+            | Windows | `windows-x64.zip` |
+            | Linux | `linux-x64.tar.gz` |
+
+            Unpack it, then register it with your browsers:
+
+            ```
+            packaging/install.sh <chrome-extension-id>     # macOS / Linux
+            packaging\install.bat <chrome-extension-id>    # Windows
+            ```
+
+            Your token's own driver still has to be installed separately. It is
+            hardware middleware and cannot ride inside this binary.
+
+            Verify a download against `SHA256SUMS`.

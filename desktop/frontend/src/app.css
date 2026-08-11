@@ -501,6 +501,39 @@ input.control::placeholder {
   font-size: 11.5px;
   color: var(--amber);
 }
+/* "Token plugged in, driver missing": the one empty-list case that is both
+   common and fixable, so it gets a box rather than a line of small print. */
+.token-hint {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 8px;
+  padding: 9px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--amber);
+  background: var(--well);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--amber);
+  border-radius: var(--radius-card);
+}
+.token-hint svg {
+  flex: none;
+  margin-top: 1px;
+}
+.token-hint strong {
+  display: block;
+  font-weight: 600;
+}
+.token-hint p {
+  margin: 3px 0 0;
+  color: var(--text);
+}
+.token-hint-detail {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  opacity: 0.72;
+}
 /* ---- buttons ---- */
 .btn {
   display: inline-flex;
