@@ -1,10 +1,18 @@
 name: Release
 
-# Tag a version, get one download per operating system plus an update feed.
+# Merging into master is the release. Work lands on develop; when a batch of it
+# is ready, bump the version and merge, and this builds every artifact, tags the
+# commit and publishes:
 #
-#     git tag v0.2.0 && git push origin v0.2.0
+#     python scripts/bump_version.py            # 0.2.0 -> 0.2.1, three files
+#     git commit -am "chore(release): v0.2.1"
+#     # merge develop into master
 #
-# Run it with workflow_dispatch first to check the builds without publishing.
+# The version is `host/Cargo.toml`'s, never the workflow's invention. A merge
+# that forgot the bump fails in the first job, before anything is built, because
+# the tag already exists. Nothing here ever pushes a commit.
+#
+# Run it with workflow_dispatch to check the builds without publishing.
 #
 # ---------------------------------------------------------------------------
 # Why one architecture per OS, deliberately
@@ -41,14 +49,71 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [master]
+    # A doc-only change publishing a new version of three binaries is noise, and
+    # the version number stops meaning anything if it moves for prose.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "learn/**"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  # What version this is, and whether it gets published. The only job that knows
+  # the difference between a merge to master and a manual run, so every other
+  # job builds the checked-out commit and asks nothing.
+  #
+  # It runs first and everything needs it, so a merge that forgot the version
+  # bump costs one job rather than twenty minutes of nine parallel builds.
+  #
+  # No tag is created here. `publish` creates it with the release, once the
+  # builds have passed, so a failed run leaves nothing behind to clean up.
+  prepare:
+    name: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: plan
+        run: |
+          set -eu
+          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # The stores key extension updates off the manifest, so a release
+          # whose manifest disagrees with everything else ships an extension
+          # claiming the wrong version. scripts/bump_version.py writes both.
+          manifest=$(python3 -c "import json;print(json.load(open('extension/manifest.json'))['version'])")
+          if [ "$manifest" != "$version" ]; then
+            echo "::error::extension/manifest.json says $manifest, host/Cargo.toml says $version. Run scripts/bump_version.py."
+            exit 1
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "building $version, publishing nothing (manual run)"
+            exit 0
+          fi
+
+          # The forgotten bump, which is the one mistake this flow can make:
+          # merging to master twice without moving the version. Caught here
+          # rather than by a confusing overwrite at publish time.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null 2>&1; then
+            echo "::error::v$version is already released. Bump the version first: python scripts/bump_version.py"
+            exit 1
+          fi
+
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "releasing $version"
+
   host:
+    needs: prepare
     name: host (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -89,19 +154,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
-      # A tag that disagrees with Cargo.toml would publish a binary reporting a
-      # version nobody can find, and getVersion is what support asks for first.
-      - name: Check the tag matches Cargo.toml
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          crate=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-          tag="${GITHUB_REF_NAME#v}"
-          if [ "$crate" != "$tag" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $crate"
-            exit 1
-          fi
-          echo "version $crate"
+      # The version is Cargo.toml's and `prepare` has already checked that it is
+      # unreleased and that the extension manifest agrees. Nothing to verify here.
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -170,6 +224,7 @@ jobs:
   # toolchains.
   desktop-macos:
     name: desktop (macos-x86_64)
+    needs: prepare
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -220,9 +275,161 @@ jobs:
           path: artifacts/*
           if-no-files-found: error
 
+  # The desktop app for Windows and Linux. There is no build-macos.sh equivalent
+  # for these: the spec already handles both (it looks for the host binary under
+  # host/target/release and appends .exe on Windows), so the job is the script.
+  #
+  # Native architecture, not cross-compiled, because PyInstaller bundles the
+  # interpreter running it. That is x64 on both runners, which is what the token
+  # middleware needs anyway (see the header).
+  #
+  # Neither has been opened on a real machine. They are published so a tester
+  # has something to download; treat both as unverified until someone signs a
+  # PDF with a token in them. docs/roadmap.md carries that as the open item.
+  desktop:
+    name: desktop (${{ matrix.name }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            python: .venv/Scripts/python
+          - name: linux-x64
+            os: ubuntu-22.04
+            python: .venv/bin/python
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host
+          key: desktop-${{ matrix.name }}
+
+      # libpcsclite for the host build; the rest is what pywebview's GTK backend
+      # needs to be importable, since PyInstaller has to import it to collect it.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcsclite-dev libgirepository1.0-dev \
+            libcairo2-dev gir1.2-webkit2-4.1 libwebkit2gtk-4.1-dev
+
+      # The sidecar. The spec refuses to build without it, and this is the
+      # unsuffixed release path it looks for off macOS.
+      - name: Build the sidecar host
+        run: cargo build --release --manifest-path host/Cargo.toml
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - name: Build the frontend
+        working-directory: desktop/frontend
+        run: pnpm install && pnpm build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The cryptography<49 pin in requirements.txt is macOS-x86_64-only by
+      # marker, so both of these resolve the current release.
+      - name: Set up the venv
+        working-directory: desktop/backend
+        shell: bash
+        run: |
+          python -m venv .venv
+          ${{ matrix.python }} -m pip install -q -r requirements.txt pyinstaller
+          # pywebview needs the GTK bindings present to be collected, and they
+          # are not in requirements.txt: that file serves the macOS build, where
+          # the window is pyobjc.
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            ${{ matrix.python }} -m pip install -q pygobject
+          fi
+
+      - name: Package
+        working-directory: desktop/backend
+        shell: bash
+        run: |
+          rm -rf dist build
+          ${{ matrix.python }} -m PyInstaller --noconfirm ../packaging/docsigner-desktop.spec
+
+      # The sidecar missing is the one failure that leaves a working-looking app
+      # that cannot reach a token, and the spec's own check runs before the
+      # collect step rather than after it.
+      - name: Check the bundle carries the sidecar
+        working-directory: desktop/backend
+        shell: bash
+        run: |
+          host=docsigner-host
+          [ "${{ runner.os }}" = "Windows" ] && host=docsigner-host.exe
+          find dist/docsigner-desktop -name "$host" | grep -q . || {
+            echo "::error::the sidecar host is not in the bundle"; exit 1; }
+          find dist/docsigner-desktop -maxdepth 1 -name 'docsigner-desktop*'
+
+      - name: Stage the artifact
+        shell: bash
+        run: |
+          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          mkdir -p artifacts
+          cd desktop/backend/dist
+          # A folder, not a single file: PyInstaller's onedir layout starts far
+          # faster than onefile, which unpacks itself on every launch.
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip "../../../artifacts/DocSigner-$version-windows-x64.zip" docsigner-desktop >/dev/null
+          else
+            tar -czf "../../../artifacts/DocSigner-$version-linux-x64.tar.gz" docsigner-desktop
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  # The two extension zips, exactly as each store wants them. Cheap to build and
+  # they make the store upload a download rather than a local build step.
+  extension:
+    name: extension
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Chrome refuses Firefox's event-page background and Firefox needs one, so
+      # the Firefox copy is generated rather than shared.
+      - name: Build the Firefox copy
+        run: python scripts/build_firefox_extension.py
+
+      - name: Package
+        run: |
+          version=$(python -c "import json;print(json.load(open('extension/manifest.json'))['version'])")
+          mkdir -p artifacts
+          (cd extension && zip -qr "../artifacts/docsigner-extension-$version-chrome.zip" . -x '*.DS_Store')
+          (cd dist/firefox-extension && zip -qr "../../artifacts/docsigner-extension-$version-firefox.zip" .)
+          ls -l artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension
+          path: artifacts/*
+          if-no-files-found: error
+
   publish:
     name: publish
-    needs: [host, desktop-macos]
+    needs: [prepare, host, desktop-macos, desktop, extension]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -269,34 +476,86 @@ jobs:
       # `url` points at the release page rather than a file: the host never
       # downloads anything, it only tells the user a newer version exists, and
       # the page is where they choose the right one for their machine.
+      #
+      # `downloads` is additive and the host ignores it: it exists so a page, an
+      # installer or a README link can resolve the current build of any component
+      # without knowing the version. The asset filenames carry the version, so
+      # releases/latest/download/<name> cannot be linked directly; this file can,
+      # because GitHub keeps releases/latest/download/latest.json pointing here.
+      # Built from the artifacts actually present, so a job that did not run is
+      # absent rather than a dead link.
       - name: Build latest.json
         run: |
           version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
           repo="${{ github.server_url }}/${{ github.repository }}"
-          cat > artifacts/latest.json <<JSON
-          {
-            "version": "$version",
-            "url": "$repo/releases/latest",
-            "published": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python3 - "$version" "$repo" <<'PY'
+          import json, os, sys, time
+
+          version, repo = sys.argv[1], sys.argv[2]
+          base = f"{repo}/releases/download/v{version}"
+
+          # (key, match) in order; the first match wins, so the host archives are
+          # matched before the desktop ones on the shared OS suffixes.
+          KEYS = [
+              ("host-macos", "docsigner-host-*-macos-x86_64.tar.gz"),
+              ("host-windows", "docsigner-host-*-windows-x64.zip"),
+              ("host-linux", "docsigner-host-*-linux-x64.tar.gz"),
+              ("desktop-macos", "DocSigner.dmg"),
+              ("desktop-windows", "DocSigner-*-windows-x64.zip"),
+              ("desktop-linux", "DocSigner-*-linux-x64.tar.gz"),
+              ("extension-chrome", "docsigner-extension-*-chrome.zip"),
+              ("extension-firefox", "docsigner-extension-*-firefox.zip"),
+          ]
+
+          from fnmatch import fnmatch
+          present = sorted(os.listdir("artifacts"))
+          downloads = {}
+          for key, pattern in KEYS:
+              hit = next((n for n in present if fnmatch(n, pattern)), None)
+              if hit:
+                  downloads[key] = f"{base}/{hit}"
+
+          feed = {
+              "version": version,
+              # The host never downloads anything, it only says a newer version
+              # exists, and the page is where a human picks the right file.
+              "url": f"{repo}/releases/latest",
+              "published": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "downloads": downloads,
           }
-          JSON
+          with open("artifacts/latest.json", "w") as fh:
+              json.dump(feed, fh, indent=2)
+              fh.write("\n")
+          PY
           cat artifacts/latest.json
 
+      # The tag is created here, by the release itself, pointing at the merge
+      # commit that triggered this run. That ordering is deliberate: a build
+      # that fails leaves no tag to delete before the next attempt.
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.prepare.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.prepare.outputs.version }}
+          target_commitish: ${{ github.sha }}
           files: artifacts/*
           generate_release_notes: true
           body: |
             One download per operating system. Pick yours; there is no
             architecture to choose.
 
-            | Your machine | File |
-            |---|---|
-            | Any Mac, Intel or Apple Silicon | `macos-x86_64.tar.gz` |
-            | Windows | `windows-x64.zip` |
-            | Linux | `linux-x64.tar.gz` |
+            | Your machine | Browser signing | Batch app |
+            |---|---|---|
+            | Any Mac, Intel or Apple Silicon | `docsigner-host-…-macos-x86_64.tar.gz` | `DocSigner.dmg` |
+            | Windows | `docsigner-host-…-windows-x64.zip` | `DocSigner-…-windows-x64.zip` |
+            | Linux | `docsigner-host-…-linux-x64.tar.gz` | `DocSigner-…-linux-x64.tar.gz` |
+
+            The extension zips are here too, for the store uploads:
+            `docsigner-extension-…-chrome.zip` and `…-firefox.zip`. Most people
+            should install the extension from the store listing instead.
+
+            `latest.json` lists the current download URL for every one of these
+            under `downloads`, which is the stable link to build against.
 
             Unpack it, then register it with your browsers:
 

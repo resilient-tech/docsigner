@@ -29,7 +29,7 @@ The long poles. Nothing else depends on them, but the lead times are weeks.
 
 | # | What | Notes |
 |---|------|-------|
-| D1 | **Extension listings.** Chrome Web Store and Firefox AMO. Store copy from the README, privacy answers from CONTRACTS (no analytics, no remote calls). | Native messaging draws extra review scrutiny. Submit early. |
+| D1 | **Extension listings.** Chrome Web Store and Firefox AMO. Store copy from the README, privacy answers from CONTRACTS (no analytics, no remote calls). | Native messaging draws extra review scrutiny. Submit early. The release now attaches both store zips, so the upload is a download rather than a local build. |
 | D2 | **Host installers.** pkg, MSI, deb/rpm. | macOS no longer waits on a certificate: the Homebrew formula installs unquarantined, so a notarized pkg is a convenience, not the gate. An unsigned MSI works too and only shows "Unknown publisher"; D7 removes that. |
 | D3 | **Update channel.** ~~Wire the host's `checkUpdate`.~~ ~~A banner on the consent page.~~ Done: the extension forwards the command, docsigner.js exposes `checkUpdate()`, the default feed is the `latest.json` each release publishes, and the consent popup shows an amber line with a Get it link when a newer host exists. Left: the desktop Settings panel. | The check was written, tested and documented, then blocked by the extension's own allowlist, so it just answered UNSUPPORTED. Over https it also failed outright — ureq's native-tls needs its connector handed over, and every test used local http. A js test now pins the allowlist against the commands CONTRACTS §2 defines, and an e2e test pins that https works. |
 | D4 | **Token compatibility table.** Seeded from the known lists in `modules.rs` and `pcsc_readers.rs`. | Grows by user report. |
@@ -40,6 +40,13 @@ The long poles. Nothing else depends on them, but the lead times are weeks.
 
 Before any of it: real-token runs on all 3 operating systems, per
 [release-checklist.md](release-checklist.md).
+
+Building on all three no longer needs all three. The release workflow ships the
+host, the desktop app and both extension zips for macOS, Windows and Linux off
+GitHub's runners, and `latest.json` carries a `downloads` URL for each. Two of
+those artifacts have never been opened: the Windows and Linux desktop builds are
+published untested, and the host's Windows certificate-store path is still unrun
+code. Running them is a machine, not a build.
 
 ## What live testing taught us
 

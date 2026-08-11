@@ -124,14 +124,24 @@ py -3.12 -m venv .venv
 That writes `backend\dist\docsigner-desktop\` with `docsigner-desktop.exe` inside.
 Zip that folder to hand it out, or wrap it in an installer with Inno Setup or NSIS
 for a Start-menu entry. WebView2 (the window runtime) ships with Windows 11 and
-installs automatically on Windows 10. (This path is set up but built only on
-macOS so far; confirm it on a real Windows box.)
+installs automatically on Windows 10.
+
+`.github/workflows/release.yml` runs exactly this on a `windows-latest` runner
+and publishes the zip, so a release needs no Windows machine. Opening the result
+still does: nobody has launched it, and the Windows certificate-store path in the
+host is unrun code. Treat the artifact as untested until someone signs a PDF with
+a token in it.
 
 ### Linux
 
 The spec produces `backend/dist/docsigner-desktop/` (a folder with the binary).
 Ship the folder, or wrap it as an AppImage for a single portable file. The window
 needs WebKitGTK, present on most desktops.
+
+The release workflow builds it on `ubuntu-22.04` and publishes the tarball. It
+installs the GTK/WebKit development packages and `pygobject` in the job, since
+`requirements.txt` carries neither: that file serves the macOS build, where the
+window is pyobjc. Untested for the same reason as the Windows build.
 
 ### Before you distribute
 

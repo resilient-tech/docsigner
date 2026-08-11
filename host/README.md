@@ -32,13 +32,16 @@ The binary lands at `target/release/docsigner-host`. No Python, no venv, no PyIn
 
 ## Releasing
 
-Tag it. `.github/workflows/release.yml` builds every platform, publishes the archives with a `SHA256SUMS`, and writes the `latest.json` the `checkUpdate` command reads.
+Merge into `master`. `.github/workflows/release.yml` builds every platform, publishes the archives with a `SHA256SUMS`, and writes the `latest.json` the `checkUpdate` command reads.
+
+Work lands on `develop`. When a batch of it is ready, bump the version and merge:
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+python scripts/bump_version.py     # 0.2.0 -> 0.2.1, in three files
+git commit -am "chore(release): v0.2.1"
 ```
 
-Run it from the Actions tab first (`workflow_dispatch`) to build without publishing. The job fails if the tag disagrees with `Cargo.toml`, since a binary reporting a version nobody can find is worse than no release.
+The version in `Cargo.toml` is the repo's, and the release tag is cut from it rather than typed. A merge that forgot the bump fails in the first job, before anything builds, because that tag already exists. Run the workflow from the Actions tab (`workflow_dispatch`) to build without publishing.
 
 **One download per OS, and the architecture is not the user's problem.** Each choice is deliberate and the reasoning is written into the workflow so nobody removes it:
 

@@ -37,7 +37,7 @@ folder: [`../extension/README.md`](../extension/README.md) and
 **Planning**
 
 - [roadmap.md](roadmap.md) — what's left to build here
-- [release-checklist.md](release-checklist.md) — manual runs before a tag
+- [release-checklist.md](release-checklist.md) — manual runs before a release merge
 - [frappe-app.md](frappe-app.md) — the Frappe integration's plan (different repo)
 
 ## Adding a doc

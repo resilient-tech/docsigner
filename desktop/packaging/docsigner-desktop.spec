@@ -79,13 +79,10 @@ datas = [(FRONTEND_DIST, os.path.join("frontend", "dist"))]
 if os.path.isdir(TRUST):
     datas += [(TRUST, "trust")]
 
-# Apache-2.0 wants both travelling with the binary, not only in the repo. The
-# host's release archive carries them for the same reason.
-datas += [(os.path.join(REPO, name), ".") for name in ("LICENSE", "NOTICE")]
-
-# Apache-2.0 wants both shipped with the app, not only in the repo. The
-# bundled dependencies' own notices ride along inside their collected
-# packages, which collect_all() below already picks up.
+# Apache-2.0 wants both shipped with the app, not only in the repo, and the
+# host's release archive carries them for the same reason. The bundled
+# dependencies' own notices ride along inside their collected packages, which
+# collect_all() below already picks up.
 datas += [(os.path.join(REPO, name), ".") for name in ("LICENSE", "NOTICE")]
 
 # "." puts it at the bundle root, where _MEIPASS points.

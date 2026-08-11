@@ -1,8 +1,11 @@
 # Release checklist
 
-Run by a human, on a real machine, with a real token, before any tag. Every
-button ships with one real click behind it. The automated suites can't plug in a
-USB token, so this is the part that has to be done by hand.
+Run by a human, on a real machine, with a real token, before merging `develop`
+into `master`. That merge is the release: it builds every artifact, tags the
+commit and publishes, so this list has to be done while there is still time to
+fix something. Every button ships with one real click behind it. The automated
+suites can't plug in a USB token, so this is the part that has to be done by
+hand.
 
 Two halves. The first is this repo. The second is the Frappe app and moves to
 `docsigner_integration` when that repo is next open.
@@ -22,6 +25,7 @@ token plugged in, the server running from the repo root.
 - [ ] `cargo test --manifest-path host/Cargo.toml` green
 - [ ] `cd js && node --test` green
 - [ ] `python scripts/export_openapi.py` leaves `server/openapi.json` unchanged
+- [ ] `python scripts/bump_version.py --selftest` green, then the version bumped and committed on `develop` (the merge fails otherwise: that tag already exists)
 
 ## Host, from the terminal
 
@@ -72,7 +76,7 @@ carry placeholder zeros on purpose.
 
 ## Per OS
 
-Run the browser flow and the host section on each before a tag.
+Run the browser flow and the host section on each before merging to `master`.
 
 - [ ] macOS
 - [ ] Windows
