@@ -50,6 +50,7 @@ class Config:
     tsa_auth: tuple[str, str] | None
     tsa_bearer: str | None
     trust_dir: str | None
+    policy_dir: str | None
     max_pdf_mb: int
     strict_ltv: bool
 
@@ -72,6 +73,7 @@ class Config:
             tsa_auth=_split_pair(os.environ.get("TSA_AUTH")),
             tsa_bearer=os.environ.get("TSA_BEARER"),
             trust_dir=os.environ.get("TRUST_DIR"),
+            policy_dir=os.environ.get("POLICY_DIR"),
             max_pdf_mb=int(os.environ.get("MAX_PDF_MB", "50")),
             # Keep the CRLs a chain needs so B-LT/B-LTA/CCA read as LTV enabled
             # (larger files). Set STRICT_LTV=false for OCSP-first sizing instead.

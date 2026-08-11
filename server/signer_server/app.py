@@ -162,6 +162,7 @@ def start_signature(payload: dict = Body(...)):
         timestamper=_request_timestamper(options),
         validation_context=_signing_validation_context(),
         strict_ltv=config.strict_ltv,
+        policy_dir=config.policy_dir,
     )
     session_id = sessions.put(state.to_bytes())
     return {
@@ -260,6 +261,7 @@ def start_batch(payload: dict = Body(...)):
                 timestamper=timestamper,
                 validation_context=validation_context,
                 strict_ltv=config.strict_ltv,
+                policy_dir=config.policy_dir,
             )
         except SignerError as exc:
             raise SignerError(exc.code, f"document {index}: {exc.message}") from None
@@ -324,6 +326,7 @@ def sign_server_side(payload: dict = Body(...)):
         options,
         timestamper=_request_timestamper(options),
         validation_context=_signing_validation_context(),
+        policy_dir=config.policy_dir,
     )
     return {**_stored_document_response(signed_pdf), **_pdfa_fields(pdf_bytes, options)}
 
@@ -347,7 +350,11 @@ def start_cades(payload: dict = Body(...)):
     options = payload.get("options") or {}
 
     state, to_sign_hash, digest_algorithm = CadesSession.start(
-        data, cert_der, options, timestamper=_request_timestamper(options)
+        data,
+        cert_der,
+        options,
+        timestamper=_request_timestamper(options),
+        policy_dir=config.policy_dir,
     )
     session_id = sessions.put(state.to_bytes())
     return {
@@ -387,6 +394,7 @@ def cades_server_side(payload: dict = Body(...)):
         config.p12_passphrase,
         options,
         timestamper=_request_timestamper(options),
+        policy_dir=config.policy_dir,
     )
     return _stored_document_response(p7s)
 
