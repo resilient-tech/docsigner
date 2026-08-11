@@ -73,9 +73,9 @@ def test_extension_bridge_in_browser(tmp_path):
             )
             page = ctx.new_page()
             page.goto(f"http://127.0.0.1:{port}/demo/")
-            # The demo loads DocSigner as an ES module, so there is no page
-            # global; import it the same way and ping through the
-            # content-script bridge (proves the extension is installed).
+            # The demo imports DocSigner as a module, so nothing is on the page
+            # globally. Import it the same way and ping through the bridge,
+            # which proves the extension is really there.
             installed = page.evaluate(
                 """async () => {
                      const { DocSigner } = await import("/js/docsigner.js");

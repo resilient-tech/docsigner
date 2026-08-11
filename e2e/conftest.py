@@ -32,9 +32,9 @@ def _load_env():
 
 _load_env()
 
-# The sandbox exports a SOCKS ALL_PROXY that httpx prefers even for localhost,
-# but the socksio package isn't installed. Drop the SOCKS vars: localhost is
-# covered by no_proxy, and the HTTP proxy stays for the server's TSA calls.
+# Drop the SOCKS proxy vars. The HTTP client prefers them even for localhost,
+# and the library that would handle them is not installed. The plain HTTP proxy
+# stays, because the server needs it to reach the timestamp authority.
 for _v in ("ALL_PROXY", "all_proxy", "GRPC_PROXY", "grpc_proxy", "FTP_PROXY",
            "ftp_proxy", "RSYNC_PROXY"):
     os.environ.pop(_v, None)

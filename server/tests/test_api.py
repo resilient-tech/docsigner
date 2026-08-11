@@ -152,9 +152,8 @@ def test_lt_completion_failure_maps_to_500(client, signer, blank_pdf, monkeypatc
     import signer_server.app as app_module
 
     dummy_tsa = make_dummy_timestamper()
-    # A TSA and trust anchors are configured, so the session starts; but the
-    # self-signed token cert has no path to the configured root, so the
-    # revocation-data step at completion must fail.
+    # Everything is configured, so signing starts fine. But this certificate
+    # chains to nobody we trust, so gathering the proof at the end must fail.
     monkeypatch.setattr(app_module, "make_timestamper", lambda url, **creds: dummy_tsa)
     monkeypatch.setattr(
         app_module,
