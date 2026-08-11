@@ -49,8 +49,12 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  font-family: var(--font-brand);
   font-size: 15px;
   font-weight: 600;
+  /* Jakarta's default spacing reads loose at logotype size; the icon and the
+     word need to sit as one lockup. */
+  letter-spacing: -0.02em;
   margin-right: 6px;
 }
 .brand-mark {

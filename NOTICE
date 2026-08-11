@@ -33,6 +33,13 @@ Fonts bundled in core/docsigner_core/fonts/ are licensed under the SIL Open
 Font License 1.1. Copyright holders and the full text:
 core/docsigner_core/fonts/LICENSE-OFL.txt
 
+The logotype is set in Plus Jakarta Sans, also under the SIL Open Font
+License 1.1. The one weight we ship, and the licence it travels with, are in
+desktop/frontend/src/fonts/.
+
+  Copyright 2020 The Plus Jakarta Sans Project Authors
+  (https://github.com/tokotype/PlusJakartaSans)
+
 Runtime dependencies are installed, not vendored, and carry their own
 licenses (MIT, BSD, and Apache-2.0). Builds that bundle them -- the desktop
 .app, .dmg and .exe -- ship those notices alongside the binary.
