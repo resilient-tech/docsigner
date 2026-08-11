@@ -116,13 +116,29 @@ mod tests {
         let _ = competing();
     }
 
+    /// Runs the real ps/tasklist and checks the parse, since the format is the
+    /// only thing likely to drift.
+    ///
+    /// Deliberately no assertion that every pid is non-zero: Windows lists the
+    /// System Idle Process as pid 0, which is a real row, not a parse failure.
     #[test]
-    fn own_process_is_excluded() {
-        // The test binary is not named opensigner-host, so this mostly asserts
-        // that a real ps/tasklist run parses without blowing up.
+    fn the_real_process_list_parses() {
         let list = process_list();
         assert!(!list.is_empty(), "expected at least one visible process");
-        assert!(list.iter().all(|(pid, _)| *pid > 0));
+        assert!(
+            list.iter().all(|(_, name)| !name.is_empty()),
+            "a parsed row must carry a name, or the needle match below is dead"
+        );
+        assert!(
+            list.iter().all(|(_, name)| name == &name.to_lowercase()),
+            "names are lowercased so the KNOWN needles can match"
+        );
+        // Our own process must be in there, which is what `competing` filters on.
+        let own = std::process::id();
+        assert!(
+            list.iter().any(|(pid, _)| *pid == own),
+            "the running test process should appear in its own process list"
+        );
     }
 
     #[cfg(not(target_os = "windows"))]
