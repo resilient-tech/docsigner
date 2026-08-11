@@ -71,13 +71,6 @@ fn forget_pin(label: &str) {
     }
 }
 
-#[cfg(test)]
-pub fn clear_pin_cache() {
-    if let Ok(mut cache) = pin_cache().lock() {
-        cache.clear();
-    }
-}
-
 /// Counters that let a caller report WHY a certificate list came back empty.
 #[derive(Debug, Default, Clone)]
 pub struct ScanStats {
@@ -580,23 +573,30 @@ mod tests {
 
     #[test]
     fn pin_cache_round_trips_and_expires_on_forget() {
-        clear_pin_cache();
-        assert_eq!(cached_pin("token-a"), None);
-        remember_pin("token-a", "1234");
-        assert_eq!(cached_pin("token-a").as_deref(), Some("1234"));
-        forget_pin("token-a");
-        assert_eq!(cached_pin("token-a"), None);
-        clear_pin_cache();
+        // Labels are unique per test: the cache is process-global and cargo
+        // runs these on parallel threads, so a shared key (or a clear) makes
+        // them race. CI caught exactly that.
+        assert_eq!(cached_pin("round-trip-token"), None);
+        remember_pin("round-trip-token", "1234");
+        assert_eq!(cached_pin("round-trip-token").as_deref(), Some("1234"));
+        forget_pin("round-trip-token");
+        assert_eq!(cached_pin("round-trip-token"), None);
     }
 
     #[test]
     fn pin_cache_is_keyed_per_token_label() {
-        clear_pin_cache();
-        remember_pin("token-a", "1111");
-        remember_pin("token-b", "2222");
-        assert_eq!(cached_pin("token-a").as_deref(), Some("1111"));
-        assert_eq!(cached_pin("token-b").as_deref(), Some("2222"));
-        clear_pin_cache();
+        remember_pin("keyed-token-a", "1111");
+        remember_pin("keyed-token-b", "2222");
+        assert_eq!(cached_pin("keyed-token-a").as_deref(), Some("1111"));
+        assert_eq!(cached_pin("keyed-token-b").as_deref(), Some("2222"));
+        forget_pin("keyed-token-a");
+        assert_eq!(cached_pin("keyed-token-a"), None);
+        assert_eq!(
+            cached_pin("keyed-token-b").as_deref(),
+            Some("2222"),
+            "forgetting one label must not disturb another"
+        );
+        forget_pin("keyed-token-b");
     }
 
     #[test]
