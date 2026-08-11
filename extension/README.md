@@ -9,6 +9,13 @@ Files: `manifest.json`, `background.js` (native messaging relay), `content.js`
 (page bridge), `consent.html` / `consent.js` (per-site permission prompt),
 `icons/` (generated from `../assets/icon.svg` by `../scripts/make_assets.py`).
 
+The consent prompt also carries the update notice. Nobody can push a new version
+to a hand-installed native host, and this popup is the one moment the extension
+has someone's attention, so it asks the host for `checkUpdate` and shows a line
+with a download link when a newer one exists. It never gates the decision: the
+buttons work before the check returns, and a slow, failed or absent check shows
+nothing at all.
+
 This extension does nothing on its own. The native host must be installed and
 registered with this extension's ID (see [`../host/README.md`](../host/README.md)).
 

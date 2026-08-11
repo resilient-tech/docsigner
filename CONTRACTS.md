@@ -364,6 +364,8 @@ Commands are the native protocol commands plus `ping` (result `{ "installed": tr
 
 First `listCertificates` or `signHash` from an unknown origin triggers the extension's consent prompt. The decision is remembered per origin.
 
+While that prompt is open the extension runs its own `checkUpdate` and, if a newer host exists, shows a line naming the version with a link to it. `downloadUrl` is only ever rendered as a link when the host supplies one, and the host drops any that is not `https://` — the feed is remote data and the consent page runs with extension privileges. The banner never blocks or delays the decision.
+
 ---
 
 ## 4. docsigner.js public API
@@ -405,6 +407,7 @@ All rejections are `DocSignerError` with `.code` from the codes above. Nothing e
 
 ## 7. Changelog
 
+- **2026-08-11 (e)** — no wire change, `protocolVersion` stays 1: the consent prompt shows the update notice. `downloadUrl` is now dropped by the host unless it is `https://`, because the consent page turns it into a link and runs with extension privileges; the version news still shows without one. The popup is 40 px taller to fit the extra line without clipping the buttons.
 - **2026-08-11 (d)** — no wire change, `protocolVersion` stays 1: `checkUpdate` becomes reachable. The command was specified here, implemented and tested, and then blocked by the extension's own command allowlist while `DEFAULT_UPDATE_URL` sat empty — documented and unreachable. The allowlist now forwards it (no consent prompt; it names no user data), docsigner.js gains `checkUpdate()`, and the default feed is the `latest.json` every release publishes. A js test asserts the allowlist covers every command §2 defines, so a command cannot go missing that way again.
 - **2026-08-11 (c)** — narrowing, REST appearance only, `protocolVersion` stays 1: `appearance.font` drops to five hands (`great-vibes`, `caveat`, `nanum-pen-script`, `cookie`, `bad-script`), one per signing personality and matching the OpenSigner Frappe app's options. `dancing-script`, `sacramento`, `allura`, `alex-brush` and `cedarville-cursive` are gone and now raise `DOCUMENT_INVALID` naming the five that remain. An app that wants another hand registers its own directory with `docsigner_core.appearance.register_fonts()`; the desktop app exposes that as an upload. The server registers nothing, so its set stays the five.
 - **2026-08-11 (b)** — additive, REST only: `options.policy` embeds a signature policy identifier (ICP-Brasil AD-RB/RT/RC/RA), needs `POLICY_DIR`. `protocolVersion` stays 1.

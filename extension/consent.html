@@ -11,6 +11,12 @@
       margin: 0;
       padding: 20px;
       color: #1a1a1a;
+      /* Both stated, and color-scheme pinned. Without them the page kept its
+         near-black text on whatever the browser supplied, so on a dark-mode
+         machine the heading came out black-on-black — the one line naming what
+         is being consented to, invisible. */
+      background: #fff;
+      color-scheme: light;
     }
     h1 { font-size: 15px; margin: 0 0 8px; }
     #origin {
@@ -24,6 +30,10 @@
       word-break: break-all;
     }
     p { margin: 0 0 6px; color: #444; }
+    /* Hidden until the check comes back saying there is something to say. */
+    #update { display: none; margin: 12px 0 0; font-size: 13px; color: #7a4c00; }
+    #update.show { display: block; }
+    #update a { color: #7a4c00; }
     .buttons { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
     button {
       font: inherit;
@@ -40,6 +50,7 @@
   <h1>Allow access to your certificates?</h1>
   <span id="origin"></span>
   <p>This site wants to list your signing certificates and ask for signatures. Your PIN stays on this computer and is never shown to the site.</p>
+  <p id="update"></p>
   <div class="buttons">
     <button id="deny">Deny</button>
     <button id="allow">Allow</button>

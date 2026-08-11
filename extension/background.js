@@ -169,7 +169,13 @@ function askConsent(origin) {
   pendingConsent.set(origin, pending);
 
   const url = api.runtime.getURL("consent.html") + "?origin=" + encodeURIComponent(origin);
-  api.windows.create({ url, type: "popup", width: 400, height: 240 }).then(
+  // 280, not the old 240. Measured at this width: the page is 231 px tall once
+  // the update banner shows, 203 without, and Allow/Deny end at 211. This is the
+  // OUTER height, so a title bar takes 30-40 of it — at 240 the buttons landed
+  // right on the edge and would have clipped on Windows. Sized up front rather
+  // than resized when the banner arrives: a popup that grows under the cursor is
+  // worse than a little empty space below the buttons.
+  api.windows.create({ url, type: "popup", width: 400, height: 280 }).then(
     (win) => { pending.windowId = win.id; },
     () => {
       pendingConsent.delete(origin);

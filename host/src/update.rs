@@ -130,8 +130,24 @@ pub fn check_update_at(url: &str) -> UpdateStatus {
         Err(e) => return UpdateStatus::unavailable(format!("could not check for updates: {e}")),
     };
 
+    status_from_feed(&data)
+}
+
+/// Read a fetched feed into a status.
+///
+/// Separate from the fetch so the parsing rules, which are the part with
+/// judgement in them, can be tested without a socket.
+fn status_from_feed(data: &Value) -> UpdateStatus {
     let latest = data.get("version").and_then(Value::as_str).unwrap_or("");
-    let download_url = data.get("url").and_then(Value::as_str).map(str::to_string);
+    // https only. The feed is remote data, and this URL ends up as a clickable
+    // link inside the extension's consent page, so a `javascript:` or `data:`
+    // one would be a way into an extension page from whoever serves the feed.
+    // Dropped rather than rejected: the version news is still worth showing.
+    let download_url = data
+        .get("url")
+        .and_then(Value::as_str)
+        .filter(|url| url.starts_with("https://"))
+        .map(str::to_string);
 
     let mut status = UpdateStatus {
         current_version: crate::VERSION.to_string(),
@@ -237,6 +253,50 @@ mod tests {
     /// what every install checks against. An empty or relative one would make
     /// `checkUpdate` silently answer "no update source configured" forever,
     /// which is exactly the state this feature sat in before it was wired up.
+    /// A feed that names a `javascript:` (or any non-https) download URL must not
+    /// hand it on: the extension's consent page turns `downloadUrl` into a link
+    /// the user clicks, and that page runs with extension privileges.
+    #[test]
+    fn a_download_url_that_is_not_https_is_dropped() {
+        let newer = format!("{}99", crate::VERSION);
+        for hostile in [
+            "javascript:alert(document.cookie)",
+            "data:text/html,<script>alert(1)</script>",
+            "http://example.com/installer.pkg",
+            "file:///etc/passwd",
+            "  https://example.com/ok",
+            "HTTPS://example.com/ok",
+        ] {
+            let status = status_from_feed(&serde_json::json!({
+                "version": newer, "url": hostile,
+            }));
+            assert_eq!(status.download_url, None, "{hostile} should not survive");
+            // The version news still gets through; only the link is withheld.
+            assert!(status.update_available, "{hostile}");
+        }
+    }
+
+    #[test]
+    fn an_https_download_url_is_kept() {
+        let newer = format!("{}99", crate::VERSION);
+        let status = status_from_feed(&serde_json::json!({
+            "version": newer, "url": "https://example.com/releases/latest",
+        }));
+        assert_eq!(
+            status.download_url.as_deref(),
+            Some("https://example.com/releases/latest")
+        );
+        assert!(status.update_available);
+    }
+
+    #[test]
+    fn a_feed_with_no_url_still_reports_the_version() {
+        let newer = format!("{}99", crate::VERSION);
+        let status = status_from_feed(&serde_json::json!({"version": newer}));
+        assert!(status.update_available);
+        assert_eq!(status.download_url, None);
+    }
+
     #[test]
     fn the_default_feed_is_a_real_url() {
         assert!(
