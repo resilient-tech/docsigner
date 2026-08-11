@@ -18,11 +18,37 @@ from signer_core.trust import build_validation_context, make_timestamper, resolv
 from signer_core.xades import sign_xml_with_p12
 
 from .config import Config
+from .models import (
+    ERROR_RESPONSES,
+    BatchCompleted,
+    BatchCompleteRequest,
+    BatchStarted,
+    CompleteRequest,
+    SessionStarted,
+    ServerSideSigned,
+    SignatureCompleted,
+    SignServerSideRequest,
+    StartBatchRequest,
+    StartSignatureRequest,
+    StoredDocument,
+    ValidateRequest,
+    ValidationResult,
+)
 from .store import Expired, FileStore, Missing
 
 config = Config.from_env()
 
-app = FastAPI(title="signer-server")
+app = FastAPI(
+    title="signer-server",
+    version="1.0.0",
+    summary="Sign PDFs, any file (CAdES) and XML (XAdES) with a token or a server-held key.",
+    description=(
+        "The document never leaves this server. A browser carries a 32-byte hash "
+        "out and a signature back, so a 200 MB file signs as fast as a 200 KB one.\n\n"
+        "The protocol is frozen in CONTRACTS.md section 1. Generate a client from "
+        "this document rather than hand-writing one."
+    ),
+)
 # The demo page runs on another port.
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
@@ -50,11 +76,30 @@ async def signer_error_handler(request: Request, exc: SignerError):
     )
 
 
+# Which part of a request Pydantic rejected decides the code, so typing the
+# bodies did not flatten three distinct outcomes into one. A missing
+# `certificate` still reads CERT_INVALID, as it did when app.py parsed the
+# body by hand.
+_FIELD_ERROR_CODES = {
+    "certificate": "CERT_INVALID",
+    "signature": "SIGNATURE_INVALID",
+}
+
+
 @app.exception_handler(RequestValidationError)
 async def request_validation_handler(request: Request, exc: RequestValidationError):
+    code = "DOCUMENT_INVALID"
+    for error in exc.errors():
+        for part in error.get("loc", ()):
+            if part in _FIELD_ERROR_CODES:
+                code = _FIELD_ERROR_CODES[part]
+                break
+        else:
+            continue
+        break
     return JSONResponse(
         status_code=400,
-        content={"error": {"code": "DOCUMENT_INVALID", "message": "malformed request body"}},
+        content={"error": {"code": code, "message": "malformed request body"}},
     )
 
 
@@ -79,8 +124,13 @@ def _expires_at() -> str:
     return _iso_z(datetime.now(timezone.utc) + timedelta(seconds=config.session_ttl_seconds))
 
 
-def _b64_bytes(payload: dict, field: str, error_code: str) -> bytes:
-    value = payload.get(field)
+def _b64_bytes(value, field: str, error_code: str) -> bytes:
+    """Decode a base64 field, reporting the contract's code for that field.
+
+    Content, not presence: the models pin that these arrive as strings, but
+    "is it actually base64" and "is it actually a certificate" stay here, where
+    the right error code is known.
+    """
     if not isinstance(value, str) or not value:
         raise SignerError(error_code, f"'{field}' must be a base64 string")
     try:
@@ -89,13 +139,22 @@ def _b64_bytes(payload: dict, field: str, error_code: str) -> bytes:
         raise SignerError(error_code, f"'{field}' is not valid base64") from None
 
 
-def _document_bytes(payload: dict) -> bytes:
-    pdf_bytes = _b64_bytes(payload, "document", "DOCUMENT_INVALID")
+def _document_bytes(value) -> bytes:
+    pdf_bytes = _b64_bytes(value, "document", "DOCUMENT_INVALID")
     if len(pdf_bytes) > config.max_pdf_bytes:
         raise SignerError(
             "DOCUMENT_INVALID", f"document exceeds the {config.max_pdf_mb} MB limit"
         )
     return pdf_bytes
+
+
+def _options_dict(options) -> dict:
+    """A SigningOptions model as the plain dict signer-core expects.
+
+    exclude_none so an unset field stays absent rather than becoming an
+    explicit null, which is what the hand-parsed body used to produce.
+    """
+    return options.model_dump(exclude_none=True) if options else {}
 
 
 def _signing_validation_context():
@@ -149,11 +208,18 @@ def _pdfa_fields(pdf_bytes: bytes, options: dict) -> dict:
     return fields
 
 
-@app.post("/api/signatures")
-def start_signature(payload: dict = Body(...)):
-    pdf_bytes = _document_bytes(payload)
-    cert_der = _b64_bytes(payload, "certificate", "CERT_INVALID")
-    options = payload.get("options") or {}
+@app.post(
+    "/api/signatures",
+    response_model=SessionStarted,
+    response_model_exclude_none=True,
+    responses=ERROR_RESPONSES,
+    summary="Start a token signing session",
+    tags=["PDF"],
+)
+def start_signature(payload: StartSignatureRequest = Body(...)):
+    pdf_bytes = _document_bytes(payload.document)
+    cert_der = _b64_bytes(payload.certificate, "certificate", "CERT_INVALID")
+    options = _options_dict(payload.options)
 
     state, to_sign_hash, digest_algorithm = SigningSession.start(
         pdf_bytes,
@@ -219,31 +285,42 @@ def _complete_one(session_id: str, signature: bytes) -> dict:
     return {**_stored_document_response(signed_pdf), "audit": _audit_record(state, signed_pdf)}
 
 
-@app.post("/api/signatures/{session_id}/complete")
-def complete_signature(session_id: str, payload: dict = Body(...)):
-    return _complete_one(session_id, _b64_bytes(payload, "signature", "SIGNATURE_INVALID"))
+@app.post(
+    "/api/signatures/{session_id}/complete",
+    response_model=SignatureCompleted,
+    responses=ERROR_RESPONSES,
+    summary="Finish a session with the token's signature",
+    tags=["PDF"],
+)
+def complete_signature(session_id: str, payload: CompleteRequest = Body(...)):
+    return _complete_one(session_id, _b64_bytes(payload.signature, "signature", "SIGNATURE_INVALID"))
 
 
 BATCH_LIMIT = 50
 
 
-def _batch_list(payload: dict, field: str) -> list:
-    items = payload.get(field)
-    if not isinstance(items, list) or not items:
+def _batch_list(items: list, field: str) -> list:
+    if not items:
         raise SignerError("DOCUMENT_INVALID", f"'{field}' must be a non-empty list")
     if len(items) > BATCH_LIMIT:
         raise SignerError("DOCUMENT_INVALID", f"batch is capped at {BATCH_LIMIT} documents")
     return items
 
 
-@app.post("/api/signatures/batch")
-def start_batch(payload: dict = Body(...)):
+@app.post(
+    "/api/signatures/batch",
+    response_model=BatchStarted,
+    responses=ERROR_RESPONSES,
+    summary="Start one session per document, sharing a certificate",
+    tags=["PDF"],
+)
+def start_batch(payload: StartBatchRequest = Body(...)):
     """N documents, one certificate, one options object: the server half of
     bulk signing. The client signs all returned hashes in one signHash call
     (one PIN prompt), then posts them to batch-complete."""
-    documents = _batch_list(payload, "documents")
-    cert_der = _b64_bytes(payload, "certificate", "CERT_INVALID")
-    options = payload.get("options") or {}
+    documents = _batch_list(payload.documents, "documents")
+    cert_der = _b64_bytes(payload.certificate, "certificate", "CERT_INVALID")
+    options = _options_dict(payload.options)
     timestamper = _request_timestamper(options)
     # One shared context: revocation data fetched for the first document is
     # reused for the rest of the batch instead of re-hitting the CA N times.
@@ -253,7 +330,7 @@ def start_batch(payload: dict = Body(...)):
     digest_algorithm = "sha256"
     for index, document in enumerate(documents):
         try:
-            pdf_bytes = _document_bytes({"document": document})
+            pdf_bytes = _document_bytes(document)
             state, to_sign_hash, digest_algorithm = SigningSession.start(
                 pdf_bytes,
                 cert_der,
@@ -277,16 +354,20 @@ def start_batch(payload: dict = Body(...)):
     }
 
 
-@app.post("/api/signatures/batch-complete")
-def complete_batch(payload: dict = Body(...)):
-    items = _batch_list(payload, "items")
+@app.post(
+    "/api/signatures/batch-complete",
+    response_model=BatchCompleted,
+    responses=ERROR_RESPONSES,
+    summary="Finish a batch with the token's signatures",
+    tags=["PDF"],
+)
+def complete_batch(payload: BatchCompleteRequest = Body(...)):
+    items = _batch_list(payload.items, "items")
     results = []
     for index, item in enumerate(items):
         try:
-            if not isinstance(item, dict) or not isinstance(item.get("session_id"), str):
-                raise SignerError("SESSION_NOT_FOUND", "missing session_id")
-            signature = _b64_bytes(item, "signature", "SIGNATURE_INVALID")
-            results.append(_complete_one(item["session_id"], signature))
+            signature = _b64_bytes(item.signature, "signature", "SIGNATURE_INVALID")
+            results.append(_complete_one(item.session_id, signature))
         except SignerError as exc:
             # Fail fast; earlier completions stay stored (see CONTRACTS.md).
             raise SignerError(exc.code, f"item {index}: {exc.message}") from None
@@ -301,7 +382,27 @@ def _sniff_media_type(data: bytes) -> str:
     return "application/pkcs7-signature"  # detached CAdES (.p7s)
 
 
-@app.get("/api/documents/{document_id}")
+@app.get(
+    "/api/documents/{document_id}",
+    # response_class so FastAPI does not also advertise an application/json
+    # 200: this route returns the document's bytes, whatever they are.
+    response_class=Response,
+    responses={
+        200: {
+            "description": "The signed document",
+            "content": {
+                "application/pdf": {"schema": {"type": "string", "format": "binary"}},
+                "application/xml": {"schema": {"type": "string", "format": "binary"}},
+                "application/pkcs7-signature": {
+                    "schema": {"type": "string", "format": "binary"}
+                },
+            },
+        },
+        **ERROR_RESPONSES,
+    },
+    summary="Download a signed document",
+    tags=["Documents"],
+)
 def get_document(document_id: str):
     try:
         data = documents.get(document_id)
@@ -313,12 +414,19 @@ def get_document(document_id: str):
     return Response(content=data, media_type=_sniff_media_type(data))
 
 
-@app.post("/api/sign-server-side")
-def sign_server_side(payload: dict = Body(...)):
+@app.post(
+    "/api/sign-server-side",
+    response_model=ServerSideSigned,
+    response_model_exclude_none=True,
+    responses=ERROR_RESPONSES,
+    summary="Sign a PDF with the server's own key",
+    tags=["PDF"],
+)
+def sign_server_side(payload: SignServerSideRequest = Body(...)):
     if not config.p12_path:
         raise SignerError("INTERNAL", "server-side signing is not configured (set P12_PATH)")
-    pdf_bytes = _document_bytes(payload)
-    options = payload.get("options") or {}
+    pdf_bytes = _document_bytes(payload.document)
+    options = _options_dict(payload.options)
     signed_pdf = sign_with_p12(
         pdf_bytes,
         config.p12_path,
@@ -331,9 +439,15 @@ def sign_server_side(payload: dict = Body(...)):
     return {**_stored_document_response(signed_pdf), **_pdfa_fields(pdf_bytes, options)}
 
 
-@app.post("/api/validate")
-def validate_document(payload: dict = Body(...)):
-    pdf_bytes = _document_bytes(payload)
+@app.post(
+    "/api/validate",
+    response_model=ValidationResult,
+    responses=ERROR_RESPONSES,
+    summary="Check the signatures on a PDF",
+    tags=["PDF"],
+)
+def validate_document(payload: ValidateRequest = Body(...)):
+    pdf_bytes = _document_bytes(payload.document)
     return {
         "signatures": validate(pdf_bytes, config.trust_dir),
         "pdfa": detect_pdfa(pdf_bytes),
@@ -343,11 +457,18 @@ def validate_document(payload: dict = Body(...)):
 # ---- CAdES: detached .p7s over any file (CONTRACTS.md section 1, CAdES) ----
 
 
-@app.post("/api/cades/signatures")
-def start_cades(payload: dict = Body(...)):
-    data = _document_bytes(payload)
-    cert_der = _b64_bytes(payload, "certificate", "CERT_INVALID")
-    options = payload.get("options") or {}
+@app.post(
+    "/api/cades/signatures",
+    response_model=SessionStarted,
+    response_model_exclude_none=True,
+    responses=ERROR_RESPONSES,
+    summary="Start a detached CAdES session over any file",
+    tags=["CAdES"],
+)
+def start_cades(payload: StartSignatureRequest = Body(...)):
+    data = _document_bytes(payload.document)
+    cert_der = _b64_bytes(payload.certificate, "certificate", "CERT_INVALID")
+    options = _options_dict(payload.options)
 
     state, to_sign_hash, digest_algorithm = CadesSession.start(
         data,
@@ -365,9 +486,15 @@ def start_cades(payload: dict = Body(...)):
     }
 
 
-@app.post("/api/cades/signatures/{session_id}/complete")
-def complete_cades(session_id: str, payload: dict = Body(...)):
-    signature = _b64_bytes(payload, "signature", "SIGNATURE_INVALID")
+@app.post(
+    "/api/cades/signatures/{session_id}/complete",
+    response_model=StoredDocument,
+    responses=ERROR_RESPONSES,
+    summary="Finish a CAdES session, producing a .p7s",
+    tags=["CAdES"],
+)
+def complete_cades(session_id: str, payload: CompleteRequest = Body(...)):
+    signature = _b64_bytes(payload.signature, "signature", "SIGNATURE_INVALID")
     try:
         state = CadesState.from_bytes(_load_session(session_id))
     except SignerError:
@@ -382,12 +509,18 @@ def complete_cades(session_id: str, payload: dict = Body(...)):
     return _stored_document_response(p7s)
 
 
-@app.post("/api/cades/sign-server-side")
-def cades_server_side(payload: dict = Body(...)):
+@app.post(
+    "/api/cades/sign-server-side",
+    response_model=StoredDocument,
+    responses=ERROR_RESPONSES,
+    summary="Produce a .p7s with the server's own key",
+    tags=["CAdES"],
+)
+def cades_server_side(payload: SignServerSideRequest = Body(...)):
     if not config.p12_path:
         raise SignerError("INTERNAL", "server-side signing is not configured (set P12_PATH)")
-    data = _document_bytes(payload)
-    options = payload.get("options") or {}
+    data = _document_bytes(payload.document)
+    options = _options_dict(payload.options)
     p7s = sign_cades_with_p12(
         data,
         config.p12_path,
@@ -402,12 +535,18 @@ def cades_server_side(payload: dict = Body(...)):
 # ---- XAdES: enveloped XML signature, server-held key only ----
 
 
-@app.post("/api/xades/sign-server-side")
-def xades_server_side(payload: dict = Body(...)):
+@app.post(
+    "/api/xades/sign-server-side",
+    response_model=StoredDocument,
+    responses=ERROR_RESPONSES,
+    summary="Sign XML in place with the server's own key",
+    tags=["XAdES"],
+)
+def xades_server_side(payload: SignServerSideRequest = Body(...)):
     if not config.p12_path:
         raise SignerError("INTERNAL", "server-side signing is not configured (set P12_PATH)")
-    xml_bytes = _document_bytes(payload)
+    xml_bytes = _document_bytes(payload.document)
     signed_xml = sign_xml_with_p12(
-        xml_bytes, config.p12_path, config.p12_passphrase, payload.get("options") or {}
+        xml_bytes, config.p12_path, config.p12_passphrase, _options_dict(payload.options)
     )
     return _stored_document_response(signed_xml)

@@ -11,3 +11,8 @@
 pytest
 httpx        # FastAPI's TestClient needs it for server/tests
 cryptography # core/tests and desktop/backend/tests build keys and certificates
+
+# Checks server/openapi.json is real OpenAPI, not just well-formed JSON. Other
+# languages generate their clients from that file, so a spec that only looks
+# valid is a broken client somewhere else.
+openapi-spec-validator

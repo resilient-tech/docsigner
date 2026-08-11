@@ -26,7 +26,7 @@ Server-held keys skip steps 1 and 3: one call to `/api/sign-server-side` with a 
 | Folder | What it is |
 |---|---|
 | `core/` | `signer-core`, the Python signing library (pyHanko underneath) |
-| `server/` | `signer-server`, a small FastAPI reference server |
+| `server/` | `signer-server`, the HTTP API, with its OpenAPI document in `server/openapi.json` |
 | `js/` | `docsigner.js`, the page-side library (single file, no deps) |
 | `extension/` | WebExtension (Manifest V3) for Chrome, Edge, Brave, Firefox |
 | `host-rs/` | `docsigner-host`, the native messaging binary that talks to tokens (Rust, ~1 MB) |
@@ -156,6 +156,25 @@ or add it to `~/.config/docsigner/modules.json` (`%APPDATA%\docsigner\modules.js
 ```
 
 `demo/demo.js` is the full worked example, including error handling for every error code in `CONTRACTS.md`.
+
+## Use it from your own backend
+
+Three ways in, depending on what you already run.
+
+**Python.** Skip HTTP entirely: `pip install -e ./core` and call `signer-core` in process. No server, no serialization, and it is what the Frappe app does.
+
+**Anything else.** Run `signer-server` and talk to it over the API frozen in `CONTRACTS.md` section 1. The document never leaves it, so a 200 MB file costs the same round trip as a 200 KB one.
+
+There are no hand-written SDKs, on purpose: one per language is one more thing to drift from the contract. The OpenAPI document is committed at [`server/openapi.json`](server/openapi.json), so generate a client in your own language and it stays current by construction.
+
+```bash
+npx openapi-typescript server/openapi.json -o signer.d.ts
+openapi-generator generate -i server/openapi.json -g go -o ./signer
+```
+
+Every request and response body is typed, and the error codes come through as an enum you can switch on exhaustively. `server/tests/test_openapi.py` fails if the committed document drifts from the routes, or if a body ever goes back to being an untyped blob. Regenerate it with `python scripts/export_openapi.py`.
+
+**A browser.** `js/docsigner.js` above. That one is hand-written because the page-to-extension bridge has no generatable equivalent.
 
 ## Tests
 
