@@ -31,3 +31,18 @@ def test_resolve_tsa_by_name_default_and_unknown():
     with pytest.raises(SignerError) as err:
         resolve_tsa_url("notary-of-nowhere", "http://fallback")
     assert err.value.code == "PROFILE_UNSUPPORTED"
+
+
+def test_timestamper_carries_credentials():
+    """Basic and bearer credentials reach the TSA request; neither is required."""
+    from signer_core.trust import make_timestamper
+
+    assert make_timestamper(None) is None
+    plain = make_timestamper("http://tsa.example")
+    assert plain.auth is None and not plain.headers
+
+    basic = make_timestamper("http://tsa.example", auth=("acct", "pw:with:colons"))
+    assert basic.auth == ("acct", "pw:with:colons")
+
+    bearer = make_timestamper("http://tsa.example", bearer="tok123")
+    assert bearer.headers["Authorization"] == "Bearer tok123"

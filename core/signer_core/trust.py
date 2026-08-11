@@ -86,5 +86,15 @@ def resolve_tsa_url(name, default_url=None):
         ) from None
 
 
-def make_timestamper(tsa_url=None):
-    return HTTPTimeStamper(tsa_url) if tsa_url else None
+def make_timestamper(tsa_url=None, auth=None, bearer=None):
+    """Build the timestamper, optionally authenticated.
+
+    The public TSAs above answer anonymously. Every CCA-licensed Indian TSA
+    (eMudhra, Capricorn, and the rest) sells timestamps per token and answers
+    only with credentials, so both HTTP schemes they use are supported: `auth`
+    is an (user, password) tuple for Basic, `bearer` a token for Authorization.
+    """
+    if not tsa_url:
+        return None
+    headers = {"Authorization": f"Bearer {bearer}"} if bearer else None
+    return HTTPTimeStamper(tsa_url, auth=auth, headers=headers)

@@ -114,9 +114,24 @@ def _stored_document_response(signed_pdf: bytes) -> dict:
     return {"document_id": document_id, "download_url": f"/api/documents/{document_id}"}
 
 
+def _timestamper(tsa_url: str | None):
+    """Build the timestamper, sending TSA credentials to the configured TSA only.
+
+    A request may name any TSA in the registry. Those are public and anonymous,
+    and TSA_AUTH/TSA_BEARER belong to one paid account, so the credentials go
+    out only when the resolved URL is the one they were issued for.
+    """
+    own = bool(tsa_url) and tsa_url == config.tsa_url
+    return make_timestamper(
+        tsa_url,
+        auth=config.tsa_auth if own else None,
+        bearer=config.tsa_bearer if own else None,
+    )
+
+
 def _request_timestamper(options: dict):
     """The TSA for this request: options.tsa (a registry name) or the default."""
-    return make_timestamper(resolve_tsa_url(options.get("tsa"), config.tsa_url))
+    return _timestamper(resolve_tsa_url(options.get("tsa"), config.tsa_url))
 
 
 def _pdfa_fields(pdf_bytes: bytes, options: dict) -> dict:
@@ -194,7 +209,7 @@ def _complete_one(session_id: str, signature: bytes) -> dict:
     signed_pdf = SigningSession.complete(
         state,
         signature,
-        timestamper=make_timestamper(state.tsa_url or config.tsa_url),
+        timestamper=_timestamper(state.tsa_url or config.tsa_url),
         validation_context=_signing_validation_context(),
         strict_ltv=config.strict_ltv,
     )
@@ -354,7 +369,7 @@ def complete_cades(session_id: str, payload: dict = Body(...)):
         raise SignerError("SESSION_NOT_FOUND", "no such session") from None
 
     p7s = CadesSession.complete(
-        state, signature, timestamper=make_timestamper(state.tsa_url or config.tsa_url)
+        state, signature, timestamper=_timestamper(state.tsa_url or config.tsa_url)
     )
     sessions.delete(session_id)
     return _stored_document_response(p7s)

@@ -27,6 +27,17 @@ def load_dotenv(path: str = ".env") -> None:
         os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
+def _split_pair(value: str | None) -> tuple[str, str] | None:
+    """Read TSA_AUTH="user:password" into the tuple requests wants.
+
+    Only the first colon splits, so passwords may contain colons.
+    """
+    if not value:
+        return None
+    user, sep, password = value.partition(":")
+    return (user, password) if sep else None
+
+
 @dataclass(frozen=True)
 class Config:
     session_dir: Path
@@ -36,6 +47,8 @@ class Config:
     p12_path: str | None
     p12_passphrase: str | None
     tsa_url: str | None
+    tsa_auth: tuple[str, str] | None
+    tsa_bearer: str | None
     trust_dir: str | None
     max_pdf_mb: int
     strict_ltv: bool
@@ -56,6 +69,8 @@ class Config:
             p12_path=os.environ.get("P12_PATH"),
             p12_passphrase=os.environ.get("P12_PASSPHRASE"),
             tsa_url=os.environ.get("TSA_URL"),
+            tsa_auth=_split_pair(os.environ.get("TSA_AUTH")),
+            tsa_bearer=os.environ.get("TSA_BEARER"),
             trust_dir=os.environ.get("TRUST_DIR"),
             max_pdf_mb=int(os.environ.get("MAX_PDF_MB", "50")),
             # Keep the CRLs a chain needs so B-LT/B-LTA/CCA read as LTV enabled

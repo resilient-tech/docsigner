@@ -155,7 +155,7 @@ def test_lt_completion_failure_maps_to_500(client, signer, blank_pdf, monkeypatc
     # A TSA and trust anchors are configured, so the session starts; but the
     # self-signed token cert has no path to the configured root, so the
     # revocation-data step at completion must fail.
-    monkeypatch.setattr(app_module, "make_timestamper", lambda url: dummy_tsa)
+    monkeypatch.setattr(app_module, "make_timestamper", lambda url, **creds: dummy_tsa)
     monkeypatch.setattr(
         app_module,
         "_signing_validation_context",
