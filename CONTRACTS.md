@@ -294,15 +294,15 @@ The result always carries `diagnostics` — per-source counters that make an emp
 }
 ```
 
-Reading it: `modulesConfigured: 0` — no PKCS#11 driver found on disk; `modulesLoaded: 0` with modules configured — a driver exists but would not load; `tokens: 0` with a module loaded — driver up, token absent (or held by another process: a vendor utility, another browser's host, or a competing signing host); `tokens > 0` with `pkcs11Certificates: 0` — the token answered but its certificates could not be read, which usually means a single-session driver lock and a replug clears it.
+Reading it: `modulesConfigured: 0` — no PKCS#11 driver found on disk; `modulesLoaded: 0` with modules configured — a driver exists but would not load; `tokens: 0` with a module loaded — driver up, token absent (or held by another process: a vendor utility, another browser's host, or a third-party signing host); `tokens > 0` with `pkcs11Certificates: 0` — the token answered but its certificates could not be read, which usually means a single-session driver lock and a replug clears it.
 
-Two optional fields sharpen the empty-list cases. `stuckModules` (module basenames): drivers that did not answer within the host's per-module scan budget (20 s) and were abandoned — a replug or host restart clears the wedged driver. `competingProcesses` (display names): running programs known to hold a token's single PKCS#11 session (vendor utilities, a competing signing host, another DocSigner host), checked only when the PKCS#11 scan found nothing:
+Two optional fields sharpen the empty-list cases. `stuckModules` (module basenames): drivers that did not answer within the host's per-module scan budget (20 s) and were abandoned — a replug or host restart clears the wedged driver. `competingProcesses` (display names): running programs known to hold a token's single PKCS#11 session (vendor utilities, third-party signing hosts, another DocSigner host), checked only when the PKCS#11 scan found nothing:
 
 ```json
 {
   "diagnostics": {
     "stuckModules": ["wdpkcs.dll"],
-    "competingProcesses": ["a competing signing host"]
+    "competingProcesses": ["a Web PKI signing host"]
   }
 }
 ```

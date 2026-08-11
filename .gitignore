@@ -65,11 +65,5 @@ tags
 # ── OS files ───────────────────────────────────────────────────────
 .DS_Store
 
-# ── Reference material (external repos/installers: studied, not shipped) ──
+# ── Local reference material (not ours, not shipped) ──
 learn/
-VendorPythonClient/
-VendorSamples/
-vendor-extension-dump/
-vendor-setup.pkg
-vendor_extracted/
-vendor_toc.xml

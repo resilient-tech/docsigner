@@ -1,8 +1,9 @@
 //! Programs that can hold a token's single PKCS#11 session.
 //!
 //! ePass/ProxKey-class drivers allow one process on the token at a time; a
-//! vendor utility, another browser's host, or a competing signing host silently makes
-//! every scan come back empty. Naming the culprit beats "replug and retry".
+//! vendor utility, another browser's host, or a third-party signing host
+//! silently makes every scan come back empty. Naming the culprit beats
+//! "replug and retry".
 //! Tolerant like `pcsc_readers`: any failure means "nothing found", never an error.
 //!
 //! ponytail: shells out to ps/tasklist rather than pulling sysinfo, which is
@@ -14,7 +15,7 @@ use std::process::Command;
 /// Lowercase needle in the process name -> what to tell the user to close.
 const KNOWN: &[(&str, &str)] = &[
     ("docsigner-host", "another DocSigner host"),
-    ("webpki", "a competing signing host"),
+    ("webpki", "a Web PKI signing host"),
     ("epass", "the ePass token manager"),
     ("proxkey", "the ProxKey token tool"),
     ("wdtoken", "the WatchData token tool"),

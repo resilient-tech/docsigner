@@ -131,7 +131,7 @@ function renderCertificates() {
   const select = el("cert");
   select.innerHTML = "";
   // Multi-cert tokens (ProxKey ships auth + signing + encryption certs) list
-  // the signing-capable ones first, tagged, like another vendor's key usage filters.
+  // the signing-capable ones first, tagged by key usage.
   const canSign = (cert) =>
     !!(cert.keyUsage && (cert.keyUsage.digitalSignature || cert.keyUsage.nonRepudiation));
   certificates

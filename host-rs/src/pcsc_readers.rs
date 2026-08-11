@@ -1,10 +1,9 @@
 //! Token identification via PC/SC smart-card reader names.
 //!
-//! The trick learned from a vendor host (docs/host.md):
-//! every USB token is a CCID device, and the OS smart-card service reads its
-//! reader name from the USB descriptor with no vendor driver installed. So we
-//! can tell WHICH token is plugged in even when its PKCS#11 driver is missing,
-//! and say "install driver X" instead of showing an empty list.
+//! The trick: every USB token is a CCID device, and the OS smart-card service
+//! reads its reader name from the USB descriptor with no vendor driver
+//! installed. So we can tell WHICH token is plugged in even when its PKCS#11
+//! driver is missing, and say "install driver X" instead of showing an empty list.
 //!
 //! Everything here is tolerant: any failure means "no readers", never an error.
 
@@ -13,7 +12,7 @@ use serde::Serialize;
 use crate::modules;
 
 /// (needles in the lowercased reader name, token model, module-basename hints).
-/// Reader names harvested from a vendor host's maps plus vendor docs.
+/// Reader names harvested from vendor documentation and bench testing.
 const KNOWN: &[(&[&str], &str, &[&str])] = &[
     (
         &["watchdata", "wdind", "proxkey"],

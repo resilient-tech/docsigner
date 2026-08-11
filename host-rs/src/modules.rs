@@ -12,8 +12,7 @@ pub const ENV_VAR: &str = "DOCSIGNER_PKCS11_MODULES";
 
 pub use crate::logging::config_dir;
 
-/// Paths harvested from a reference project (config.go) and a vendor host
-/// (sdscript.js) in addition to our own research; see
+/// Paths harvested from vendor driver documentation and bench testing; see
 /// docs/host.md.
 #[cfg(target_os = "windows")]
 fn well_known() -> Vec<PathBuf> {

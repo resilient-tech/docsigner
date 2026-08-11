@@ -207,7 +207,7 @@ fn sign_hash(params: &Value) -> Result<Value> {
 /// The extension fills this from `sender.origin`, so a page cannot forge it,
 /// and the host checks the shape anyway: this string goes in front of a human
 /// in the PIN dialog, and one carrying a path, a newline or userinfo could
-/// dress itself up as a site it is not. a European project enforces the same rule.
+/// dress itself up as a site it is not.
 ///
 /// An origin is a scheme, a host and an optional port. Anything else is
 /// refused. https always, http only for loopback, which is the secure-context

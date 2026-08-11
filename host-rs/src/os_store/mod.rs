@@ -1,11 +1,10 @@
 //! OS certificate store backend: macOS Keychain and Windows MY store.
 //!
-//! another vendor's host reads the OS store first (docs/host.md): token
-//! drivers usually register the token's certificate there on install, so the
-//! certificate is found with no driver-path configuration, and the private-key
-//! operation routes back through the same OS API, which forwards it to the
-//! token. This module mirrors that. Linux has no universal OS store; there it
-//! lists nothing and PKCS#11 stays the only path.
+//! Worth reading before PKCS#11: token drivers usually register the token's
+//! certificate in the OS store on install, so the certificate is found with no
+//! driver-path configuration at all, and the private-key operation routes back
+//! through the same OS API, which forwards it to the token. Linux has no
+//! universal OS store; there it lists nothing and PKCS#11 stays the only path.
 //!
 //! Same contract shape as `pkcs11`: entries carry `source = "os-store"`,
 //! `moduleName = "os-store"`, `tokenLabel` = store name. The OS shows its own
