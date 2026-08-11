@@ -92,19 +92,35 @@ cargo test
 
 ### What tests cannot cover
 
-**Signing against a real token.** It needs the token holder's PIN, so it is a manual step:
+**Signing against a real token.** It needs the token holder's PIN, so it stays a manual step:
 
 ```bash
 opensigner-host list
 OPENSIGNER_PIN=<your-pin> opensigner-host sign --thumbprint <hex> --hash $(printf 'x' | shasum -a 256 | cut -d' ' -f1 | xxd -r -p | base64)
 ```
 
-Do not script a PIN guess. These tokens lock after a small number of wrong attempts and only the vendor tool can unlock them.
+Never script a PIN guess. These tokens lock after a small number of wrong attempts and only the vendor tool can unlock them, so test the failure paths against SoftHSM, not hardware.
 
-**The Windows store path.** `os_store/windows.rs` compiles only on Windows and has not been run. Treat it as unverified until it is built and exercised on a real Windows box with a token.
+**The Windows store path.** `os_store/windows.rs` compiles only on Windows and has not been run. Treat it as unverified until it is built and exercised on a real Windows box with a token. It is the riskiest file in the crate: raw CNG calls, and `sign` walks the store twice because the enumeration frees the context it stops on.
 
-## Verified against the Python host
+## Verified against real hardware
 
-On a WatchData ProxKey with three Capricorn DSCs, `listCertificates` returns a payload byte-identical to the Python host's: 10886 bytes from each, zero field-level differences across all three certificates, matching `readers` and `diagnostics`. Driven over real Chrome framing it multiplexes request ids, returns `UNSUPPORTED` for unknown commands, and exits cleanly at EOF.
+On a WatchData ProxKey carrying three Capricorn DSCs (2026-08-11, macOS arm64):
 
-Reproduce it with `scripts/compare_hosts.py`.
+**Listing.** `listCertificates` returns a payload byte-identical to the Python host's: 10886 bytes from each, zero field-level differences across all three certificates, matching `readers` and `diagnostics`. Reproduce with `scripts/compare_hosts.py`.
+
+**Signing.** Every signature was checked three ways: it verifies against the certificate's public key, it is byte-identical to the Python host's (PKCS#1 v1.5 is deterministic, so it has to be), and a batch keeps its order.
+
+| Check | Result |
+|---|---|
+| sha256 / sha384 / sha512 | 256-byte signatures, all verify, all identical to Python |
+| Batch of 3 in one login | all verify, signature *i* belongs to digest *i* |
+| Second certificate on the same token | verifies against its own certificate and correctly fails against the other, so `find_private_key` matched by CKA_ID rather than defaulting to the only key |
+| Unknown thumbprint | `CERT_NOT_FOUND` |
+| PIN cache | one supplied PIN served a later request with no PIN and no dialog available |
+
+**End to end.** A PDF signed through `signer-core` with the token via this host validates as `valid: true, intact: true, modifications_ok: true`, and `trusted: true` against the repo's `trust/` anchors up the Capricorn chain to CCA India.
+
+**Through the desktop app.** With `OPENSIGNER_HOST_BIN` pointed at this binary, the desktop backend lists all three certificates and bulk-signs four files on one PIN, every signature verifying.
+
+Not verified: wrong-PIN and locked-PIN handling, which cannot be exercised on hardware without risking a lockout.
