@@ -45,15 +45,20 @@ No dance — the server holds the key, so it signs in one call.
 
 ## Module map (where things live)
 
+In `core/signer_core/`:
+
 - `cms.py` — shared bricks both flows use (parse cert, verify sig, save/load state).
 - `pdf_sign.py` — the token two-step for PDFs.
 - `oneshot.py` — the server-key one-shot for PDFs.
 - `cades.py` / `xades.py` — sign other files / sign XML.
 - `profiles.py` — the signature "levels" (B-B up to CCA) and what each needs.
+- `policies.py` — signature policy identifiers, for PKIs that grade on one.
 - `appearance.py` — the visible stamp (name, date, QR, handwriting).
 - `ltv.py` / `trust.py` — long-term proof and who we trust.
 - `validation.py` — read a signed PDF back and report if it is good.
+- `pdfa.py` — spot a PDF/A input, so signing can keep its conformance.
 - `rendering.py` — turn a page into an image for a placement UI.
+- `errors.py` — the error codes the contract puts on the wire.
 
 ---
 

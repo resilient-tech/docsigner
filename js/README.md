@@ -9,6 +9,9 @@ example.
 `docsigner.js` is an ES module. Import it in a bundler or straight from a
 `<script type="module">` tag; there is nothing to build.
 
+Where this sits in the whole flow, and why the page needs 4 hops to reach a USB
+token: [`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain).
+
 ## Use it
 
 ```html

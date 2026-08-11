@@ -54,19 +54,24 @@ flowchart TD
 
 ## Module map (where things live)
 
-- `main.py` — the stdin/stdout loop the browser launches.
-- `cli.py` — the same commands from a terminal, for testing.
-- `protocol.py` — reads the command, calls the right handler, always replies.
-- `framing.py` — the 4-byte length prefix the browser wire needs.
-- `certs.py` — turn a raw certificate into the JSON fields the contract wants.
-- `pkcs11_ops.py` — the token backend (driver).
-- `os_store.py` — the Keychain / Windows-store backend.
-- `modules.py` — where token drivers live on disk.
-- `pcsc.py` — which token is plugged in (works even with no driver).
-- `procs.py` — what other app might be hogging the token.
-- `pin.py` — the PIN dialog.
-- `notify.py` — the "signed X" desktop popup.
-- `update.py` — the version check.
+In `host-rs/src/`:
+
+- `main.rs` — the stdin/stdout loop the browser launches. With arguments, the CLI instead.
+- `cli.rs` — the same commands from a terminal. Also how the desktop app calls this.
+- `protocol.rs` — reads the command, calls the right handler, always replies.
+- `framing.rs` — the 4-byte length prefix the browser wire needs.
+- `certs.rs` — turn a raw certificate into the JSON fields the contract wants.
+- `pkcs11.rs` — the token backend (driver).
+- `os_store/` — the Keychain (macOS) and MY store (Windows) backend.
+- `modules.rs` — where token drivers live on disk.
+- `pcsc_readers.rs` — which token is plugged in (works even with no driver).
+- `procs.rs` — what other app might be hogging the token.
+- `pin.rs` — the PIN dialog.
+- `notify.rs` — the "signed X" desktop popup.
+- `update.rs` — the version check.
+- `error.rs` — the 8 error codes the contract allows on the wire, and nothing else.
+- `logging.rs` — one timestamped line appended to one file.
+- `testenv.rs` — env vars that don't race, for the tests.
 
 ---
 

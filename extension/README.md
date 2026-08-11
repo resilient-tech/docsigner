@@ -12,6 +12,9 @@ Files: `manifest.json`, `background.js` (native messaging relay), `content.js`
 This extension does nothing on its own. The native host must be installed and
 registered with this extension's ID (see [`../host-rs/README.md`](../host-rs/README.md)).
 
+Why the hops are shaped this way, and what each one is allowed to do:
+[`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain).
+
 ## Load it (development)
 
 Chrome / Edge / Brave: open `chrome://extensions`, turn on Developer mode, click

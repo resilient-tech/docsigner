@@ -1,44 +1,27 @@
 # DocSigner Desktop
 
-A local desktop app to sign PDFs with a visible signature you place yourself. Load a folder, drag the signature where you want it, resize it, and sign every PDF at once. Signed copies land back in the same folder with a suffix. Nothing is uploaded.
+A local app for signing a folder of PDFs at once, with a signature you place
+yourself. Nothing is uploaded. The signing engine is DocSigner's `signer-core`
+(pyHanko underneath), reused in-process. The UI is built in the Sunsama-inspired
+design language.
 
-The signing engine is DocSigner's `signer-core` (pyHanko underneath), reused in-process. The UI is built in the Sunsama-inspired design language.
-
-## What works today
-
-- Choose a folder or specific PDFs with a native picker (or paste a path).
-- Pick which files to sign with checkboxes; the rest are left alone.
-- Place the signature: drag the box to move it, drag a corner to resize. The on-page box shows the signature exactly as it lands (navy ink, scaled to the box), so what you see is what gets signed. One location covers the whole batch.
-- Sign with a DSC token or a server-held key. One login signs the whole batch, so the PIN is asked once for the folder.
-- Appearance the way Acrobat does it: handwritten name (the real bundled fonts), an uploaded signature image, or plain text, with date, reason, location. Saved under a name, editable.
-- Standards: PAdES B-B, B-T (RFC 3161 timestamp), B-LT (LTV, embedded revocation), and CCA-LTV for India. Timestamp authority and trust anchors are configurable.
-- Bulk sign: signed copies are written beside the originals as `name_signed.pdf`.
-- Responsive from tablet to large screens.
-
-## Signing identity
-
-Two kinds, listed together in the certificate menu:
-
-- **DSC token** (the main path). The DocSigner host reads the token's certificates over PKCS#11 and signs them. It runs as a fresh subprocess per call (the model the browser extension uses), which sidesteps the per-process slot state some token drivers cache and would otherwise wedge a long-lived scan. One login signs the whole batch, so the PIN is asked once.
-- **Server-held key** (`.p12`). A self-signed test key is created on first run under `~/.config/docsigner-desktop/signing-keys/` so the app runs without a token; drop your own `.p12` there to use it.
-
-## Fonts
-
-The handwriting faces are the OFL fonts signer-core embeds into the PDF (bundled from core), so the preview matches the output. System fonts are deliberately not offered: the signer can only embed a face it ships, and a preview in a font the signed file cannot use would mislead.
+What it does, the two signing identities, the stamp and the module map:
+[`../docs/desktop.md`](../docs/desktop.md). This file is build and packaging.
 
 ## Development
 
-The venv and Python here are for building and hacking on the app. Whoever *installs*
-the packaged app needs neither (see [Production](#production--build-an-installable-app)).
+The venv and Python here are for building and hacking on the app. Whoever
+*installs* the packaged app needs neither (see [Production](#production--build-an-installable-app)).
 
-Build the frontend once (the window loads the built UI), then run the app on Python 3.12:
+Build the frontend once (the window loads the built UI), then run the app on
+Python 3.12:
 
 ```bash
 cd frontend && pnpm install && pnpm build
 
 cd ../backend
 python3.12 -m venv .venv
-./.venv/bin/pip install -r requirements.txt    # also installs ../../core and ../../host
+./.venv/bin/pip install -r requirements.txt    # also installs ../../core
 ./.venv/bin/python -m docsigner_desktop        # opens the native window
 ```
 
@@ -46,7 +29,7 @@ To iterate on the UI with hot reload, run the backend headless and point Vite at
 
 ```bash
 ./.venv/bin/python -m docsigner_desktop --server   # http://127.0.0.1:8000
-cd ../frontend && pnpm dev                           # proxies /api and /fonts to :8000
+cd ../frontend && pnpm dev                         # proxies /api and /fonts to :8000
 ```
 
 Backend tests (token cache, host seam) need only `cryptography`:
@@ -55,31 +38,36 @@ Backend tests (token cache, host seam) need only `cryptography`:
 ./.venv/bin/python -m pytest tests -q
 ```
 
-`DOCSIGNER_HOST_BIN` points the app at a different signing host. It has to speak
-the same CLI (`list`, `sign`, `version`) and print the same JSON, which is how the
-Rust host in `host-rs/` is run against the real app:
+### Environment
+
+| Variable | Effect |
+|---|---|
+| `DOCSIGNER_HOST_BIN` | point at a different signing host |
+| `DOCSIGNER_TSA_URL` | default timestamp authority (the app's own setting wins) |
+| `DOCSIGNER_TRUST_DIR` | trust anchors for B-LT and the CCA profiles |
+
+The host binary has to speak the same CLI (`list`, `sign`, `version`) and print
+the same JSON. That's how the Rust host is exercised against the real app:
 
 ```bash
 DOCSIGNER_HOST_BIN=../../host-rs/target/release/docsigner-host \
     ./.venv/bin/python -m docsigner_desktop --server
 ```
 
-Timestamp and trust (for B-T and up) default to `DOCSIGNER_TSA_URL` (DigiCert) and
-`DOCSIGNER_TRUST_DIR`. The timestamp authority is also editable in the app for
-timestamped standards; that per-setup value overrides the env default. If the
-DocSigner repo's `trust/` folder sits nearby it is picked up automatically, and the
+If the repo's `trust/` folder sits nearby it's picked up automatically, and the
 packaged app carries its own copy.
 
 ## Production — build an installable app
 
-The packaged app is self-contained: PyInstaller embeds CPython and every dependency
-(FastAPI, pyHanko, pypdfium2, cryptography) and bundles the built frontend and the
-`trust/` anchors. The window is drawn with the OS's native webview, so there is no
-Chromium to ship (Electron would only add ~150 MB for the same result). The user
-double-clicks; no Python, pip, or venv on their machine. The token host runs by
-re-execing the app itself (`--host-cli`), so token signing works with no Python present.
+The packaged app is self-contained: PyInstaller embeds CPython and every
+dependency (FastAPI, pyHanko, pypdfium2, cryptography) and bundles the built
+frontend and the `trust/` anchors. The window is drawn with the OS's native
+webview, so there is no Chromium to ship (Electron would only add ~150 MB for the
+same result). The user double-clicks; no Python, pip, or venv on their machine.
+The token host runs by re-execing the app itself (`--host-cli`), so token signing
+works with no Python present.
 
-Build on the OS you are targeting (PyInstaller does not cross-compile).
+Build on the OS you are targeting. PyInstaller does not cross-compile.
 
 ### macOS — `.app` and `.dmg`
 
@@ -104,58 +92,33 @@ py -3.12 -m venv .venv
 ```
 
 That writes `backend\dist\docsigner-desktop\` with `docsigner-desktop.exe` inside.
-Zip that folder to hand it out, or wrap it in an installer with Inno Setup or NSIS for
-a Start-menu entry. WebView2 (the window runtime) ships with Windows 11 and installs
-automatically on Windows 10. (This path is set up but built only on macOS so far;
-confirm it on a real Windows box.)
+Zip that folder to hand it out, or wrap it in an installer with Inno Setup or NSIS
+for a Start-menu entry. WebView2 (the window runtime) ships with Windows 11 and
+installs automatically on Windows 10. (This path is set up but built only on
+macOS so far; confirm it on a real Windows box.)
 
 ### Linux
 
-The spec produces `backend/dist/docsigner-desktop/` (a folder with the binary). Ship
-the folder, or wrap it as an AppImage for a single portable file. The window needs
-WebKitGTK, present on most desktops.
+The spec produces `backend/dist/docsigner-desktop/` (a folder with the binary).
+Ship the folder, or wrap it as an AppImage for a single portable file. The window
+needs WebKitGTK, present on most desktops.
 
 ### Before you distribute
 
-- **Signing.** `build-macos.sh` ad-hoc signs the app so it launches on Apple Silicon,
-  but ad-hoc is not a Developer ID: macOS Gatekeeper and Windows SmartScreen still warn
-  on a *downloaded* copy. For a smooth install, sign and notarize with an Apple Developer
-  ID on macOS and an Authenticode certificate on Windows. Until then, the recipient
-  clears the warning once. On recent macOS the right-click → Open trick is often gone;
-  use System Settings → Privacy & Security → "Open Anyway", or run
-  `xattr -dr com.apple.quarantine DocSigner.app`.
-- **Token driver.** The DSC vendor's PKCS#11 middleware must be installed on the user's
-  machine, the same as for the Frappe flow or the browser extension. It is hardware
-  middleware and cannot ride inside the app.
-- **App icon.** The icon is `packaging/DocSigner.icns`, generated from the one logo source
-  `assets/icon.svg` by `scripts/make_assets.py` along with the extension and host icons.
-  macOS caches icons hard, so a rebuilt app can still show the old one in Finder or the
-  Dock: `killall Dock Finder`, or move the app once, to refresh.
+- **Signing.** `build-macos.sh` ad-hoc signs the app so it launches on Apple
+  Silicon, but ad-hoc is not a Developer ID: macOS Gatekeeper and Windows
+  SmartScreen still warn on a *downloaded* copy. For a clean install, sign and
+  notarize with an Apple Developer ID on macOS and an Authenticode certificate on
+  Windows. Until then, the recipient clears the warning once. On recent macOS the
+  right-click → Open trick is often gone; use System Settings → Privacy &
+  Security → "Open Anyway", or run `xattr -dr com.apple.quarantine DocSigner.app`.
+- **Token driver.** The DSC vendor's PKCS#11 middleware must be installed on the
+  user's machine, the same as for the Frappe flow or the browser extension. It is
+  hardware middleware and cannot ride inside the app.
+- **App icon.** `packaging/DocSigner.icns`, generated from the one logo source
+  `assets/icon.svg` by `scripts/make_assets.py` along with the extension and host
+  icons. macOS caches icons hard, so a rebuilt app can still show the old one in
+  Finder or the Dock: `killall Dock Finder`, or move the app once, to refresh.
 
-Verify a build by opening it and signing one PDF with the actual token — that pops the
-token PIN, which only the token holder can enter.
-
-## How it signs (one PIN, many files)
-
-For each file the backend prepares the signature and converts your fractional placement into PDF points for that page (so one placement stays correct across page sizes). For a token, every hash is signed in a single PKCS#11 session behind one PIN; for a server key each is signed directly. B-T adds an RFC 3161 timestamp; B-LT and CCA embed revocation gathered against the trust anchors. The signature is embedded and the file written with the suffix.
-
-## Optional: signing from a web page
-
-The desktop app reaches the token directly through the host, so it needs no browser extension. The same host also backs DocSigner's browser extension, so a web-only demo (a page that signs through the extension instead of a local backend) is a clean addition later: the token path underneath is identical.
-
-## Layout
-
-```
-backend/docsigner_desktop/
-  app.py        FastAPI routes
-  signing.py    bulk sign via signer-core; placement -> points; appearance mapping
-  certs.py      signing identities (.p12); self-signed test key on first run
-  store.py      settings + appearance profiles (the "remembered" layer)
-  models.py     request / response shapes
-frontend/src/
-  components/PlacementCanvas.tsx   drag + resize the signature box
-  components/SetupPanel.tsx        certificate, profile, standard, output
-  components/ProfileEditor.tsx     Acrobat-style appearance profiles
-  components/StampPreview.tsx      live stamp preview
-  App.tsx  api.ts  types.ts  tokens.css
-```
+Verify a build by opening it and signing one PDF with the actual token. That pops
+the token PIN, which only the token holder can enter.

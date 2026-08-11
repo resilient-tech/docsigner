@@ -1,7 +1,73 @@
-# Live-test checklist — docsigner Frappe app
+# Release checklist
 
-Run by a human on a real bench with a real token before any tag. Every button
-ships with one real click behind it; no path goes live untouched.
+Run by a human, on a real machine, with a real token, before any tag. Every
+button ships with one real click behind it. The automated suites can't plug in a
+USB token, so this is the part that has to be done by hand.
+
+Two halves. The first is this repo. The second is the Frappe app and moves to
+`docsigner_integration` when that repo is next open.
+
+---
+
+# Part 1 — this repo
+
+Setup: the extension loaded, the host installed and registered with its ID, a DSC
+token plugged in, the server running from the repo root.
+
+## Automated first
+
+- [ ] `pytest core/tests server/tests` green
+- [ ] `PYTHONPATH=desktop/backend pytest desktop/backend/tests` green
+- [ ] `cargo test --manifest-path host-rs/Cargo.toml` green
+- [ ] `cd js && node --test` green
+- [ ] `python scripts/export_openapi.py` leaves `server/openapi.json` unchanged
+
+## Host, from the terminal
+
+- [ ] `docsigner-host list` prints the token's certificates
+- [ ] Token unplugged → the result names the absence, not an empty list
+- [ ] Token plugged in with **no driver installed** → says which token it is and that the driver is missing
+- [ ] `docsigner-host version` prints the version and the log path
+- [ ] The log file at that path shows the scans just run
+
+## Browser flow (demo page)
+
+- [ ] Chrome: pick a PDF, pick a cert, sign, download → Adobe shows a valid signature
+- [ ] Firefox (built copy from `scripts/build_firefox_extension.py`): same run
+- [ ] First visit from a new origin → consent prompt; remembered on the second visit
+- [ ] Wrong PIN → `PIN_INCORRECT` reaches the page with a readable message
+- [ ] Dismiss the PIN dialog → `USER_CANCELLED`, nothing written
+- [ ] Extension disabled → "extension not installed", with a reload hint
+- [ ] Host not installed → the page says so and points at the download
+
+## Profiles
+
+- [ ] B-T signs and the timestamp resolves against `TSA_URL`
+- [ ] B-LT with `TRUST_DIR` set → revocation data embedded, EU DSS validator passes
+- [ ] CCA-LTV → validates against the CCA India root
+- [ ] No revocation source reachable → completion fails loudly, no half-LTV file
+- [ ] Server-side signing with a `.p12` → same output, no extension involved
+
+## Desktop app
+
+- [ ] Load a folder, place the stamp, sign a batch with the token → one PIN for the run
+- [ ] Signed copies land beside the originals, originals untouched
+- [ ] The stamp lands where the box was, on a page size different from the one placed on
+- [ ] Same run with a server-held key
+
+## Per OS
+
+Run the browser flow and the host section on each before a tag.
+
+- [ ] macOS
+- [ ] Windows
+- [ ] Linux
+
+---
+
+# Part 2 — the Frappe app
+
+Belongs in `docsigner_integration`. Kept here until that repo has its own copy.
 
 Setup: bench with ERPNext or vanilla Frappe, app installed, a Print Format on
 ToDo (or Sales Invoice) with *Enable Digital Signature* checked. A DSC token +
@@ -101,7 +167,8 @@ extension + host on the test machine. A test `.p12` uploaded in settings.
 - [ ] Non-System-Manager deletes the signed File attachment → refused with the Signature Log message
 - [ ] Signature Log rows are read-only in desk (no Save, no Delete for admins via UI create)
 
-## Regression (core)
+## Regression
 
-- [ ] `python -m pytest core/ server/` green
 - [ ] `bench --site <site> run-tests --app docsigner` green
+
+(The core and server suites are in Part 1.)

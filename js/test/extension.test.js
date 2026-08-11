@@ -1,5 +1,5 @@
 // Sanity checks for the extension: manifest is valid, scripts parse, icons exist.
-// A real browser test is a manual step, see PLAN.md phase 3.
+// A real browser test is a manual step, see docs/release-checklist.md.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";

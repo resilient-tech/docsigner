@@ -8,15 +8,15 @@ revocation embedding, PDF/A detection, appearance stamps, and validation.
 It is a library, not an app. The server, host, desktop app, and the Frappe
 integration all import it.
 
-New here? Read [`../docs/core.md`](../docs/core.md) first — plain words and a
-flow chart of how signing works.
+New here? Read [`../docs/core.md`](../docs/core.md) first: plain words, a flow
+chart of how signing works, and the module map.
 
 ## Install (development)
 
 From the repo root:
 
 ```bash
-pip install -e ./core
+pip install -e ./core          # add [render] for rendering.py
 ```
 
 ## Use it
@@ -24,7 +24,7 @@ pip install -e ./core
 Two entry points cover most cases. A one-shot signature with a server-held key:
 
 ```python
-from signer_core.server_signer import sign_with_p12
+from signer_core import sign_with_p12
 
 signed = sign_with_p12(pdf_bytes, "key.p12", passphrase, options)
 ```
@@ -32,28 +32,37 @@ signed = sign_with_p12(pdf_bytes, "key.p12", passphrase, options)
 An interrupted session, where the hash is signed elsewhere (a token, a browser):
 
 ```python
-from signer_core.session import SigningSession
+from signer_core import SigningSession
 
 state, to_sign, alg = SigningSession.start(pdf_bytes, cert_der, options)
 signature = sign_somehow(to_sign)          # token, HSM, remote signer
 signed = SigningSession.complete(state, signature)
 ```
 
-The module map: `cms.py` (CMS bricks the signing flows share), `pdf_sign.py`
-(interrupted PDF sessions) and `oneshot.py` (one-shot server-key signing),
-`profiles.py` (PAdES/CAdES profiles), `ltv.py` and `trust.py` and `validation.py`
-(revocation, trust anchors, verification), `appearance.py` (visible stamps),
-`cades.py` / `xades.py` (detached and XML), `pdfa.py` (conformance detection),
-`rendering.py` (page rasterization and placement math, needs the optional
-`[render]` extra). The signing protocol and error codes are frozen in
+`state` is JSON-safe bytes (`state.to_bytes()` / `SessionState.from_bytes(...)`),
+so `start` and `complete` can run in different processes.
+
+Options, profiles and error codes are frozen in
 [`../CONTRACTS.md`](../CONTRACTS.md).
 
 ## Fonts
 
-The handwriting and text faces for appearance stamps ship inside the package
+Five handwriting faces and one text face ship inside the package
 (`signer_core/fonts/`, bundled through `package-data`), so a stamp renders the
 same wherever the library is installed. Details in
 [`signer_core/fonts/README.md`](signer_core/fonts/README.md).
+
+`appearance.font` is a whitelist, because in a server it arrives from an HTTP
+request. An application that owns its own font folder adds to that whitelist:
+
+```python
+from signer_core.appearance import register_fonts
+
+register_fonts("~/.config/myapp/fonts")   # each .ttf/.otf stem becomes a slug
+```
+
+Call it once at startup. The reference server never does, so no request can
+reach a file outside the bundled five.
 
 ## Pack it
 

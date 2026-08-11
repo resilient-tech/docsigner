@@ -74,23 +74,7 @@ Module paths also come from `~/.config/docsigner/modules.json` (`%APPDATA%\docsi
 
 ## Layout
 
-| File | What it does | Ported from |
-|---|---|---|
-| `main.rs` | stdio loop, CLI entry | `main.py` |
-| `cli.rs` | `version` / `list` / `sign` | `cli.py` |
-| `framing.rs` | 4-byte LE + UTF-8 JSON | `framing.py` |
-| `protocol.rs` | dispatch, diagnostics, fallback order | `protocol.py` |
-| `error.rs` | the eight wire codes | `errors.py` |
-| `certs.rs` | DER to contract JSON, DigestInfo, ECDSA DER | `certs.py` |
-| `modules.rs` | driver path discovery | `modules.py` |
-| `pkcs11.rs` | scan, find, login, sign | `pkcs11_ops.py` |
-| `os_store/` | Keychain, Windows MY, Linux stub | `os_store.py` |
-| `pcsc_readers.rs` | reader identification | `pcsc.py` |
-| `procs.rs` | competing token holders | `procs.py` |
-| `pin.rs` | PIN dialogs | `pin.py` |
-| `notify.rs` | desktop notifications | `notify.py` |
-| `update.rs` | version check | `update.py` |
-| `logging.rs` | file log under the config dir | (was inline in `main.py`) |
+Every file, one line each: [`../docs/host.md`](../docs/host.md#module-map-where-things-live).
 
 ## Three behaviours that must not be refactored away
 
@@ -108,7 +92,7 @@ Each came out of live testing against real Indian DSC tokens, and each is marked
 cargo test
 ```
 
-69 tests, no hardware required. They cover the framing edge cases, the RFC 8017 DigestInfo bytes, ECDSA INTEGER padding, error-code mapping, dispatch and parameter validation, and they assert invariants that hold whether or not a token is plugged in.
+No hardware required. They cover the framing edge cases, the RFC 8017 DigestInfo bytes, ECDSA INTEGER padding, error-code mapping, dispatch and parameter validation, and they assert invariants that hold whether or not a token is plugged in.
 
 ### What tests cannot cover
 
@@ -158,7 +142,7 @@ One deliberate wrong-PIN attempt exposed a defect **both hosts shared**: a Watch
 
 `map_login_rv` now reads the vague return values (`CKR_GENERAL_ERROR`, `CKR_FUNCTION_FAILED`) as a rejected PIN when they come from `C_Login` specifically, where the module has already loaded and the certificate has already been found. `map_login_error` consults the token's own `user_pin_locked` flag first, since that is authoritative and a locked PIN must never be retried.
 
-`host/signer_host/pkcs11_ops.py` has the same gap at `_map_error` and the `except p11ex.PinIncorrect` at line 314. It is worth fixing there too while both hosts are in the tree.
+Any future backend has the same trap waiting: a token that rejects a PIN with a generic error code, and a retry path keyed on `PIN_INCORRECT` that then never fires.
 
 **End to end.** A PDF signed through `signer-core` with the token via this host validates as `valid: true, intact: true, modifications_ok: true`, and `trusted: true` against the repo's `trust/` anchors up the Capricorn chain to CCA India.
 
