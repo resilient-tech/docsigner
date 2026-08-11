@@ -180,20 +180,69 @@ fn sign_hash(params: &Value) -> Result<Value> {
         Some(_) => return Err(HostError::internal("pin must be a string when present")),
     };
 
+    let origin = clean_origin(params.get("origin"))?;
+
     let digests: Vec<Vec<u8>> = hashes
         .iter()
         .map(|h| certs::base64_decode(h.as_str().unwrap_or("")))
         .collect::<Result<_>>()?;
 
-    let signatures = sign_with_fallback(thumbprint, &digests, alg, pin.as_deref())?;
+    let signatures =
+        sign_with_fallback(thumbprint, &digests, alg, pin.as_deref(), origin.as_deref())?;
 
     notify::notify(
         "OpenSigner",
-        &notify::signed_message(signatures.len(), thumbprint),
+        &notify::signed_message(signatures.len(), thumbprint, origin.as_deref()),
     );
     Ok(json!({
         "signatures": signatures.iter().map(|s| certs::base64_encode(s)).collect::<Vec<_>>()
     }))
+}
+
+/// Validate the origin the browser attached to a signHash request.
+///
+/// The extension fills this from `sender.origin`, so a page cannot forge it,
+/// and the host checks the shape anyway: this string goes in front of a human
+/// in the PIN dialog, and one carrying a path, a newline or userinfo could
+/// dress itself up as a site it is not. a European project enforces the same rule.
+///
+/// An origin is a scheme, a host and an optional port. Anything else is
+/// refused. https always, http only for loopback, which is the secure-context
+/// carve-out browsers themselves make and where the demo server runs.
+///
+/// ponytail: hand-rolled rather than pulling a URL crate in for a shape check.
+fn clean_origin(value: Option<&Value>) -> Result<Option<String>> {
+    let origin = match value {
+        None | Some(Value::Null) => return Ok(None),
+        Some(Value::String(text)) if text.is_empty() => return Ok(None),
+        Some(Value::String(text)) => text.as_str(),
+        Some(_) => return Err(HostError::internal("origin must be a string when present")),
+    };
+
+    let reject = || HostError::internal(format!("{origin:?} is not a bare web origin"));
+    let (scheme, rest) = origin.split_once("://").ok_or_else(&reject)?;
+    if rest.is_empty()
+        || rest.contains(['/', '?', '#', '@', '\\', ' '])
+        || rest.chars().any(char::is_control)
+    {
+        return Err(reject());
+    }
+
+    // Split a trailing :port off, leaving IPv6 brackets and bare hosts alone.
+    let host = rest.rsplit_once(':').map_or(rest, |(host, port)| {
+        if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) {
+            host
+        } else {
+            rest
+        }
+    });
+    let loopback = matches!(host, "localhost" | "127.0.0.1" | "[::1]");
+
+    match scheme {
+        "https" => Ok(Some(origin.to_string())),
+        "http" if loopback => Ok(Some(origin.to_string())),
+        _ => Err(reject()),
+    }
 }
 
 /// Tokens first, then the OS store.
@@ -209,12 +258,14 @@ fn sign_with_fallback(
     digests: &[Vec<u8>],
     alg: DigestAlg,
     pin: Option<&str>,
+    origin: Option<&str>,
 ) -> Result<Vec<Vec<u8>>> {
     let supplied = pin.map(str::to_string);
+    let asking = origin.map(str::to_string);
     let provider = move |label: &str| -> Result<String> {
         match &supplied {
             Some(pin) => Ok(pin.clone()),
-            None => pin::get_pin(label),
+            None => pin::get_pin(label, asking.as_deref()),
         }
     };
 
@@ -297,6 +348,45 @@ mod tests {
     fn non_object_params_are_rejected() {
         let response = dispatch(json!({"id": "1", "command": "signHash", "params": "nope"}));
         assert_eq!(response["error"]["code"], "INTERNAL");
+    }
+
+    #[test]
+    fn an_origin_must_be_a_bare_web_origin() {
+        for good in [
+            "https://portal.example.com",
+            "https://portal.example.com:8443",
+            "http://localhost:8080",
+            "http://127.0.0.1",
+            "http://[::1]:8080",
+        ] {
+            assert_eq!(
+                clean_origin(Some(&json!(good))).unwrap(),
+                Some(good.to_string()),
+                "{good} should be accepted"
+            );
+        }
+
+        // Absent, null and empty all mean "the caller is not a browser".
+        for absent in [None, Some(json!(null)), Some(json!(""))] {
+            assert_eq!(clean_origin(absent.as_ref()).unwrap(), None);
+        }
+
+        for bad in [
+            json!("https://evil.example.com/path"),
+            json!("https://evil.example.com/"),
+            json!("https://user:pw@evil.example.com"),
+            json!("https://evil.example.com?q=1"),
+            json!("https://evil.example.com#f"),
+            json!("https://bank.example.com\nreally: evil.example.com"),
+            json!("http://not-loopback.example.com"),
+            json!("file:///etc/passwd"),
+            json!("javascript:alert(1)"),
+            json!("portal.example.com"),
+            json!("https://"),
+            json!(42),
+        ] {
+            assert!(clean_origin(Some(&bad)).is_err(), "{bad} should be refused");
+        }
     }
 
     #[test]

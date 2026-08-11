@@ -315,9 +315,12 @@ Params:
   "thumbprint": "<hex>",
   "hashes": ["<b64 digest>", "..."],
   "digestAlgorithm": "sha256",
-  "pin": "optional"
+  "pin": "optional",
+  "origin": "https://portal.example.com"
 }
 ```
+
+`origin` is the site asking for the signature. The extension sets it from `sender.origin` and overwrites anything the page put there, so a page cannot name an origin other than its own. The host validates the shape (scheme, host, optional port, nothing else; `https` always, `http` only for `localhost`, `127.0.0.1` and `[::1]`) and refuses the request with `INTERNAL` otherwise. It then names the origin in the PIN dialog and in the desktop notification. Absent or empty means no browser asked: the CLI and the desktop app leave it out and get the plain prompt.
 
 By default the host prompts for the PIN itself (native dialog) and all hashes in one call are signed within one PKCS#11 session: one PIN prompt for a batch. After a successful login the host caches the PIN in memory (per token label, 10 minutes), so further signHash calls on the same connection sign without re-prompting; the cache dies with the host process, which lives as long as the extension's native messaging port. A stale cached PIN (changed on the token) triggers one fresh prompt, never a blind retry. A page may instead supply `pin`, which the host uses directly with no dialog — the integrating page then owns PIN security (an XSS on that page can capture it) and gives up the per-signature consent dialog. An empty or absent `pin` means prompt as usual; a wrong one fails with `PIN_INCORRECT`. For `os-store` certificates the OS shows its own unlock/PIN dialog and `pin` is ignored; the wire shape is identical.
 
@@ -389,6 +392,7 @@ All rejections are `OpenSignerError` with `.code` from the codes above. Nothing 
 
 ## 7. Changelog
 
+- **2026-08-11** — additive, `protocolVersion` stays 1: `signHash` params accept `origin`. The extension fills it from `sender.origin`; the host validates it and shows it in the PIN dialog and the signing notification. Callers that omit it get the previous prompt wording.
 - **2026-07-15** — additive, REST appearance only, `protocolVersion` stays 1: `appearance.style` accepts `image`, composing the uploaded `image` (base64 or `data:` URL) as the mark above the detail lines. Existing `handwritten`/text/`image`-background behavior unchanged.
 - **2026-07-10** — no wire change: the desk sign dialog now uses §1 `options.reason` and §2 page-supplied `pin`; Signature Log and the verify page carry the reason. `protocolVersion` stays 1.
 - **2026-07-08 (b)** — additive, `protocolVersion` stays 1: `listCertificates` result carries `diagnostics` (scan counters, plus optional `stuckModules` and `competingProcesses`); `getVersion` gains `logPath`; signer-js `listCertificates()` now resolves to `{certificates, readers, diagnostics}` instead of a bare array.

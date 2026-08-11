@@ -100,8 +100,9 @@ async function handleRequest(message, sender) {
       return errorReply("UNSUPPORTED", `Unknown command "${command}"`);
     }
 
+    let origin = null;
     if (CONSENT_COMMANDS.has(command)) {
-      const origin = senderOrigin(sender);
+      origin = senderOrigin(sender);
       if (!origin) {
         return errorReply("ORIGIN_DENIED", "Request origin could not be determined");
       }
@@ -111,7 +112,11 @@ async function handleRequest(message, sender) {
     }
 
     const id = message.requestId || crypto.randomUUID();
-    const reply = await callNative({ id, command, params });
+    // The host puts this in the PIN dialog. It comes from sender.origin, the
+    // browser's word, and overwrites anything the page put in params: a page
+    // naming its own origin could name someone else's.
+    const nativeParams = origin ? { ...params, origin } : params;
+    const reply = await callNative({ id, command, params: nativeParams });
     if (reply && reply.error) {
       return { error: { code: reply.error.code || "INTERNAL", message: reply.error.message || "" } };
     }

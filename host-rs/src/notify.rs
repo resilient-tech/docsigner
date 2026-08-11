@@ -32,10 +32,17 @@ fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
 }
 
 /// The message signHash sends: how many hashes, and which certificate.
-pub fn signed_message(count: usize, thumbprint: &str) -> String {
+pub fn signed_message(count: usize, thumbprint: &str, origin: Option<&str>) -> String {
     let plural = if count == 1 { "" } else { "es" };
     let short: String = thumbprint.chars().take(12).collect();
-    format!("Signed {count} hash{plural} with certificate {short}…")
+    // The origin matters most here: with a cached PIN no dialog appears, so
+    // this notification is the only thing naming who asked.
+    match origin {
+        Some(origin) => {
+            format!("Signed {count} hash{plural} for {origin} with certificate {short}…")
+        }
+        None => format!("Signed {count} hash{plural} with certificate {short}…"),
+    }
 }
 
 #[cfg(test)]
@@ -45,11 +52,11 @@ mod tests {
     #[test]
     fn message_matches_the_python_wording() {
         assert_eq!(
-            signed_message(1, "937a32bb607f8c1a7705fbf4026d8dcf51cad839"),
+            signed_message(1, "937a32bb607f8c1a7705fbf4026d8dcf51cad839", None),
             "Signed 1 hash with certificate 937a32bb607f…"
         );
         assert_eq!(
-            signed_message(4, "937a32bb607f8c1a7705fbf4026d8dcf51cad839"),
+            signed_message(4, "937a32bb607f8c1a7705fbf4026d8dcf51cad839", None),
             "Signed 4 hashes with certificate 937a32bb607f…"
         );
     }
@@ -57,10 +64,13 @@ mod tests {
     #[test]
     fn a_short_thumbprint_does_not_panic() {
         assert_eq!(
-            signed_message(1, "ab"),
+            signed_message(1, "ab", None),
             "Signed 1 hash with certificate ab…"
         );
-        assert_eq!(signed_message(1, ""), "Signed 1 hash with certificate …");
+        assert_eq!(
+            signed_message(1, "", None),
+            "Signed 1 hash with certificate …"
+        );
     }
 
     #[test]
