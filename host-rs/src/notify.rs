@@ -75,8 +75,18 @@ mod tests {
 
     #[test]
     fn the_disable_switch_is_honoured() {
-        std::env::set_var(ENV_DISABLE, "1");
+        let _guard = crate::testenv::EnvGuard::new().set(ENV_DISABLE, "1");
+        // No assertion available on "nothing appeared"; what this pins is that
+        // the disabled path returns rather than reaching the OS notifier, which
+        // in CI has no session bus and would otherwise log on every call.
         notify("OpenSigner", "should not appear");
-        std::env::remove_var(ENV_DISABLE);
+    }
+
+    /// Notifying with the switch unset must still not fail the signature: CI
+    /// and headless boxes have no notification daemon at all.
+    #[test]
+    fn notifying_without_a_daemon_is_harmless() {
+        let _guard = crate::testenv::EnvGuard::new().unset(ENV_DISABLE);
+        notify("OpenSigner", "best effort only");
     }
 }

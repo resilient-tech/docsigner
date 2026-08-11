@@ -420,14 +420,17 @@ mod tests {
 
     #[test]
     fn check_update_is_soft_with_no_source_configured() {
-        let previous = std::env::var_os(update::ENV_URL);
-        std::env::remove_var(update::ENV_URL);
+        let _guard = crate::testenv::EnvGuard::new().unset(update::ENV_URL);
         let response = dispatch(json!({"id": "1", "command": "checkUpdate"}));
-        if let Some(v) = previous {
-            std::env::set_var(update::ENV_URL, v);
-        }
         assert!(response.get("error").is_none(), "a check must never error");
         assert_eq!(response["result"]["updateAvailable"], false);
+        // The contract says every field is present even when nothing is set.
+        for key in ["currentVersion", "latestVersion", "downloadUrl", "message"] {
+            assert!(
+                response["result"].get(key).is_some(),
+                "checkUpdate must always carry {key}"
+            );
+        }
     }
 
     /// Shape assertions that hold whether or not a token is plugged in.

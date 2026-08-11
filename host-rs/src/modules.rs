@@ -324,18 +324,16 @@ mod tests {
         }
     }
 
-    /// Set or clear an env var for the duration of a closure. Tests that touch
-    /// process env run in the same process, so restore what was there.
-    fn temp_env(key: &str, value: Option<&str>, body: impl FnOnce()) {
-        let previous = std::env::var_os(key);
-        match value {
-            Some(v) => std::env::set_var(key, v),
-            None => std::env::remove_var(key),
-        }
+    /// Set or clear an env var for the duration of a closure.
+    ///
+    /// Delegates to `testenv::EnvGuard` so this serialises against every other
+    /// env-touching test in the crate, not just the ones in this module.
+    fn temp_env(key: &'static str, value: Option<&str>, body: impl FnOnce()) {
+        let guard = crate::testenv::EnvGuard::new();
+        let _guard = match value {
+            Some(v) => guard.set(key, v),
+            None => guard.unset(key),
+        };
         body();
-        match previous {
-            Some(v) => std::env::set_var(key, v),
-            None => std::env::remove_var(key),
-        }
     }
 }

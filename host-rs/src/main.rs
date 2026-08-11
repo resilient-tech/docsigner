@@ -16,6 +16,8 @@ mod pin;
 mod pkcs11;
 mod procs;
 mod protocol;
+#[cfg(test)]
+mod testenv;
 mod update;
 
 use std::io;

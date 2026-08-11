@@ -76,12 +76,24 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
     a > b
 }
 
-/// Return the current/latest versions and whether an update is available.
-pub fn check_update() -> UpdateStatus {
-    let url = std::env::var(ENV_URL)
+/// The feed to check: the env var, else the compiled-in default.
+fn configured_url() -> String {
+    std::env::var(ENV_URL)
         .ok()
         .filter(|u| !u.is_empty())
-        .unwrap_or_else(|| DEFAULT_UPDATE_URL.to_string());
+        .unwrap_or_else(|| DEFAULT_UPDATE_URL.to_string())
+}
+
+/// Return the current/latest versions and whether an update is available.
+pub fn check_update() -> UpdateStatus {
+    check_update_at(&configured_url())
+}
+
+/// The check itself, against an explicit feed.
+///
+/// Separate from `check_update` so tests can drive every branch without
+/// touching process environment, which cargo's parallel test threads share.
+pub fn check_update_at(url: &str) -> UpdateStatus {
     if url.is_empty() {
         return UpdateStatus::unavailable("no update source configured");
     }
@@ -90,7 +102,7 @@ pub fn check_update() -> UpdateStatus {
         .timeout_connect(TIMEOUT)
         .timeout_read(TIMEOUT)
         .build()
-        .get(&url)
+        .get(url)
         .call();
 
     // Network, HTTP and JSON failures are all soft. Both error types collapse to
@@ -149,33 +161,59 @@ mod tests {
 
     #[test]
     fn an_unset_source_is_reported_not_an_error() {
-        let previous = std::env::var_os(ENV_URL);
-        std::env::remove_var(ENV_URL);
-        let status = check_update();
-        if let Some(v) = previous {
-            std::env::set_var(ENV_URL, v);
-        }
+        let status = check_update_at("");
         assert!(!status.update_available);
         assert_eq!(status.message, "no update source configured");
         assert_eq!(status.latest_version, None);
+        assert_eq!(status.download_url, None);
         assert_eq!(status.current_version, crate::VERSION);
     }
 
     #[test]
     fn an_unreachable_source_is_soft() {
-        let previous = std::env::var_os(ENV_URL);
         // Reserved TEST-NET-1 address: never routes, fails fast.
-        std::env::set_var(ENV_URL, "http://192.0.2.1:9/latest.json");
-        let status = check_update();
-        match previous {
-            Some(v) => std::env::set_var(ENV_URL, v),
-            None => std::env::remove_var(ENV_URL),
-        }
+        let status = check_update_at("http://192.0.2.1:9/latest.json");
         assert!(!status.update_available);
         assert!(
             status.message.starts_with("could not check for updates"),
             "{}",
             status.message
         );
+        assert_eq!(status.latest_version, None);
+    }
+
+    #[test]
+    fn a_malformed_url_is_soft_too() {
+        let status = check_update_at("not-a-url");
+        assert!(!status.update_available);
+        assert!(status.message.starts_with("could not check for updates"));
+    }
+
+    /// The env plumbing, which is the only part that needs process state.
+    ///
+    /// Each guard gets its own scope: EnvGuard holds a non-reentrant lock, so
+    /// two live at once in one scope would deadlock rather than fail.
+    #[test]
+    fn the_env_var_selects_the_feed() {
+        use crate::testenv::EnvGuard;
+
+        {
+            let _guard = EnvGuard::new().unset(ENV_URL);
+            assert_eq!(configured_url(), DEFAULT_UPDATE_URL);
+        }
+        {
+            let _guard = EnvGuard::new().set(ENV_URL, "https://example.invalid/latest.json");
+            assert_eq!(configured_url(), "https://example.invalid/latest.json");
+        }
+    }
+
+    /// An empty variable means "unset", not "fetch the empty URL".
+    #[test]
+    fn an_empty_env_var_falls_back_to_the_default() {
+        use crate::testenv::EnvGuard;
+
+        let _guard = EnvGuard::new().set(ENV_URL, "");
+        assert_eq!(configured_url(), DEFAULT_UPDATE_URL);
+        assert_eq!(check_update().message, "no update source configured");
     }
 }

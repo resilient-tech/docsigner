@@ -207,18 +207,32 @@ fn wait_with_timeout(mut child: std::process::Child) -> Option<std::process::Out
 mod tests {
     use super::*;
 
+    use crate::testenv::EnvGuard;
+
     /// The env var is the path the CLI, the desktop app and the tests use, and
     /// the only one that can be exercised without a human at the screen.
     #[test]
     fn env_var_short_circuits_the_dialog() {
-        let previous = std::env::var_os(ENV_VAR);
-        std::env::set_var(ENV_VAR, "123456");
-        let pin = get_pin("WD PROXKey", None);
-        match previous {
-            Some(v) => std::env::set_var(ENV_VAR, v),
-            None => std::env::remove_var(ENV_VAR),
+        let _guard = EnvGuard::new().set(ENV_VAR, "123456");
+        assert_eq!(get_pin("WD PROXKey", None).unwrap(), "123456");
+        // The origin makes no difference to the env path.
+        assert_eq!(
+            get_pin("WD PROXKey", Some("https://example.com")).unwrap(),
+            "123456"
+        );
+    }
+
+    /// An empty variable is not a PIN. Treating it as one would send an empty
+    /// string to the token and burn an attempt.
+    #[test]
+    fn an_empty_env_var_does_not_count_as_a_pin() {
+        let _guard = EnvGuard::new().set(ENV_VAR, "");
+        // No dialog tool answers in a test process, so this cancels rather
+        // than hanging; what matters is that "" was not returned as the PIN.
+        match get_pin("WD PROXKey", None) {
+            Ok(pin) => assert!(!pin.is_empty(), "an empty PIN must never be returned"),
+            Err(e) => assert_eq!(e.code, crate::error::Code::UserCancelled),
         }
-        assert_eq!(pin.unwrap(), "123456");
     }
 
     #[test]
