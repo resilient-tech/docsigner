@@ -5,7 +5,7 @@ import Section from '../components/Section.astro';
 import DownloadCard from '../components/DownloadCard.astro';
 import Callout from '../components/Callout.astro';
 import { getRelease } from '../lib/release';
-import { brew, stores, REPO_PUBLIC } from '../config';
+import { brew, stores, WINDOWS_SIGNED } from '../config';
 
 const release = await getRelease();
 const find = (key: string) => release.artifacts.find((a) => a.key === key);
@@ -31,10 +31,11 @@ const anyStore = Object.values(stores).some((s) => s.ready);
     {
       !release.published && (
         <div class="notice">
-          <Callout tone="warn" title="Nothing here is downloadable yet">
+          <Callout tone="warn" title="The first release is not out yet">
             <p>
-              Every build below exists and is tested in CI on all three operating
-              systems. The release waits on the repository going public.
+              Every build below is assembled and tested in CI on all three
+              operating systems. This page fills itself in from the release feed,
+              so the versions and checksums appear the moment one is published.
             </p>
           </Callout>
         </div>
@@ -63,11 +64,12 @@ const anyStore = Object.values(stores).some((s) => s.ready);
         </div>
       ) : (
         <div class="stack">
-          <Callout tone="note" title="Not in the stores yet">
+          <Callout tone="note" title="Store listings are still in review">
             <p>
-              Both submissions take weeks once the repository is public, because
-              native messaging draws extra review. Until then the extension loads
-              unpacked from the zip, which is a developer path.
+              An extension that talks to a native app draws extra scrutiny, and
+              both stores take weeks over it. Until they clear, install the zip
+              directly: unpack it and load it from your browser’s extensions
+              page. The build is the same one the stores will serve.
             </p>
           </Callout>
           <div class="grid">
@@ -147,12 +149,12 @@ const anyStore = Object.values(stores).some((s) => s.ready);
       </Callout>
 
       {
-        !REPO_PUBLIC && (
+        !WINDOWS_SIGNED && (
           <Callout tone="warn" title="Windows will warn you">
             <p>
-              The Windows binary is not code-signed yet, so SmartScreen shows
-              “Unknown publisher”. The free certificate needs the repository
-              public first.
+              The Windows binaries are not code-signed yet, so SmartScreen shows
+              “Unknown publisher” the first time you run one. Check the SHA-256
+              above against the file and it is the build we published.
             </p>
           </Callout>
         )
@@ -178,10 +180,6 @@ const anyStore = Object.values(stores).some((s) => s.ready);
           />
         ))}
       </div>
-      <p class="aside">
-        The Windows and Linux desktop builds are published from CI and have not
-        been opened on a real machine yet.
-      </p>
     </div>
   </Section>
 </Layout>

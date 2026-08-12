@@ -9,8 +9,15 @@
 
 export const REPO = 'https://github.com/resilient-tech/docsigner';
 
-/** Set to true the day the repo goes public. Gates every repo-derived link. */
-export const REPO_PUBLIC = false;
+/**
+ * Everything ships together, so the repo-derived links are live: docs, source,
+ * issues, releases, the licence.
+ *
+ * The extension stores are NOT covered by this. Store review takes weeks after
+ * submission and there are no listing URLs to link to yet, so `stores` stays
+ * unready and /download offers the release zips until those come through.
+ */
+export const REPO_PUBLIC = true;
 
 export const links = {
   repo: REPO,
@@ -55,9 +62,18 @@ export const stores = {
   firefox: { url: '', ready: false, label: 'Firefox Add-ons' },
 } as const;
 
-/** Homebrew tap. Waits on the repo going public, same as the tap repo (D6). */
+/**
+ * Whether the Windows binaries are code-signed. Independent of REPO_PUBLIC on
+ * purpose: the free SignPath certificate is a third-party review that takes its
+ * own weeks, and until it lands SmartScreen says "Unknown publisher". A signing
+ * product should be the first to tell you that, not the last, so /download warns
+ * while this is false. One flip when the certificate arrives.
+ */
+export const WINDOWS_SIGNED = false;
+
+/** Homebrew tap. Ships with the release. */
 export const brew = {
-  ready: false,
+  ready: true,
   tap: 'resilient-tech/tap',
   host: 'brew install resilient-tech/tap/docsigner-host',
   desktop: 'brew install --cask resilient-tech/tap/docsigner',
@@ -76,6 +92,7 @@ export const pages = {
   '/verify': false, // phase 3
   '/demo': false, // phase 4
   '/standards': true,
+  '/what-you-need': true,
   '/components': false, // phase 5
   '/security': false, // phase 5
   '/compare': false, // phase 5

@@ -5,7 +5,6 @@ import Button from '../components/Button.astro';
 import HeroSheet from '../components/HeroSheet.astro';
 import ProductShot from '../components/ProductShot.astro';
 import Wire from '../components/Wire.astro';
-import { REPO_PUBLIC } from '../config';
 
 /*
  * The hero is the only full-height section. Everything under it is as short as
@@ -87,14 +86,10 @@ const profiles = [
         dependencies.
       </p>
       <Button href="/download" variant="primary" size="lg">Download</Button>
-      {
-        !REPO_PUBLIC && (
-          <p class="note">
-            Not published yet. The first release is waiting on the repository
-            going public, and the extension has not been submitted to the stores.
-          </p>
-        )
-      }
+      <p class="note">
+        Free, and it stays free. If something does not work, the issue tracker is
+        the same one we use.
+      </p>
     </div>
   </Section>
 </Layout>

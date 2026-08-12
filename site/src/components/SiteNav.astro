@@ -3,10 +3,12 @@ import { Icon } from 'astro-icon/components';
 import ThemeToggle from './ThemeToggle.astro';
 import { links, REPO_PUBLIC, ready } from '../config';
 
+/* The reader's questions, in the order they ask them: how does this work, which
+   parts do I need, what does the signature claim, give me it. */
 const nav = [
   { href: '/how-it-works', label: 'How it works' },
+  { href: '/what-you-need', label: 'What you need' },
   { href: '/standards', label: 'Standards' },
-  { href: '/verify', label: 'Verify a PDF' },
   { href: '/download', label: 'Download' },
 ].filter((l) => ready(l.href));
 

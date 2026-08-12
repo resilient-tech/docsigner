@@ -2,179 +2,201 @@
 import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
-import FlowStrip from '../components/FlowStrip.astro';
 import Button from '../components/Button.astro';
-import SurfaceCard from '../components/SurfaceCard.astro';
-import { links, REPO_PUBLIC } from '../config';
+import SigningSteps from '../components/SigningSteps.astro';
+import { links } from '../config';
 
-const steps = [
+/*
+ * One question per section: what happens in what order (the stepper), why a
+ * helper app has to exist at all (the hop chain), and the two design decisions
+ * people ask about.
+ *
+ * The "which of these am I" cards moved to /what-you-need. Choosing parts and
+ * understanding the mechanism are different jobs and were fighting each other
+ * on one page.
+ */
+
+const hops = [
   {
-    n: '1',
-    title: 'The page asks who you are',
-    body: 'It requests your certificates. The extension passes that to the helper, which reads them off the token.',
+    name: 'The content script',
+    body: 'Runs inside the page’s own world, so it is the only thing the page can reach. It relays messages and does nothing else.',
   },
   {
-    n: '2',
-    title: 'Your server prepares the signature',
-    body: 'You post the PDF and the chosen certificate to your own server. It builds the signature inside the file and returns a 32-byte hash. The PDF stays put.',
+    name: 'The background worker',
+    body: 'The only browser context allowed to open native messaging. It also holds the consent decision and the command allowlist.',
   },
   {
-    n: '3',
-    title: 'The token signs the hash',
-    body: 'The PIN prompt happens in a native dialog on your machine, so the PIN never reaches the browser or the network.',
+    name: 'The helper process',
+    body: 'Separate because a browser cannot load a PKCS#11 driver. It speaks JSON over stdin and stdout, which is all native messaging is.',
   },
   {
-    n: '4',
-    title: 'Your server finishes the file',
-    body: 'You post the signature back. The server embeds it, adds any timestamp and revocation data, and gives you a download link.',
+    name: 'The token',
+    body: 'Holds the private key and will not hand it over. It will sign 32 bytes if you know the PIN. That refusal is the reason for the whole two-step.',
   },
 ];
 ---
 
 <Layout
   title="How it works"
-  description="Why signing with a USB token from a web page needs a helper app installed, and how DocSigner moves a 32-byte hash instead of your document."
+  description="The four steps of signing a PDF with a USB token from a web page, why the page has to sit between your server and the token, and why a helper app is unavoidable."
 >
   <Hero
-    kicker="Architecture"
-    title="Why a website needs a helper app"
-    lede="A browser cannot talk to a USB token. Four hops get it there."
+    kicker="How it works"
+    title="Your page sits in the middle"
+    lede="A server cannot reach a USB port. A token cannot reach the internet. The page is the only one that can talk to both, which is what the four steps are about."
   />
 
   <Section ground="deep">
-    <FlowStrip />
+    <SigningSteps />
   </Section>
 
   <Section
-    ground="bg"
-    label="Three ways in"
-    title="Where it runs, and who holds the key"
-    lede="One signing engine underneath all three."
+    label="The hop chain"
+    title="Why a helper app has to exist"
+    lede="A web page cannot open a USB device, and no browser will ever let it. Four hops get the question to the hardware, and each one is there for a reason."
   >
-    <div class="surfaces">
-      <SurfaceCard
-        icon="lucide:globe"
-        who="For developers"
-        title="In your own web app"
-        body="Your page asks the token for a signature and your server does the rest. One JS file with no dependencies, and an HTTP API behind it."
-        href={REPO_PUBLIC ? links.docsJs : undefined}
-        cta="Read the page library docs"
-        pending="Docs open up when the repository goes public."
-      />
-      <SurfaceCard
-        icon="lucide:folder-check"
-        who="For anyone with a DSC"
-        title="A folder of PDFs, right now"
-        body="A desktop app that signs every PDF in a folder against your token, one PIN for the run. No server, no browser, no extension."
-        href="/download"
-        cta="Download the app"
-      />
-      <SurfaceCard
-        icon="lucide:receipt"
-        who="For ERPNext admins"
-        title="Invoices, on submit"
-        body="A Frappe app: sign print formats from the desk, bulk-sign with one PIN, auto-sign on submit, and QR-verifiable e-copies."
-        href={REPO_PUBLIC ? links.roadmap : undefined}
-        cta="Read the plan"
-        pending="Ships in its own repo, docsigner_integration."
-      />
-    </div>
-  </Section>
-
-  <Section ground="deep" label="Token signing" title="The two-step">
-    <ol class="steps">
+    <ol class="hops">
       {
-        steps.map((s) => (
+        hops.map((h, i) => (
           <li>
-            <span class="n">{s.n}</span>
+            <span class="hop-n">{i + 1}</span>
             <div>
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
+              <h3>{h.name}</h3>
+              <p>{h.body}</p>
             </div>
           </li>
         ))
       }
     </ol>
 
-    <p class="foot-note">
-      The 32 bytes are the digest of the CMS signed attributes, which contains the
-      digest of the document. No document bytes reach the token or the browser.
+    <p class="aside">
+      This is the part every competing product buries, and it is the part that
+      decides whether an install works. Nothing in the chain asks you to trust a
+      localhost certificate, edit <code>/etc/hosts</code>, or run Java.
     </p>
+  </Section>
 
-    {
-      REPO_PUBLIC && (
-        <div class="more">
-          <Button
-            href={links.docsArchitecture}
-            variant="default"
-            size="md"
-            trailing="lucide:external-link"
-          >
-            The long version, with the reasoning
-          </Button>
-        </div>
-      )
-    }
+  <Section ground="deep" label="Two decisions" title="Questions people ask">
+    <div class="decisions">
+      <div>
+        <h3>Sessions are files on disk</h3>
+        <p>
+          Starting a signature writes the pending state and the prepared PDF to a
+          directory with a random id and a time limit. Finishing reads it back.
+          No database, no Redis. Mount the directory somewhere shared if you run
+          more than one server.
+        </p>
+      </div>
+      <div>
+        <h3>Consent per origin, not a licence key</h3>
+        <p>
+          The first time a site asks for your certificates, the extension asks
+          you, and it remembers the answer for that origin. There is no key to
+          buy and no server of ours to check in with.
+        </p>
+      </div>
+    </div>
+
+    <div class="more">
+      <Button
+        href={links.docsArchitecture}
+        variant="default"
+        size="md"
+        trailing="lucide:external-link"
+      >
+        The architecture, in full
+      </Button>
+      <Button
+        href={links.contracts}
+        variant="ghost"
+        size="md"
+        trailing="lucide:external-link"
+      >
+        Every wire format, frozen
+      </Button>
+    </div>
+  </Section>
+
+  <Section centre>
+    <div class="end">
+      <h2>Which parts do I need?</h2>
+      <p class="lede">Four jobs, and most take fewer pieces than you would think.</p>
+      <Button href="/what-you-need" variant="primary" size="lg">What you need</Button>
+    </div>
   </Section>
 </Layout>
 
 <style>
-  .surfaces {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: var(--s-4);
-    align-items: stretch;
-  }
-
-  .steps {
+  .hops {
     list-style: none;
     padding: 0;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--s-6);
-    max-width: 660px;
   }
 
-  .steps li {
+  .hops li {
     display: flex;
-    gap: var(--s-4);
+    gap: var(--s-3);
   }
 
-  .n {
+  .hop-n {
     flex: none;
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     border-radius: var(--pill);
     background: var(--green-soft);
     color: var(--green-ink);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     font-weight: var(--fw-semibold);
     font-variant-numeric: tabular-nums;
   }
 
-  .steps h3 {
+  .hops h3,
+  .decisions h3 {
     font-size: var(--text-body);
     letter-spacing: 0;
     margin-bottom: var(--s-1);
   }
 
-  .steps p {
+  .hops p,
+  .decisions p {
     font-size: var(--text-sm);
     color: var(--dim);
   }
 
-  .foot-note {
-    max-width: 660px;
+  .aside {
     margin-top: var(--s-8);
     padding-left: var(--s-4);
-    border-left: 2px solid var(--border);
+    border-left: var(--accent-bar) solid var(--green);
     font-size: var(--text-sm);
-    color: var(--faint);
+    color: var(--text);
+    max-width: var(--measure);
+  }
+
+  .decisions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--s-8);
+  }
+
+  .decisions p {
+    max-width: 48ch;
   }
 
   .more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
     margin-top: var(--s-8);
+  }
+
+  .end {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-4);
   }
 </style>

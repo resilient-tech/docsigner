@@ -5,6 +5,11 @@ import { Icon } from 'astro-icon/components';
  * The demo page, in browser chrome. Reproduced from demo/index.html rather than
  * screenshotted, so it takes the theme and stays sharp at any width.
  *
+ * Every string here is one the real page produces. The certificate line follows
+ * demo/demo.js:167 exactly -- "CN (signing, <token label>, valid until <date>)"
+ * -- and the "1 found" state is demo/demo.js:172. A product shot that invents
+ * its own UI copy is a drawing of a product, not a picture of one.
+ *
  * The prototype rendered this at a natural 660px and then scaled it to fit,
  * which is why its desktop-app shot ended up at 0.42 on a phone with the file
  * list at about 5px. Nothing is scaled here: the form is a single column, so it
@@ -40,11 +45,11 @@ import { Icon } from 'astro-icon/components';
         <div class="card">
           <p class="card-head label">
             <span class="step">2</span> Certificate
-            <span class="state">1 listed</span>
+            <span class="state">1 found</span>
           </p>
           <div class="field">
             <span class="flabel">Signer</span>
-            <span class="control">Smit Vora · token · to 2027-04-11</span>
+            <span class="control">Smit Vora (signing, ePass2003, valid until 2027-04-11)</span>
           </div>
         </div>
 
@@ -60,7 +65,7 @@ import { Icon } from 'astro-icon/components';
       </div>
     </div>
   </div>
-  <figcaption class="label">Your page, your server. The extension only carries the hash.</figcaption>
+  <figcaption class="label">The demo page from <code>demo/</code>, rebuilt in HTML so it takes the theme. Same fields, same profile names.</figcaption>
 </figure>
 
 <style>
