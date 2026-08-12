@@ -176,13 +176,30 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# Never on Windows. strip is a binutils tool for ELF/Mach-O, and PyInstaller runs
+# it over every collected binary when this is on. windows-latest carries
+# Git-for-Windows' strip.exe on PATH, so it does run there, and it rewrites the PE
+# images into something the Windows loader will not map: python312.dll,
+# libssl-3.dll, libcrypto-3.dll, and even Microsoft's own ucrtbase.dll and
+# VCRUNTIME140.dll came out of the 0.2.0 build with the three GNU-strip flags set
+# (Characteristics 0x222E against 0x2022 on the untouched originals). The app then
+# died on launch with
+#
+#   Failed to load Python DLL '...\_internal\python312.dll'.
+#   LoadLibrary: Invalid access to memory location.
+#
+# which is ERROR_NOACCESS: the loader failing to map a damaged image. PyInstaller's
+# own docs advise against --strip on Windows. Symbols there live in separate .pdb
+# files anyway, so stripping buys nothing.
+STRIP = sys.platform != "win32"
+
 exe = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
     name="docsigner-desktop",
     debug=False,
-    strip=True,
+    strip=STRIP,
     upx=False,
     console=False,  # GUI app; pywebview owns the window
 )
@@ -190,7 +207,7 @@ exe = EXE(
 # strip: symbols only, and build-macos.sh signs after this, so the signature is
 # applied to the stripped binaries. upx stays off: it breaks macOS code signing
 # and trips Windows antivirus.
-coll = COLLECT(exe, a.binaries, a.datas, strip=True, upx=False, name="docsigner-desktop")
+coll = COLLECT(exe, a.binaries, a.datas, strip=STRIP, upx=False, name="docsigner-desktop")
 
 app = BUNDLE(
     coll,

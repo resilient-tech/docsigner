@@ -390,6 +390,21 @@ jobs:
             echo "::error::the sidecar host is not in the bundle"; exit 1; }
           find dist/docsigner-desktop -maxdepth 1 -name 'docsigner-desktop*'
 
+      # 0.2.0 shipped with strip=True in the spec, and strip rewrote every PE in the
+      # bundle into an image the Windows loader would not map, so the app died on
+      # launch with "LoadLibrary: Invalid access to memory location". PyInstaller
+      # copies the interpreter DLL verbatim, so a byte compare against the one the
+      # build ran on catches that whole class of damage if it ever comes back.
+      - name: Check the bundled Python DLL was not rewritten
+        if: runner.os == 'Windows'
+        working-directory: desktop/backend
+        shell: bash
+        run: |
+          dll=$(basename "$(ls dist/docsigner-desktop/_internal/python3??.dll)")
+          cmp "$(${{ matrix.python }} -c 'import sys; print(sys.base_prefix)')/$dll" \
+              "dist/docsigner-desktop/_internal/$dll" || {
+            echo "::error::$dll was rewritten during packaging (strip?); the bundle will not launch"; exit 1; }
+
       - name: Stage the artifact
         shell: bash
         run: |
