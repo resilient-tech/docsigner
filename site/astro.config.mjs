@@ -15,6 +15,9 @@ export default defineConfig({
   },
 
   vite: {
+    // The stylesheet entry imports design/, which sits above this project root.
+    // The build resolves it either way; the dev server refuses without this.
+    server: { fs: { allow: ['..'] } },
     build: {
       // Astro inlines small component <script> bundles into the HTML, and the
       // CSP in public/_headers sets script-src 'self' with no 'unsafe-inline',

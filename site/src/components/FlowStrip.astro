@@ -65,15 +65,15 @@ const hops = [
     flex-direction: column;
     gap: var(--s-1);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: var(--hairline);
     border-radius: var(--radius);
     padding: var(--s-4);
     min-width: 0;
   }
 
   li :global(svg) {
-    width: 20px;
-    height: 20px;
+    width: var(--icon-md);
+    height: var(--icon-md);
     color: var(--green-ink);
     margin-bottom: var(--s-2);
   }
@@ -95,9 +95,7 @@ const hops = [
   }
 
   .arrow :global(svg) {
-    width: 18px;
-    height: 18px;
-    color: var(--border-strong);
+    color: var(--faint);
     margin: 0;
   }
 
@@ -112,7 +110,7 @@ const hops = [
     font-weight: var(--fw-semibold);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 768px) {
     ol {
       flex-direction: column;
       align-items: stretch;

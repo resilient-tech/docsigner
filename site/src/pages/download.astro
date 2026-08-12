@@ -31,7 +31,7 @@ const anyStore = Object.values(stores).some((s) => s.ready);
     {
       !release.published && (
         <div class="notice">
-          <Callout tone="warning" title="Nothing here is downloadable yet">
+          <Callout tone="warn" title="Nothing here is downloadable yet">
             <p>
               Every build below exists and is tested in CI on all three operating
               systems. The release waits on the repository going public.
@@ -135,7 +135,7 @@ const anyStore = Object.values(stores).some((s) => s.ready);
 
       {
         !REPO_PUBLIC && (
-          <Callout tone="warning" title="Windows will warn you">
+          <Callout tone="warn" title="Windows will warn you">
             <p>
               The Windows binary is not code-signed yet, so SmartScreen shows
               “Unknown publisher”. The free certificate needs the repository

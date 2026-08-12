@@ -1,0 +1,21 @@
+/*
+ * The site's one stylesheet entry. Everything in it lives in design/, which is
+ * the single source for all four consumers (site, desktop app, extension, demo)
+ * -- see design/design-system.md.
+ *
+ * There used to be a hand-copy of tokens.css and base.css here. It had already
+ * drifted from the app's copy, which is the reason design/ exists.
+ *
+ * Reaching up out of site/ works: Cloudflare Pages checks out the whole repo
+ * and then builds with site/ as its root, so ../../../design is on disk. The
+ * dev server needs vite.server.fs.allow in astro.config.mjs to serve it.
+ *
+ * Load order is fixed: tokens, then faces, then element defaults.
+ */
+
+@import '../../../design/tokens.css';
+@import '../../../design/fonts.css';
+@import '../../../design/base.css';
+
+/* design/fonts.css ships the site's own paths already (/fonts/…, absolute from
+   public/), so there is nothing to override here. */

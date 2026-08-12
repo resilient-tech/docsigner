@@ -21,12 +21,12 @@ pnpm preview      # serves dist/
 pnpm check        # types and unused props
 ```
 
-After touching `src/styles/tokens.css`, re-run the contrast check. It takes both
-token files, since the colour map is shared with the desktop app:
+The design system is in `design/`, not here. After touching a colour there, run
+its two gates from the repo root (CI runs both):
 
 ```bash
-python3 scripts/check_contrast.py \
-    src/styles/tokens.css ../desktop/frontend/src/tokens.css
+python3 design/check-contrast.py
+python3 design/sync.py --check
 ```
 
 `pnpm install` needs `pnpm-workspace.yaml`'s `allowBuilds` block. pnpm 10 and
@@ -57,11 +57,16 @@ version in `host/Cargo.toml` with an honest "not released yet" notice.
 ```
 public/          served as-is: _headers, theme.js, fonts, favicon, security.txt
 src/config.ts    every outbound URL and which pages exist
-src/styles/      tokens.css (the theme), base.css
+src/styles/      site.css -- three @import lines pointing at design/
 src/lib/         release.ts (build-time), platform.ts (browser)
 src/components/  Astro components, styles scoped to each
 src/pages/       one file per route
 ```
+
+There is no local copy of the tokens. `src/styles/site.css` imports
+`design/tokens.css`, `design/fonts.css` and `design/base.css`, which is why
+`astro.config.mjs` sets `vite.server.fs.allow` -- the dev server has to serve a
+file above the project root. The Pages build resolves it without that.
 
 Two conventions worth knowing before you edit:
 
@@ -76,21 +81,24 @@ mobile menu is a checkbox. Adding a `<script>` should feel like a decision.
 
 ## Colour
 
-Two rules, and the check enforces the second one:
+`design/design-system.md` is the authority. Two rules catch most mistakes:
 
 **`color:` takes an `-ink` token, `background:` takes the base.** A hue chosen to
-sit on `#131314` does not automatically carry text on `#ffffff`: brand mint is
-7.9:1 on the dark grounds and 1.9:1 on the light ones. So `--green` is a fill and
-`--green-ink` is the text and any line that means something. On dark they mostly
-coincide, which is why the split is easy to forget.
+sit on `#131314` does not carry text on warm stock: brand mint is 7.9:1 on the
+dark grounds and 1.9:1 on the paper ones. On dark the two mostly coincide, which
+is why the split is easy to forget.
 
-**A tint counts as a ground.** `--green-soft` under `--green-ink` was 4.27:1 while
-every flat ground passed.
+**A `-soft` tint is a ground**, and the tightest one in the system.
+
+If a component looks wrong in paper, it is almost always using a fill token where
+it wanted `-ink`.
 
 ## Theme
 
-Dark by default. `data-theme="light"` on `<html>` swaps the colour map in
-`tokens.css` and nothing else.
+Dark by default. The light scheme is called **paper**: `data-theme="paper"` on
+`<html>` swaps the colour map and nothing else. `design/tokens.css` also matches
+`data-theme="light"` as an alias, so a value stored by an older build still
+resolves.
 
 `public/theme.js` sets it before the first paint and is loaded blocking in
 `<head>`. It's a file rather than an inline script because the CSP in

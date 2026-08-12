@@ -1,33 +1,34 @@
 ---
 import { Icon } from 'astro-icon/components';
+
+/* No aria-pressed. The accessible name already says what the click does, and
+   the two together read as "switch to dark theme, toggle button, not pressed".
+   Square control, so it sits at --control-sq and lines up with a sm button. */
 ---
 
-<!-- No aria-pressed. The accessible name already says what the click does, and
-     the two together read as "switch to dark theme, toggle button, not pressed",
-     which is noise. A changing name is the clearer of the two patterns here. -->
 <button type="button" class="toggle">
   <Icon name="lucide:sun" class="sun" aria-hidden="true" />
   <Icon name="lucide:moon" class="moon" aria-hidden="true" />
-  <span class="sr">Switch to light theme</span>
+  <span class="sr-only">Switch to paper theme</span>
 </button>
 
 <script>
   const btn = document.querySelector<HTMLButtonElement>('.toggle');
-  const label = btn?.querySelector('.sr');
+  const label = btn?.querySelector('.sr-only');
 
   const sync = () => {
-    const light = document.documentElement.dataset.theme === 'light';
-    const next = light ? 'dark' : 'light';
+    const paper = document.documentElement.dataset.theme === 'paper';
+    const next = paper ? 'dark' : 'paper';
     if (label) label.textContent = `Switch to ${next} theme`;
     btn?.setAttribute('title', `Switch to ${next} theme`);
   };
 
   btn?.addEventListener('click', () => {
-    const light = document.documentElement.dataset.theme === 'light';
-    if (light) delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = 'light';
+    const paper = document.documentElement.dataset.theme === 'paper';
+    if (paper) delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = 'paper';
     try {
-      localStorage.setItem('theme', light ? 'dark' : 'light');
+      localStorage.setItem('theme', paper ? 'dark' : 'paper');
     } catch {
       /* Nothing to do. The choice holds for this page either way. */
     }
@@ -41,14 +42,11 @@ import { Icon } from 'astro-icon/components';
   .toggle {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    background: transparent;
-    border: 1px solid var(--border);
+    width: var(--control-sq);
+    height: var(--control-sq);
+    border: var(--hairline);
     border-radius: var(--radius-sm);
     color: var(--dim);
-    cursor: pointer;
     transition:
       color var(--dur-fast) var(--ease),
       background var(--dur-fast) var(--ease),
@@ -61,32 +59,21 @@ import { Icon } from 'astro-icon/components';
     color: var(--text);
   }
 
-  /* Both glyphs sit in the same cell. The one drawn is the theme you'd get by
-     clicking, which is what the label says too: sun on dark, moon on light. */
+  /* Both glyphs share the cell. The one drawn is the theme a click would give
+     you, which is what the accessible name says too. */
   .toggle :global(svg) {
     grid-area: 1 / 1;
-    width: 17px;
-    height: 17px;
   }
 
   .toggle :global(.moon) {
     display: none;
   }
 
-  :global(:root[data-theme='light']) .toggle :global(.moon) {
+  :global(:root[data-theme='paper']) .toggle :global(.moon) {
     display: block;
   }
 
-  :global(:root[data-theme='light']) .toggle :global(.sun) {
+  :global(:root[data-theme='paper']) .toggle :global(.sun) {
     display: none;
-  }
-
-  .sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 </style>

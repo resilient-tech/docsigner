@@ -2,9 +2,9 @@
 import { Icon } from 'astro-icon/components';
 
 interface Props {
-  /* note: context. warning: something will bite you. limit: a stated ceiling,
-     used on /demo and /verify where the honest answer is "this can't". */
-  tone?: 'note' | 'warning' | 'limit';
+  /* The three tones the system has. note is context; warn is something that
+     will bite you; fail is a check that did not pass. */
+  tone?: 'note' | 'warn' | 'fail';
   title?: string;
 }
 
@@ -12,8 +12,8 @@ const { tone = 'note', title } = Astro.props;
 
 const icons = {
   note: 'lucide:info',
-  warning: 'lucide:triangle-alert',
-  limit: 'lucide:circle-slash',
+  warn: 'lucide:triangle-alert',
+  fail: 'lucide:circle-x',
 } as const;
 ---
 
@@ -26,11 +26,13 @@ const icons = {
 </aside>
 
 <style>
+  /* Hairline all round, the accent bar on the leading edge in the tone's -ink.
+     Ground is --surface for note, the tone's own tint otherwise. */
   .callout {
     display: flex;
     gap: var(--s-3);
-    border: 1px solid var(--border);
-    border-left-width: 3px;
+    border: var(--hairline);
+    border-left-width: var(--accent-bar);
     border-radius: var(--radius-sm);
     padding: var(--s-4);
     font-size: var(--text-sm);
@@ -39,9 +41,6 @@ const icons = {
   }
 
   .callout :global(svg) {
-    width: 17px;
-    height: 17px;
-    flex: none;
     margin-top: 2px;
   }
 
@@ -56,26 +55,25 @@ const icons = {
   }
 
   .note {
-    border-left-color: var(--action);
+    border-left-color: var(--action-ink);
   }
   .note :global(svg) {
     color: var(--action-ink);
   }
 
-  /* -ink for the rule and the glyph, since both carry the meaning. The tint
-     behind them stays the brand amber. */
-  .warning {
+  .warn {
     border-left-color: var(--amber-ink);
     background: var(--amber-soft);
   }
-  .warning :global(svg) {
+  .warn :global(svg) {
     color: var(--amber-ink);
   }
 
-  .limit {
-    border-left-color: var(--border-strong);
+  .fail {
+    border-left-color: var(--red-ink);
+    background: var(--red-soft);
   }
-  .limit :global(svg) {
-    color: var(--faint);
+  .fail :global(svg) {
+    color: var(--red-ink);
   }
 </style>

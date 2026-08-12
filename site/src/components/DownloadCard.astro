@@ -57,22 +57,22 @@ const verify = artifact?.sha256
         </Button>
         <dl class="facts">
           <div>
-            <dt>Version</dt>
+            <dt class="label">Version</dt>
             <dd>{version}</dd>
           </div>
           {size && (
             <div>
-              <dt>Size</dt>
+              <dt class="label">Size</dt>
               <dd>{size}</dd>
             </div>
           )}
           <div class="wide">
-            <dt>File</dt>
+            <dt class="label">File</dt>
             <dd class="mono">{artifact.filename}</dd>
           </div>
           {artifact.sha256 && (
             <div class="wide">
-              <dt>SHA-256</dt>
+              <dt class="label">SHA-256</dt>
               <dd class="mono hash">{artifact.sha256}</dd>
             </div>
           )}
@@ -94,34 +94,36 @@ const verify = artifact?.sha256
 </article>
 
 <style>
+  /* Card: --surface, one hairline, --radius, --s-6, and no shadow in either
+     theme. A thing that needs a shadow is a menu or a modal. */
   .dl {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--s-4);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: var(--hairline);
     border-radius: var(--radius);
     padding: var(--s-6);
   }
 
-  /* Lit by the platform script when it matches. -ink so the edge itself clears
-     3:1 on the light theme, where brand mint manages 1.9:1. */
+  /* Selected: one edge. This used to be a border colour plus a 1px ring
+     drawing the same line twice. */
   .dl[data-match='true'] {
-    border-color: var(--green-ink);
-    box-shadow: 0 0 0 1px var(--green-ink);
+    border-color: var(--green);
   }
 
+  /* Chip: pill, hairline, --text-xs semibold, and the active tone's ink on its
+     own tint. */
   .match {
     display: none;
     font-size: var(--text-xs);
     font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
     color: var(--green-ink);
     background: var(--green-soft);
+    border: 1px solid var(--green);
     border-radius: var(--pill);
-    padding: 2px var(--s-2);
+    padding: 1px var(--s-2);
     margin-left: var(--s-2);
     white-space: nowrap;
     vertical-align: middle;
@@ -138,11 +140,10 @@ const verify = artifact?.sha256
   }
 
   header :global(svg) {
-    width: 20px;
-    height: 20px;
+    width: var(--icon-md);
+    height: var(--icon-md);
     color: var(--green-ink);
-    flex: none;
-    margin-top: 3px;
+    margin-top: 2px;
   }
 
   h3 {
@@ -169,13 +170,6 @@ const verify = artifact?.sha256
     grid-column: 1 / -1;
   }
 
-  dt {
-    color: var(--faint);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-label);
-    font-weight: var(--fw-semibold);
-  }
-
   dd {
     margin: var(--s-1) 0 0;
     color: var(--dim);
@@ -195,7 +189,7 @@ const verify = artifact?.sha256
     font-family: var(--mono);
     font-size: var(--text-sm);
     background: var(--well);
-    border: 1px solid var(--border);
+    border: var(--hairline);
     border-radius: var(--radius-card);
     padding: var(--s-2) var(--s-3);
     width: 100%;
@@ -226,7 +220,7 @@ const verify = artifact?.sha256
     margin-top: var(--s-2);
     padding: var(--s-3);
     background: var(--well);
-    border: 1px solid var(--border);
+    border: var(--hairline);
     border-radius: var(--radius-card);
     font-size: var(--text-xs);
     line-height: 1.6;

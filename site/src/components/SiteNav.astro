@@ -22,9 +22,13 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 
 <header class="nav">
   <div class="wrap inner">
+    <!-- .brand and .brand-mark come from design/base.css: the gradient tile is
+         the logo, drawn rather than fetched, so it takes the theme's tokens. -->
     <a href="/" class="brand">
-      <img src="/favicon.svg" alt="" width="24" height="24" />
-      <span>DocSigner</span>
+      <span class="brand-mark" aria-hidden="true">
+        <Icon name="lucide:signature" />
+      </span>
+      DocSigner
     </a>
 
     <nav class="links" aria-label="Main">
@@ -46,7 +50,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
           </a>
         )
       }
-      <Button href={cta.href} variant="primary" size="md" class="cta">{cta.label}</Button>
+      <Button href={cta.href} variant="primary" size="sm" class="cta">{cta.label}</Button>
     </div>
 
     <input type="checkbox" id="menu" aria-label="Menu" />
@@ -56,7 +60,13 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     </label>
 
     <div class="sheet">
-      {nav.map((l) => <a href={l.href}>{l.label}</a>)}
+      {
+        nav.map((l) => (
+          <a href={l.href} aria-current={path === l.href ? 'page' : undefined}>
+            {l.label}
+          </a>
+        ))
+      }
       <a href={cta.href} class="sheet-cta">{cta.label}</a>
     </div>
   </div>
@@ -66,27 +76,29 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   .nav {
     position: sticky;
     top: 0;
-    z-index: 20;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
+    z-index: var(--z-nav);
+    background: color-mix(in srgb, var(--bg) var(--nav-veil), transparent);
+    backdrop-filter: blur(var(--nav-blur));
+    border-bottom: var(--hairline);
   }
 
   .inner {
     display: flex;
     align-items: center;
     gap: var(--s-8);
-    height: 60px;
+    height: var(--nav-h);
   }
 
   .brand {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
-    font-weight: var(--fw-semibold);
     color: var(--text);
     text-decoration: none;
     flex: none;
+  }
+
+  /* The lockup is 28px in base.css; the nav wants it a shade smaller. */
+  .brand :global(.brand-mark) {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
   }
 
   .links {
@@ -107,12 +119,11 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     color: var(--text);
   }
 
-  /* aria-current carries this for assistive tech and the text colour shifts too,
-     so the underline is reinforcement rather than the only signal. -ink so it
-     clears 3:1 in light. */
+  /* aria-current carries this for assistive tech and the text colour shifts
+     too, so the rule is reinforcement rather than the only signal. */
   .links a[aria-current='page'] {
     color: var(--text);
-    box-shadow: inset 0 -2px 0 var(--green-ink);
+    box-shadow: inset 0 calc(-1 * var(--underline-w)) 0 var(--green);
   }
 
   .right {
@@ -125,18 +136,13 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   .gh {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    width: var(--control-sq);
+    height: var(--control-sq);
     color: var(--dim);
   }
 
   .gh:hover {
     color: var(--text);
-  }
-
-  .gh :global(svg) {
-    width: 18px;
-    height: 18px;
   }
 
   /* ---- Mobile ---- */
@@ -147,7 +153,9 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     display: none;
   }
 
-  @media (max-width: 860px) {
+  /* --bp-md. @media cannot read a custom property, so the number is typed;
+     the token is where it is written down. */
+  @media (max-width: 768px) {
     .links,
     .right {
       display: none;
@@ -156,19 +164,17 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     .burger {
       display: grid;
       place-items: center;
-      width: 38px;
-      height: 38px;
+      width: var(--control-h-md);
+      height: var(--control-h-md);
       margin-left: auto;
       color: var(--dim);
       cursor: pointer;
-      border: 1px solid var(--border);
+      border: var(--hairline);
       border-radius: var(--radius-sm);
     }
 
     .burger :global(svg) {
       grid-area: 1 / 1;
-      width: 18px;
-      height: 18px;
     }
 
     .burger .close,
@@ -181,8 +187,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     }
 
     #menu:focus-visible ~ .burger {
-      outline: 2px solid var(--action);
-      outline-offset: 2px;
+      box-shadow: var(--focus-ring);
     }
 
     #menu:checked ~ .sheet {
@@ -193,11 +198,11 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       position: absolute;
       left: 0;
       right: 0;
-      top: 60px;
+      top: var(--nav-h);
       flex-direction: column;
       gap: var(--s-1);
       background: var(--bg);
-      border-bottom: 1px solid var(--border);
+      border-bottom: var(--hairline);
       padding: var(--s-4) var(--s-4) var(--s-6);
     }
 
@@ -211,6 +216,10 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 
     .sheet a:hover {
       background: var(--hover);
+    }
+
+    .sheet a[aria-current='page'] {
+      box-shadow: inset var(--accent-bar) 0 0 var(--green);
     }
 
     .sheet-cta {

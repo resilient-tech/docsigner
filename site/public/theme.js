@@ -8,6 +8,10 @@
  *
  * Dark is the default. A stored choice beats the OS, and the OS beats the
  * default, same order the desktop app uses.
+ *
+ * The light scheme is called PAPER. design/tokens.css matches both
+ * data-theme="paper" and data-theme="light", so a value stored by an older
+ * build still resolves; this writes the canonical name.
  */
 (() => {
   let stored = null;
@@ -16,8 +20,9 @@
   } catch {
     /* Private mode, or storage denied. Fall through to the OS preference. */
   }
-  const light =
+  const paper =
+    stored === 'paper' ||
     stored === 'light' ||
     (stored === null && matchMedia('(prefers-color-scheme: light)').matches);
-  if (light) document.documentElement.dataset.theme = 'light';
+  if (paper) document.documentElement.dataset.theme = 'paper';
 })();

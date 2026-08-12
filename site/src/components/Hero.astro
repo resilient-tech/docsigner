@@ -44,7 +44,7 @@ const { title, lede, kicker, primary, secondary, centre } = Astro.props;
 <style>
   .hero {
     padding-block: var(--s-24) var(--s-16);
-    border-bottom: 1px solid var(--border);
+    border-bottom: var(--hairline);
   }
 
   .inner {
@@ -58,16 +58,8 @@ const { title, lede, kicker, primary, secondary, centre } = Astro.props;
     text-align: center;
   }
 
-  h1 {
-    max-width: 22ch;
-  }
-
   .centre h1 {
     max-width: 28ch;
-  }
-
-  .lede {
-    max-width: 56ch;
   }
 
   .actions {
