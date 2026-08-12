@@ -1,0 +1,66 @@
+---
+import { links, site, REPO_PUBLIC, ready } from '../config';
+
+/* One row. A sitemap is for a site with pages worth mapping. */
+const items = [
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/download', label: 'Download' },
+  { href: links.docs, label: 'Docs', repo: true },
+  { href: links.repo, label: 'Source', repo: true },
+].filter((i) => ready(i.href) && (!i.repo || REPO_PUBLIC));
+---
+
+<footer class="foot">
+  <div class="wrap inner">
+    <p class="legal">
+      {site.license}. Copyright {site.year} {site.copyrightHolder}.
+    </p>
+
+    <nav aria-label="Footer">
+      {
+        items.map((i) => (
+          <a href={i.href} rel={i.href.startsWith('http') ? 'noopener' : undefined}>
+            {i.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    border-top: 1px solid var(--border);
+    padding-block: var(--s-8);
+    font-size: var(--text-sm);
+  }
+
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+
+  .legal {
+    color: var(--faint);
+    font-size: var(--text-xs);
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-6);
+  }
+
+  nav a {
+    color: var(--dim);
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
+</style>

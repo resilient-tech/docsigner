@@ -1,0 +1,32 @@
+# Cloudflare Pages headers.
+#
+# The CSP is here rather than in a <meta> tag: meta delivery silently ignores
+# frame-ancestors, and a header can differ per path, which /demo will need for
+# Pyodide's wasm.
+#
+# script-src has no 'unsafe-inline'. Every script on the site is a file, theme.js
+# included, so 'self' covers all of them. style-src does allow it, because Astro
+# emits component styles as inline <style> blocks; a style block cannot execute.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
+
+# Fonts are content-hashed by name and never change under the same filename.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Binaries live on GitHub Releases: better trust story (same origin as the
+# source, and where `gh attestation verify` points), and Pages caps assets at
+# 25 MiB anyway. This block only matters if that ever changes.
+#
+# Pages has no MIME mapping for .msi and sends no Content-Type, so Chrome and
+# Edge try to render the installer as text. Forcing it here covers .exe, .dmg,
+# .pkg and .deb too rather than trusting the default map.
+/dl/*
+  Content-Type: application/octet-stream
+  Content-Disposition: attachment
+  Cache-Control: public, max-age=31536000, immutable

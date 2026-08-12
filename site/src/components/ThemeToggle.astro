@@ -1,0 +1,88 @@
+---
+import { Icon } from 'astro-icon/components';
+---
+
+<button type="button" class="toggle" aria-pressed="false" title="Switch theme">
+  <Icon name="lucide:sun" class="sun" aria-hidden="true" />
+  <Icon name="lucide:moon" class="moon" aria-hidden="true" />
+  <span class="sr">Switch to light theme</span>
+</button>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('.toggle');
+  const label = btn?.querySelector('.sr');
+
+  const sync = () => {
+    const light = document.documentElement.dataset.theme === 'light';
+    btn?.setAttribute('aria-pressed', String(light));
+    if (label) label.textContent = `Switch to ${light ? 'dark' : 'light'} theme`;
+  };
+
+  btn?.addEventListener('click', () => {
+    const light = document.documentElement.dataset.theme === 'light';
+    if (light) delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = 'light';
+    try {
+      localStorage.setItem('theme', light ? 'dark' : 'light');
+    } catch {
+      /* Nothing to do. The choice holds for this page either way. */
+    }
+    sync();
+  });
+
+  sync();
+</script>
+
+<style>
+  .toggle {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--dim);
+    cursor: pointer;
+    transition:
+      color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease);
+  }
+
+  .toggle:hover {
+    background: var(--hover);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+
+  /* Both glyphs sit in the same cell. The one drawn is the theme you'd get by
+     clicking, which is what the label says too: sun on dark, moon on light. */
+  .toggle :global(svg) {
+    grid-area: 1 / 1;
+    width: 17px;
+    height: 17px;
+  }
+
+  .toggle :global(.moon) {
+    display: none;
+  }
+
+  :global(:root[data-theme='light']) .toggle :global(.moon) {
+    display: block;
+  }
+
+  :global(:root[data-theme='light']) .toggle :global(.sun) {
+    display: none;
+  }
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

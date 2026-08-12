@@ -1,0 +1,60 @@
+---
+import SiteNav from './SiteNav.astro';
+import SiteFooter from './SiteFooter.astro';
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+
+const full = title === 'DocSigner' ? title : `${title} · DocSigner`;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+/* The CSP is built by Astro from astro.config.mjs, with hashes for every inline
+   script and style. Writing it here by hand blocked the theme script. */
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>{full}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/nunito-sans-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={full} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <!-- No og:image until there's an og.png to point at. A 404 preview image is
+         worse than none: scrapers cache the miss. -->
+    <meta name="twitter:card" content="summary" />
+
+    <!-- Blocking on purpose: it must run before the first paint. -->
+    <script src="/theme.js" is:inline></script>
+  </head>
+
+  <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <SiteNav />
+    <main id="main">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>
