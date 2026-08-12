@@ -1,45 +1,33 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
+/*
+ * Element defaults come from design/base.css. What stays here is only what is
+ * true of a desktop window and not of a web page.
+ */
+
+@import '../../../design/base.css';
+
+/* The density knob. Every --text-* and --display-* size is in rem, so this one
+   line gives the whole app a 14px base off the same ladder the site uses at
+   16px. It is what retires the 13.5 / 12.5 / 11.5 / 10.5px sizes in app.css. */
+html {
+  font-size: 87.5%;
 }
+
+/* An app fills its window; a document scrolls. */
 html,
 body,
 #root {
   height: 100%;
 }
+
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
+  /* Denser than the site by design: this is a tool someone lives in. */
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-dense);
+  min-height: 0;
+  overflow: hidden;
 }
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-button {
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0;
-}
-svg.lucide {
-  stroke-width: 1.75;
-}
-/* -ink, not --action: a focus ring has to clear 3:1 against what it sits on,
-   and #2ca7ff manages only 2.35:1 on the light theme's grounds. */
-:focus-visible {
-  outline: 2px solid var(--action-ink);
-  outline-offset: 1px;
-}
+
+/* Scrollbars, which a web page leaves to the browser. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--hover) transparent;
@@ -53,10 +41,4 @@ svg.lucide {
   border-radius: var(--pill);
   border: 2px solid transparent;
   background-clip: content-box;
-}
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
 }

@@ -1,0 +1,22 @@
+/*
+ * Faces for the desktop app. design/fonts.css is the reference; the url()
+ * paths are the only thing that differs per consumer, which is why they cannot
+ * live in tokens.css.
+ *
+ * Relative here, so Vite hashes the file into the bundle. The app runs offline,
+ * so nothing is fetched from a CDN.
+ *
+ * Only Plus Jakarta ships. The app bundles no Nunito Sans: on macOS the body
+ * face is Avenir Next natively, and elsewhere the stack falls through to Segoe
+ * UI or Roboto, which is acceptable inside a desktop chrome in a way it is not
+ * on a marketing page. Add nunito-sans-400/600.woff2 next to this file and
+ * uncomment below if the app ever needs to look identical across platforms.
+ */
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/PlusJakartaSans-SemiBold.woff2') format('woff2');
+}

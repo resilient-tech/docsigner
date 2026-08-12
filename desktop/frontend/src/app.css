@@ -28,7 +28,7 @@
   gap: 10px;
   height: 54px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--hairline);
   background: var(--bg-deep);
   flex: none;
 }
@@ -41,31 +41,9 @@
   gap: 8px;
   height: 46px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--hairline);
   background: var(--bg);
   flex: none;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--font-brand);
-  font-size: 15px;
-  font-weight: 600;
-  /* Jakarta's default spacing reads loose at logotype size; the icon and the
-     word need to sit as one lockup. */
-  letter-spacing: -0.02em;
-  margin-right: 6px;
-}
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(150deg, var(--green), #37a862);
-  color: #06110a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .path-input {
   flex: 1;
@@ -73,7 +51,7 @@
   height: 32px;
   padding: 0 11px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--hairline);
   border-radius: var(--radius-sm);
   color: var(--text);
 }
@@ -81,19 +59,19 @@
   color: var(--faint);
 }
 .count-pill {
-  background: rgba(44, 167, 255, 0.15);
+  background: var(--action-soft);
   color: var(--action-ink);
   border-radius: var(--pill);
   padding: 4px 11px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
 }
 .sign-btn {
   flex: none;
   height: 36px;
   padding: 0 18px;
-  font-size: 14px;
+  font-size: var(--text-body);
   margin-left: 2px;
 }
 .banner {
@@ -101,7 +79,7 @@
   align-items: center;
   gap: 12px;
   padding: 9px 16px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   border-bottom: 1px solid transparent;
 }
 .banner-msg {
@@ -120,11 +98,11 @@
 }
 .banner-btn {
   flex: none;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
   color: inherit;
   border: 1px solid currentColor;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   padding: 3px 10px;
   opacity: 0.85;
 }
@@ -133,7 +111,7 @@
 }
 .banner-x {
   flex: none;
-  font-size: 18px;
+  font-size: var(--display-3);
   line-height: 1;
   color: inherit;
   opacity: 0.7;
@@ -147,7 +125,7 @@
 .queue {
   width: 290px;
   flex: none;
-  border-right: 1px solid var(--border);
+  border-right: var(--hairline);
   display: flex;
   flex-direction: column;
 }
@@ -156,9 +134,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--faint);
 }
@@ -179,8 +157,8 @@
   letter-spacing: 0;
 }
 .q-clear {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
   text-transform: none;
   letter-spacing: 0;
   color: var(--faint);
@@ -198,7 +176,7 @@
 }
 .empty {
   color: var(--faint);
-  font-size: 13px;
+  font-size: var(--text-sm);
   padding: 12px;
 }
 .qrow {
@@ -231,13 +209,13 @@
   flex-direction: column;
 }
 .qrow-name {
-  font-size: 13px;
+  font-size: var(--text-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .qrow-sub {
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   color: var(--faint);
   white-space: nowrap;
   overflow: hidden;
@@ -262,7 +240,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-card);
   color: var(--faint);
   opacity: 0;
   transition:
@@ -306,7 +284,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--hairline);
   flex-wrap: nowrap;
   overflow: hidden;
 }
@@ -317,7 +295,7 @@
   flex: none;
 }
 .page-ind {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--dim);
   font-variant-numeric: tabular-nums;
   min-width: 42px;
@@ -333,7 +311,7 @@
 .zoom-pct {
   min-width: 46px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--dim);
   font-variant-numeric: tabular-nums;
   border-radius: var(--radius-card);
@@ -370,7 +348,7 @@
 .sig-box {
   position: absolute;
   border: 1.5px dashed var(--action);
-  background: rgba(44, 167, 255, 0.06);
+  background: var(--action-soft);
   cursor: move;
   touch-action: none;
 }
@@ -386,7 +364,7 @@
   height: 12px;
   background: var(--bg);
   border: 2px solid var(--action);
-  border-radius: 2px;
+  border-radius: var(--radius-card);
   touch-action: none;
 }
 .rh.nw {
@@ -414,9 +392,10 @@
 .sig-paper {
   width: 100%;
   max-width: 280px;
-  background: #fff;
-  border: 1px solid #d6dae1;
-  border-radius: 3px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-card);
   padding: 6px 8px;
   overflow: hidden;
 }
@@ -429,7 +408,7 @@
 .setup {
   width: 340px;
   flex: none;
-  border-left: 1px solid var(--border);
+  border-left: var(--hairline);
   padding: 16px;
   overflow-y: auto;
   display: flex;
@@ -442,9 +421,9 @@
   gap: 7px;
 }
 .field > label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--faint);
 }
@@ -466,8 +445,8 @@
   padding: 9px 11px;
   border-radius: var(--radius-sm);
   background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 13.5px;
+  border: var(--hairline);
+  font-size: var(--text-body);
   color: var(--text);
 }
 .grow {
@@ -494,15 +473,15 @@ input.control::placeholder {
   width: 116px;
   text-align: right;
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--green-ink);
   background: var(--well);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border: var(--hairline);
+  border-radius: var(--radius-card);
   padding: 6px 8px;
 }
 .hint-warn {
-  font-size: 11.5px;
+  font-size: var(--text-sm);
   color: var(--amber-ink);
 }
 /* "Token plugged in, driver missing": the one empty-list case that is both
@@ -513,11 +492,11 @@ input.control::placeholder {
   align-items: flex-start;
   margin-top: 8px;
   padding: 9px 10px;
-  font-size: 11.5px;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--amber-ink);
   background: var(--well);
-  border: 1px solid var(--border);
+  border: var(--hairline);
   border-left: 2px solid var(--amber);
   border-radius: var(--radius-card);
 }
@@ -527,7 +506,7 @@ input.control::placeholder {
 }
 .token-hint strong {
   display: block;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 .token-hint p {
   margin: 3px 0 0;
@@ -535,33 +514,39 @@ input.control::placeholder {
 }
 .token-hint-detail {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   opacity: 0.72;
 }
 /* ---- buttons ---- */
+/* The recipe from design/design-system.md: three heights, --control-px-*
+   padding, --radius-sm, a transparent 1px border on every variant so swapping
+   variant changes a colour and never reflows. Bare .btn is the md size, which
+   is what PinDialog's buttons were relying on getting from nowhere. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border-radius: var(--radius-card);
-  font-weight: 600;
+  gap: var(--s-2);
+  height: var(--control-h-md);
+  padding-inline: var(--control-px-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
   border: 1px solid transparent;
   white-space: nowrap;
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 .btn.sm {
-  height: 30px;
-  padding: 0 12px;
-  font-size: 12.5px;
+  height: var(--control-h-sm);
+  padding-inline: var(--control-px-sm);
 }
-.btn.big {
-  height: 44px;
-  font-size: 15px;
-  margin-top: auto;
+.btn.lg {
+  height: var(--control-h-lg);
+  padding-inline: var(--control-px-lg);
+  font-size: var(--text-body);
 }
 .btn.default {
   background: var(--surface);
@@ -582,16 +567,16 @@ input.control::placeholder {
 }
 .btn.primary {
   background: var(--green);
-  color: #06110a;
+  color: var(--on-accent);
 }
 .btn.primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+  background: var(--green-hover);
 }
 .btn.danger {
   color: var(--red-ink);
 }
 .btn.danger:hover:not(:disabled) {
-  background: rgba(229, 72, 77, 0.12);
+  background: var(--red-soft);
 }
 .ic-btn {
   display: inline-flex;
@@ -615,16 +600,16 @@ input.control::placeholder {
   height: 26px;
   padding: 0 12px;
   border-radius: var(--pill);
-  border: 1px solid var(--border);
+  border: var(--hairline);
   color: var(--dim);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
 }
 .chip.active {
   border-color: var(--action-ink);
   color: var(--action-ink);
-  background: rgba(44, 167, 255, 0.1);
+  background: var(--action-soft);
 }
 input[type='checkbox'] {
   accent-color: var(--green-ink);
@@ -636,8 +621,8 @@ input[type='checkbox'] {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  background: rgba(43, 36, 62, 0.5);
+  z-index: var(--z-overlay);
+  background: var(--scrim);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -651,7 +636,7 @@ input[type='checkbox'] {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: var(--hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lift);
 }
@@ -660,11 +645,11 @@ input[type='checkbox'] {
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--hairline);
 }
 .modal-head h2 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-lede);
+  font-weight: var(--fw-semibold);
 }
 .modal-body {
   display: flex;
@@ -674,7 +659,7 @@ input[type='checkbox'] {
 .prof-list {
   width: 210px;
   flex: none;
-  border-right: 1px solid var(--border);
+  border-right: var(--hairline);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -686,8 +671,8 @@ input[type='checkbox'] {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   color: var(--dim);
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: var(--text-body);
+  font-weight: var(--fw-medium);
 }
 .prof:hover {
   background: var(--surface);
@@ -707,9 +692,9 @@ input[type='checkbox'] {
   gap: 16px;
 }
 .preview-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--faint);
   margin-bottom: 8px;
@@ -723,11 +708,11 @@ input[type='checkbox'] {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--dim);
 }
 .ef > span {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 .img-row {
   display: flex;
@@ -738,14 +723,14 @@ input[type='checkbox'] {
 /* A rejected upload, said next to the control that rejected it. */
 .field-error {
   color: var(--red-ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 .img-thumb {
   max-width: 96px;
   max-height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius-card);
+  background: var(--paper);
 }
 .toggles {
   display: flex;
@@ -757,7 +742,7 @@ input[type='checkbox'] {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 13.5px;
+  font-size: var(--text-body);
   color: var(--text);
 }
 
@@ -766,7 +751,7 @@ input[type='checkbox'] {
   width: 320px;
   max-width: 100%;
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: var(--hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lift);
   padding: 24px;
@@ -785,12 +770,12 @@ input[type='checkbox'] {
   justify-content: center;
 }
 .pin-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--text-lede);
+  font-weight: var(--fw-semibold);
   margin-top: 10px;
 }
 .pin-sub {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--faint);
   margin-bottom: 14px;
 }
@@ -799,20 +784,15 @@ input[type='checkbox'] {
   height: 38px;
   text-align: center;
   letter-spacing: 4px;
-  font-size: 16px;
+  font-size: var(--text-lede);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--hairline);
   border-radius: var(--radius-sm);
   color: var(--text);
 }
-/* The ring stays. This is the PIN field: if any control in the app has to show
-   unmistakably where focus is, it's this one. `outline: none` left a 1px border
-   change doing the whole job. */
-.pin-field:focus-visible {
-  outline: 2px solid var(--action-ink);
-  outline-offset: 1px;
-  border-color: var(--action-ink);
-}
+/* Nothing here: base.css gives every focusable the one --focus-ring, whose
+   ground-coloured inner band keeps it visible on any fill. This rule used to be
+   `outline: none` plus a 1px border change, on the PIN field of all places. */
 .pin-actions {
   display: flex;
   gap: 8px;
@@ -824,7 +804,7 @@ input[type='checkbox'] {
   height: 36px;
 }
 .pin-note {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--faint);
   margin-top: 12px;
 }
@@ -868,7 +848,7 @@ input[type='checkbox'] {
   .queue {
     width: auto;
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: var(--hairline);
   }
   .queue-list {
     flex-direction: row;
@@ -893,7 +873,7 @@ input[type='checkbox'] {
   .setup {
     width: auto;
     border-left: none;
-    border-top: 1px solid var(--border);
+    border-top: var(--hairline);
   }
   .sig-paper {
     max-width: 320px;
