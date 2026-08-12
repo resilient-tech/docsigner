@@ -1,0 +1,341 @@
+<header class="sg-head">
+  <div class="wrap sg-head-in">
+    <span class="brand">
+      <span class="brand-mark" aria-hidden="true">__LOGO__</span>
+      DocSigner
+    </span>
+    <span class="sg-head-sub label">Design system</span>
+    <div class="sg-spacer"></div>
+    <div class="switch" role="group" aria-label="Theme">
+      <button type="button" data-set-theme="dark" aria-pressed="true">Dark</button>
+      <button type="button" data-set-theme="paper" aria-pressed="false">Paper</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap sg-main" id="main">
+
+  <section class="sg-intro">
+    <h1>The instrument, not the app</h1>
+    <p class="lede">
+      A signature is a claim of identity that cannot be taken back. This system
+      is built to feel like a legal instrument: exact, quiet, permanent.
+      Hairlines instead of shadows, small radii, one accent lit at a time, and
+      no ornament that does not carry information.
+    </p>
+    <div class="two">
+      <div class="card">
+        <span class="label">Dark — default, unchanged</span>
+        <p class="dim sm">The machine's view. Ink ground, hairline rules, one
+        accent lit at a time. This is the tool, and it already worked.</p>
+      </div>
+      <div class="card">
+        <span class="label">Paper — the second scheme</span>
+        <p class="dim sm">Warm stock, ink text, almost no blur, because paper
+        lies flat. Replaces the cool blue-grey light map. This is the artifact.</p>
+      </div>
+    </div>
+    <p class="sm dim">
+      Every open-source signing product ships a light UI with a blue accent.
+      Dark stays the default because it is the differentiator. Paper is not an
+      inverted dark — if it ever reads as "light mode", it has been built
+      wrong. <strong>Toggle the switch above and watch what the page does.</strong>
+    </p>
+  </section>
+
+  <!-- ================= FOUNDATIONS ================= -->
+
+  <h2 class="sg-h2">Foundations</h2>
+
+  <section class="sg-sec">
+    <h3>Ground</h3>
+    <p class="sm dim">Five depths. Recessed to raised. Everything else sits on
+    one of these.</p>
+    <div class="swatches" data-swatches="ground"></div>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Text</h3>
+    <p class="sm dim">Contrast is computed live from what your browser actually
+    rendered, against <code>--raised</code> in dark and <code>--well</code> in
+    Paper — the worst ground in each theme. Anything under 4.5 is a bug.</p>
+    <div class="rows" data-text-rows></div>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Four hues, total</h3>
+    <p class="sm dim">
+      The plain token is a <strong>fill</strong> and carries
+      <code>--on-accent</code>. The <code>-ink</code> token is
+      <strong>text, borders and icons</strong>, darkened for Paper where the
+      fill would drop to 1.7:1. Write <code>-ink</code> for text and the plain
+      token for fills and a component is correct on both themes with no media
+      query. The system already did this for mint and blue; amber and red are
+      new, and red is a check that did not pass, and nothing else.
+    </p>
+    <div class="hues" data-hues></div>
+  </section>
+
+  <section class="sg-sec">
+    <h3>The paper swatch</h3>
+    <p class="sm dim">Theme-independent on purpose. A rendered page and a
+    signature preview are pictures of paper, and paper does not have a dark
+    mode. In the dark theme this is the one bright object on screen — the artifact,
+    lit, on the workbench.</p>
+    <div class="paper sig-swatch">
+      <svg viewBox="0 0 260 66" width="240" height="60" aria-label="Signature preview">
+        <path d="M8 46c14-4 22-26 30-30s10 14 4 22-14 6-10-2 16-14 28-14 18 10 30 8 16-14 24-14 10 10 20 10 18-8 26-8"
+              fill="none" stroke="#14120f" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="8" y1="58" x2="252" y2="58" stroke="#d6d2c8" stroke-width="1"/>
+      </svg>
+      <div class="sig-meta">
+        <strong>Smit Vora</strong>
+        <span>DSC · SHA-256 · 12 Aug 2026</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Type</h3>
+    <p class="sm dim">
+      Unchanged. Avenir Next where it is native, Nunito Sans self-hosted
+      everywhere else, system mono for hashes and paths. Plus Jakarta SemiBold
+      sets the wordmark and only the wordmark. Sizes are in <code>rem</code>,
+      so the root font size is the density knob: 100% for the site, 87.5% for
+      the app and extension — one ladder instead of two vocabularies, which is
+      what retires the 13.5 / 12.5 / 11.5 / 10.5px sizes in app.css.
+    </p>
+    <div class="specimen">
+      <div class="spec-row"><span class="spec-tag">--display-1</span><span style="font-size:var(--display-1);font-weight:600;line-height:1.15;letter-spacing:-0.01em">The PDF never leaves your server</span></div>
+      <div class="spec-row"><span class="spec-tag">--display-2</span><span style="font-size:var(--display-2);font-weight:600;line-height:1.15">It depends who holds the key</span></div>
+      <div class="spec-row"><span class="spec-tag">--display-3</span><span style="font-size:var(--display-3);font-weight:600">A person signs</span></div>
+      <div class="spec-row"><span class="spec-tag">--text-lede · lede</span><span style="font-size:var(--text-lede);color:var(--dim)">Sign with a USB token from any website.</span></div>
+      <div class="spec-row"><span class="spec-tag">--text-body</span><span style="font-size:var(--text-body)">The browser carries a 32-byte hash out and a 256-byte signature back.</span></div>
+      <div class="spec-row"><span class="spec-tag">--text-sm</span><span style="font-size:var(--text-sm)">Dense UI text, captions, table cells.</span></div>
+      <div class="spec-row"><span class="spec-tag">--text-xs</span><span style="font-size:var(--text-xs)">Micro-label and legal line.</span></div>
+      <div class="spec-row"><span class="spec-tag">--font-brand</span><span class="brand" style="font-size:var(--display-3)"><span class="brand-mark sm" aria-hidden="true">__LOGO__</span>DocSigner</span></div>
+      <div class="spec-row"><span class="spec-tag">--mono</span><span style="font-family:var(--mono);font-size:var(--text-sm)">sha256:9f2b…c41e · pyhanko · PAdES B-LTA</span></div>
+    </div>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Space, shape, edge</h3>
+    <div class="three">
+      <div>
+        <span class="label">Space · 4px grid, px</span>
+        <div class="scale-bars" data-space></div>
+        <p class="xs dim">Physical distance, not reading size. Does not move
+        when the density knob does.</p>
+      </div>
+      <div>
+        <span class="label">Radius</span>
+        <div class="radii" data-radii></div>
+        <p class="xs dim">Small on purpose. A ledger has corners.</p>
+      </div>
+      <div>
+        <span class="label">Edge &amp; elevation</span>
+        <div class="edges">
+          <div class="edge-demo" style="border:var(--hairline)">--hairline</div>
+          <div class="edge-demo" style="border:var(--hairline-strong)">--hairline-strong</div>
+          <div class="edge-demo" style="border:var(--hairline);box-shadow:var(--shadow-menu)">--shadow-menu</div>
+          <div class="edge-demo" style="border:var(--hairline);box-shadow:var(--shadow-lift)">--shadow-lift</div>
+        </div>
+        <p class="xs dim">Cards get no shadow in either theme. A thing that
+        needs a shadow is a menu or a modal.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Icons, motion, stacking</h3>
+    <div class="three">
+      <div>
+        <span class="label">Icon sizes · stroke 1.75</span>
+        <div class="icon-row" data-icons></div>
+        <p class="xs dim">Four. The old tree had 17, 18, 20, 24, 34 and 1.05em
+        in play.</p>
+      </div>
+      <div>
+        <span class="label">Motion</span>
+        <table class="mini">
+          <tr><td><code>--dur-fast</code></td><td>0.05s</td><td class="dim">under the cursor now</td></tr>
+          <tr><td><code>--dur</code></td><td>0.2s</td><td class="dim">everything else</td></tr>
+          <tr><td><code>--ease</code></td><td colspan="2" class="dim">cubic-bezier(.33,0,0,1)</td></tr>
+        </table>
+        <p class="xs dim">Reduced motion is handled at the token layer, so no
+        component has to remember.</p>
+      </div>
+      <div>
+        <span class="label">Stacking</span>
+        <table class="mini">
+          <tr><td><code>--z-nav</code></td><td>20</td></tr>
+          <tr><td><code>--z-sticky</code></td><td>30</td></tr>
+          <tr><td><code>--z-dropdown</code></td><td>40</td></tr>
+          <tr><td><code>--z-overlay</code></td><td>100</td></tr>
+          <tr><td><code>--z-modal</code></td><td>1000</td></tr>
+          <tr><td><code>--z-toast</code></td><td>1100</td></tr>
+        </table>
+        <p class="xs dim">Named, so nothing gets invented at 9999.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= COMPONENTS ================= -->
+
+  <h2 class="sg-h2">Components</h2>
+
+  <section class="sg-sec">
+    <h3>Button</h3>
+    <p class="sm dim">Heights 32 / 38 / 46. One primary per view — it is the
+    signing action. Danger is never a red fill; a red fill in this system means
+    a verification failed.</p>
+    <div class="demo">
+      <button class="btn primary lg">Sign 12 documents</button>
+      <button class="btn default md">Choose certificate</button>
+      <button class="btn ghost md">Cancel</button>
+      <button class="btn danger md">Remove</button>
+      <button class="btn default md" disabled>Disabled</button>
+    </div>
+    <div class="demo">
+      <button class="btn primary sm">sm</button>
+      <button class="btn primary md">md</button>
+      <button class="btn primary lg">lg</button>
+      <button class="icon-btn" aria-label="Settings">__ICON_SETTINGS__</button>
+      <span class="chip">B-LTA</span>
+      <span class="chip active">B-B</span>
+    </div>
+    <p class="xs dim">Tab into these — one focus ring, everywhere, never
+    removed. The inner band is the ground colour so it stays visible on the
+    mint fill.</p>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Control</h3>
+    <div class="demo stack" style="max-width:420px">
+      <label class="field">
+        <span class="label">Certificate</span>
+        <select class="control">
+          <option>Smit Vora — Resilient Software Services LLP</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="label">Output suffix</span>
+        <input class="control" value="_signed" spellcheck="false">
+      </label>
+      <label class="field">
+        <span class="label">Server key</span>
+        <input class="control" placeholder="path to .p12" spellcheck="false">
+      </label>
+    </div>
+    <p class="xs dim">Focus takes the ring, not a border-colour change.</p>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Card</h3>
+    <div class="two">
+      <div class="card">
+        <h4>A person signs</h4>
+        <p class="sm dim">The key stays on their USB token. They pick a
+        certificate, type their PIN in a dialog on their own machine, and the
+        token signs 32 bytes.</p>
+      </div>
+      <div class="card selected">
+        <h4>A system signs <span class="tag ok">detected</span></h4>
+        <p class="sm dim">The key sits on your server as a
+        <code>.p12</code>. One HTTP call, no extension, no PIN.</p>
+      </div>
+    </div>
+    <p class="xs dim">Selected is one edge — <code>border-color</code> — not a
+    border plus a 1px ring drawing the same line twice.</p>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Callout and status</h3>
+    <div class="stack">
+      <div class="callout note">__ICON_INFO__<div><strong>Server-held keys skip the extension.</strong> One call to <code>/api/sign-server-side</code>.</div></div>
+      <div class="callout warn">__ICON_WARN__<div><strong>Token plugged in, driver missing.</strong> Install the PKCS#11 module your token vendor ships, then reopen this panel.</div></div>
+      <div class="callout fail">__ICON_FAIL__<div><strong>Signature did not verify.</strong> The document was modified after signing.</div></div>
+    </div>
+    <p class="xs dim">One recipe. The app banner, the site callout and the demo
+    status strip were three implementations of this.</p>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Nav</h3>
+    <div class="nav-demo">
+      <span class="brand sm-mark"><span class="brand-mark sm" aria-hidden="true">__LOGO__</span>DocSigner</span>
+      <nav>
+        <a href="#" class="active">How it works</a>
+        <a href="#">Download</a>
+        <a href="#">Docs</a>
+      </nav>
+      <button class="btn primary sm">Download</button>
+    </div>
+    <p class="xs dim">60px, sticky, <code>--bg</code> at 88% under a 10px blur.
+    Active item is a 2px inset underline in the brand mint.</p>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Flow</h3>
+    <ol class="flow">
+      <li><div class="flow-card">__ICON_GLOBE__<strong>Web page</strong><span>asks for certificates</span></div></li>
+      <li class="arrow" aria-hidden="true">__ICON_CHEV__</li>
+      <li><div class="flow-card">__ICON_PUZZLE__<strong>Extension</strong><span>native messaging</span></div></li>
+      <li class="arrow" aria-hidden="true">__ICON_CHEV__</li>
+      <li><div class="flow-card">__ICON_TERM__<strong>Helper app</strong><span>PKCS#11, PIN stays here</span></div></li>
+      <li class="arrow" aria-hidden="true">__ICON_CHEV__</li>
+      <li><div class="flow-card">__ICON_KEY__<strong>USB token</strong><span>signs 32 bytes</span></div></li>
+    </ol>
+  </section>
+
+  <section class="sg-sec">
+    <h3>Modal</h3>
+    <div class="modal-demo">
+      <div class="modal">
+        <div class="pin-lock">__ICON_LOCK__</div>
+        <strong>Unlock the token</strong>
+        <span class="sm dim">The PIN never touches the browser or the network.</span>
+        <input class="control pin" type="password" value="••••••" aria-label="PIN">
+        <div class="demo" style="width:100%">
+          <button class="btn ghost md" style="flex:1">Cancel</button>
+          <button class="btn primary md" style="flex:1">Unlock</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RULES ================= -->
+
+  <h2 class="sg-h2">Rules</h2>
+
+  <section class="sg-sec">
+    <div class="two">
+      <div class="card">
+        <span class="label" style="color:var(--green-ink)">Do</span>
+        <ul class="rules">
+          <li>Write <code>-ink</code> for text, the plain token for fills.</li>
+          <li>Put a size shared by two components in layer 3, not in both.</li>
+          <li>Run <code>check-contrast.py</code> after touching a colour.</li>
+          <li>Let the density knob handle "this feels too big in the app".</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="label" style="color:var(--red-ink)">Don't</span>
+        <ul class="rules">
+          <li>Use <code>--red</code> for anything except a check that did not pass.</li>
+          <li>Write <code>--font-brand</code> anywhere except <code>.brand</code>.</li>
+          <li>Add a fifth hue. Four is the budget, and it is why the fourth lands.</li>
+          <li>Add a shadow to a card, or invent a fourth breakpoint.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="sg-foot">
+    <p class="xs dim">
+      DocSigner design system · tokens.css, base.css, fonts.css, design-system.md,
+      check-contrast.py · Apache-2.0, Resilient Software Services LLP.
+      Nunito Sans and Plus Jakarta Sans are SIL OFL 1.1; the mark is Lucide, ISC.
+    </p>
+  </footer>
+</main>

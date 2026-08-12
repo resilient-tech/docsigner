@@ -1,0 +1,53 @@
+/*
+ * Faces. Lifted out of site/src/styles/base.css and desktop/frontend/src/
+ * tokens.css so one token file can serve every consumer.
+ *
+ * The url() paths are the only thing that differs between consumers, which is
+ * exactly why they cannot live in tokens.css. Copy this file next to the
+ * consumer's own font folder and fix the three paths:
+ *
+ *   site/        /fonts/…                        public/, absolute from root
+ *   desktop/     ./fonts/…                       Vite hashes them into the bundle
+ *   demo/        /site/public/fonts/…            served from the repo root
+ *   extension/   skip it. A three-line consent dialog does not need a webfont.
+ *
+ * Nothing about the faces changed. Nunito Sans stands in for Avenir Next off
+ * macOS, two weights, latin subset, about 28 KB together. Plus Jakarta
+ * SemiBold, 12 KB, sets the wordmark and only the wordmark: .brand in
+ * base.css is the single rule allowed to ask for --font-brand. Self-hosted
+ * rather than pulled from a CDN, because the desktop app runs offline and a
+ * wordmark that silently falls back to Avenir on a plane is not a wordmark.
+ *
+ * swap, so text paints in the fallback first. Preload nunito-sans-400 only;
+ * it is the first paint and the other two are not.
+ */
+
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/nunito-sans-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/nunito-sans-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-SemiBold.woff2') format('woff2');
+}

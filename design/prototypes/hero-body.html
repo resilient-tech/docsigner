@@ -1,0 +1,297 @@
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <span class="brand">
+      <span class="brand-mark" aria-hidden="true">__LOGO_DRAW__</span>
+      DocSigner
+    </span>
+    <nav class="nav-links">
+      <a href="#" class="active">How it works</a>
+      <a href="#">Download</a>
+      <a href="#">Docs</a>
+    </nav>
+    <div class="switch" role="group" aria-label="Colour scheme">
+      <button type="button" data-set-theme="dark" aria-pressed="true">Dark</button>
+      <button type="button" data-set-theme="paper" aria-pressed="false">Paper</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero wrap">
+    <span class="label">Apache-2.0 · PAdES B-B to B-LTA</span>
+    <h1>The document never leaves your server</h1>
+    <p class="lede">
+      Sign with a USB token from any website, or with a key held on your own
+      server. The browser carries a 32-byte hash out and a signature back.
+    </p>
+    <div class="hero-cta">
+      <button class="btn primary lg">Download</button>
+      <button class="btn default lg">How it works</button>
+    </div>
+    <div class="hero-art paper" aria-hidden="true">__HERO_ART__</div>
+  </section>
+
+  <!-- ============================ THE PROOF ============================ -->
+  <section class="proof">
+    <div class="wrap">
+
+      <div class="proof-head">
+        <span class="label">What actually crosses the network</span>
+        <div class="tabs" role="tablist">
+          <button class="chip active" role="tab" aria-selected="true" data-surface="web">In a web page</button>
+          <button class="chip" role="tab" aria-selected="false" data-surface="app">In the desktop app</button>
+          <button class="chip" role="tab" aria-selected="false" data-surface="erp">In ERPNext</button>
+        </div>
+      </div>
+
+      <!-- ---------------- the real product surfaces ---------------- -->
+      <div class="surfaces">
+
+        <!-- WEB: the actual demo page, in browser chrome -->
+        <figure class="surface" data-surface="web">
+          <div class="frame browser">
+            <div class="frame-bar">
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="url">__ICON_LOCK__ accounts.yourcompany.in/invoices/4412</span>
+            </div>
+            <div class="frame-body scale">
+              <div class="demo-page">
+                <div class="brand demo-brand">
+                  <span class="brand-mark sm" aria-hidden="true">__LOGO__</span>
+                  DocSigner demo
+                </div>
+                <div class="card">
+                  <div class="card-head"><span class="step">1</span> Document</div>
+                  <div class="field">
+                    <label>What to sign</label>
+                    <div class="control">PDF (PAdES / CCA signature inside the file)</div>
+                  </div>
+                  <div class="field">
+                    <label>Sign with</label>
+                    <div class="control">USB token (browser extension)</div>
+                  </div>
+                  <div class="field">
+                    <div class="control file" data-doc-name>invoice_2026_0412.pdf</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head"><span class="step">2</span> Certificate
+                    <span class="state">1 listed</span></div>
+                  <div class="field">
+                    <label>Signer</label>
+                    <div class="control">Smit Vora · token · to 2027-04-11</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head"><span class="step">3</span> Signature</div>
+                  <div class="field">
+                    <label>Profile</label>
+                    <div class="control">CCA-LTA (India: CCA-LTV plus RFC 3161 timestamp)</div>
+                  </div>
+                </div>
+                <button class="btn primary big">Sign</button>
+              </div>
+            </div>
+          </div>
+          <figcaption class="label">demo/index.html, unmodified</figcaption>
+        </figure>
+
+        <!-- APP: the actual desktop window -->
+        <figure class="surface" data-surface="app" hidden>
+          <div class="frame app">
+            <div class="frame-bar">
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="url plain">DocSigner</span>
+            </div>
+            <div class="frame-body scale">
+              <div class="app-shell">
+                <header class="topbar">
+                  <div class="brand">
+                    <span class="brand-mark sm" aria-hidden="true">__LOGO__</span>
+                    DocSigner
+                  </div>
+                  <div class="topbar-spacer"></div>
+                  <button class="ic-btn" aria-label="Toggle theme">__ICON_SUN__</button>
+                  <button class="btn primary sign-btn">Sign 12 PDFs</button>
+                </header>
+                <div class="toolbar">
+                  <button class="btn default sm">__ICON_FOLDER__ Choose folder</button>
+                  <button class="btn ghost sm">Files…</button>
+                  <div class="path-input">~/Invoices/2026-04</div>
+                  <button class="ic-btn" aria-label="Refresh files">__ICON_REFRESH__</button>
+                  <span class="count-pill">12 PDFs</span>
+                </div>
+                <div class="workspace">
+                  <section class="queue">
+                    <div class="queue-head">
+                      <span class="q-all">12 of 12</span>
+                      <span class="queue-summary">3 signed</span>
+                    </div>
+                    <div class="queue-list">
+                      <div class="qrow sel">
+                        __ICON_FILE__
+                        <span class="qrow-main">
+                          <span class="qrow-name" data-doc-name>invoice_2026_0412.pdf</span>
+                          <span class="qrow-sub" data-doc-size-kb>12,698 KB</span>
+                        </span>
+                      </div>
+                      <div class="qrow">
+                        __ICON_FILE__
+                        <span class="qrow-main">
+                          <span class="qrow-name">invoice_2026_0413.pdf</span>
+                          <span class="qrow-sub">→ invoice_2026_0413_signed.pdf</span>
+                        </span>
+                        __ICON_OK__
+                      </div>
+                      <div class="qrow">
+                        __ICON_FILE__
+                        <span class="qrow-main">
+                          <span class="qrow-name">credit_note_0088.pdf</span>
+                          <span class="qrow-sub">→ credit_note_0088_signed.pdf</span>
+                        </span>
+                        __ICON_OK__
+                      </div>
+                      <div class="qrow">
+                        __ICON_FILE__
+                        <span class="qrow-main">
+                          <span class="qrow-name">annexure_c.pdf</span>
+                          <span class="qrow-sub">already signed</span>
+                        </span>
+                        __ICON_SKIP__
+                      </div>
+                    </div>
+                  </section>
+                  <section class="stage">
+                    <div class="canvas">
+                      <div class="canvas-toolbar">
+                        <div class="pager">
+                          <button class="ic-btn">__ICON_PREV__</button>
+                          <span class="page-ind">1 / 4</span>
+                          <button class="ic-btn">__ICON_NEXT__</button>
+                        </div>
+                        <div class="zoom"><span class="zoom-pct">100%</span></div>
+                      </div>
+                      <div class="canvas-scroll">
+                        <div class="page-area paper">
+                          __PAGE_DOC__
+                          <div class="sig-box">
+                            <div class="sig-preview">__SIG_STAMP__</div>
+                            <i class="rh nw"></i><i class="rh ne"></i>
+                            <i class="rh sw"></i><i class="rh se"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  <aside class="setup">
+                    <div class="field">
+                      <label>Certificate</label>
+                      <div class="control">Smit Vora · token · to 2027-04-11</div>
+                    </div>
+                    <div class="field">
+                      <label>Signature</label>
+                      <div class="sig-paper paper">__SIG_STAMP__</div>
+                    </div>
+                    <div class="field">
+                      <label>Standard</label>
+                      <div class="control">CCA-LTA</div>
+                    </div>
+                    <div class="field">
+                      <label>Save as</label>
+                      <div class="control out-row"><span class="grow">Filename suffix</span>
+                        <span class="suffix-input">_signed</span></div>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption class="label">desktop/, batch-signing a folder</figcaption>
+        </figure>
+
+        <!-- ERP: the print format that comes out of it -->
+        <figure class="surface" data-surface="erp" hidden>
+          <div class="frame browser">
+            <div class="frame-bar">
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="url">__ICON_LOCK__ erp.yourcompany.in/app/sales-invoice/ACC-SINV-2026-0412</span>
+            </div>
+            <div class="frame-body scale">
+              <div class="erp">
+                <div class="erp-bar">
+                  <span class="erp-title">ACC-SINV-2026-0412</span>
+                  <span class="tag ok">Submitted</span>
+                  <span class="erp-spacer"></span>
+                  <button class="btn ghost sm">Print</button>
+                  <button class="btn primary sm">__ICON_PEN__ Sign</button>
+                </div>
+                <div class="erp-body">
+                  <div class="print-sheet paper">__PAGE_INVOICE__</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption class="label">docsigner_integration, signing a print format on submit</figcaption>
+        </figure>
+      </div>
+
+      <!-- ---------------- the wire ---------------- -->
+      <div class="wire-block">
+        <div class="wire" data-wire>
+          <div class="node">
+            <span class="node-ic">__ICON_SERVER__</span>
+            <span class="node-name" data-node-left>Your server</span>
+            <span class="node-sub" data-doc-name>invoice_2026_0412.pdf</span>
+          </div>
+
+          <div class="line" aria-hidden="true">
+            <span class="rail"></span>
+            <span class="pip out"><span class="pip-label">32-byte hash</span></span>
+            <span class="pip back"><span class="pip-label">256-byte signature</span></span>
+          </div>
+
+          <div class="node right">
+            <span class="node-ic">__ICON_USB__</span>
+            <span class="node-name">Your token</span>
+            <span class="node-sub" data-node-right-sub>PIN never leaves this side</span>
+          </div>
+        </div>
+
+        <div class="counters">
+          <div class="counter held">
+            <span class="counter-n" data-wire-bytes>288</span><span class="counter-u">bytes</span>
+            <span class="counter-l">crossed the network</span>
+          </div>
+          <div class="counter">
+            <span class="counter-n" data-doc-size>12.4</span><span class="counter-u" data-doc-unit>MB</span>
+            <span class="counter-l">stayed where it was</span>
+          </div>
+        </div>
+
+        <div class="picker">
+          <span class="label">Try a bigger document</span>
+          <div class="tabs">
+            <button class="chip" data-file="0">240 KB</button>
+            <button class="chip active" data-file="1">12.4 MB</button>
+            <button class="chip" data-file="2">1.8 GB</button>
+          </div>
+          <p class="picker-note sm dim" data-note>
+            A 1.8 GB file signs as fast as a 240 KB one. The number on the left
+            is the reason.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="foot wrap">
+    <p class="xs dim">
+      Prototype · hero graphic for docsigner · built on design/tokens.css.
+      Every surface above is the real UI, reproduced from demo/index.html,
+      desktop/frontend and the Frappe print format.
+    </p>
+  </footer>
+</main>
