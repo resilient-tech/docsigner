@@ -2,7 +2,10 @@
 import { Icon } from 'astro-icon/components';
 ---
 
-<button type="button" class="toggle" aria-pressed="false" title="Switch theme">
+<!-- No aria-pressed. The accessible name already says what the click does, and
+     the two together read as "switch to dark theme, toggle button, not pressed",
+     which is noise. A changing name is the clearer of the two patterns here. -->
+<button type="button" class="toggle">
   <Icon name="lucide:sun" class="sun" aria-hidden="true" />
   <Icon name="lucide:moon" class="moon" aria-hidden="true" />
   <span class="sr">Switch to light theme</span>
@@ -14,8 +17,9 @@ import { Icon } from 'astro-icon/components';
 
   const sync = () => {
     const light = document.documentElement.dataset.theme === 'light';
-    btn?.setAttribute('aria-pressed', String(light));
-    if (label) label.textContent = `Switch to ${light ? 'dark' : 'light'} theme`;
+    const next = light ? 'dark' : 'light';
+    if (label) label.textContent = `Switch to ${next} theme`;
+    btn?.setAttribute('title', `Switch to ${next} theme`);
   };
 
   btn?.addEventListener('click', () => {

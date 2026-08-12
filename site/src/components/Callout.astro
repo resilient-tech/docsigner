@@ -62,12 +62,14 @@ const icons = {
     color: var(--action-ink);
   }
 
+  /* -ink for the rule and the glyph, since both carry the meaning. The tint
+     behind them stays the brand amber. */
   .warning {
-    border-left-color: var(--amber);
+    border-left-color: var(--amber-ink);
     background: var(--amber-soft);
   }
   .warning :global(svg) {
-    color: var(--amber);
+    color: var(--amber-ink);
   }
 
   .limit {

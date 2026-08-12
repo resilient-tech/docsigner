@@ -118,16 +118,26 @@ pre {
 }
 
 /* ---- Focus --------------------------------------------------------- */
-/* Never removed. Visible on both themes. */
+/* Never removed. -ink, not --action: the ring has to clear 3:1 against what it
+   sits on, and #2ca7ff manages 2.35:1 on the light grounds.
+   No border-radius here. Setting it reshapes the focused element, so a 6px
+   button snapped to 4px the moment you tabbed to it. The outline already
+   follows the element's own radius. */
 
 :focus-visible {
-  outline: 2px solid var(--action);
+  outline: 2px solid var(--action-ink);
   outline-offset: 2px;
-  border-radius: var(--radius-card);
 }
 
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+/* ---- Selection ----------------------------------------------------- */
+
+::selection {
+  background: var(--green-soft);
+  color: var(--text);
 }
 
 .skip-link {
@@ -181,6 +191,18 @@ pre {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Raised contrast ----------------------------------------------- */
+/* Asked for more contrast, get it: hairlines become real lines and the two
+   quieter greys collapse into the primary one. */
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: var(--border-strong);
+    --dim: var(--text);
+    --faint: var(--text);
   }
 }
 

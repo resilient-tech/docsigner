@@ -36,7 +36,13 @@ const verify = artifact?.sha256
   <header>
     <Icon name={icon} aria-hidden="true" />
     <div>
-      <h3>{title}</h3>
+      <h3>
+        {title}
+        <!-- The green edge alone would make colour the only carrier of "this is
+             yours". CSS reveals this from the same data-match attribute, so the
+             script still sets one thing. -->
+        <span class="match">Your platform</span>
+      </h3>
       <p class="blurb">{blurb}</p>
     </div>
   </header>
@@ -99,10 +105,30 @@ const verify = artifact?.sha256
     padding: var(--s-6);
   }
 
-  /* Lit by the platform script when it matches. */
+  /* Lit by the platform script when it matches. -ink so the edge itself clears
+     3:1 on the light theme, where brand mint manages 1.9:1. */
   .dl[data-match='true'] {
-    border-color: var(--green);
-    box-shadow: 0 0 0 1px var(--green);
+    border-color: var(--green-ink);
+    box-shadow: 0 0 0 1px var(--green-ink);
+  }
+
+  .match {
+    display: none;
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--green-ink);
+    background: var(--green-soft);
+    border-radius: var(--pill);
+    padding: 2px var(--s-2);
+    margin-left: var(--s-2);
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .dl[data-match='true'] .match {
+    display: inline-block;
   }
 
   header {

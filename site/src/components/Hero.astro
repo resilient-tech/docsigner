@@ -8,12 +8,10 @@ interface Props {
   kicker?: string;
   primary?: { href: string; label: string };
   secondary?: { href: string; label: string };
-  /* Short facts under the buttons: licence, language, dependency count. */
-  meta?: string[];
   centre?: boolean;
 }
 
-const { title, lede, kicker, primary, secondary, meta, centre } = Astro.props;
+const { title, lede, kicker, primary, secondary, centre } = Astro.props;
 ---
 
 <section class={centre ? 'hero centre' : 'hero'}>
@@ -36,16 +34,6 @@ const { title, lede, kicker, primary, secondary, meta, centre } = Astro.props;
             </Button>
           )}
         </div>
-      )
-    }
-
-    {
-      meta && (
-        <ul class="meta">
-          {meta.map((m) => (
-            <li>{m}</li>
-          ))}
-        </ul>
       )
     }
 
@@ -87,24 +75,6 @@ const { title, lede, kicker, primary, secondary, meta, centre } = Astro.props;
     flex-wrap: wrap;
     gap: var(--s-3);
     margin-top: var(--s-4);
-  }
-
-  .meta {
-    list-style: none;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s-2) var(--s-4);
-    margin-top: var(--s-4);
-    font-size: var(--text-sm);
-    color: var(--faint);
-  }
-
-  /* Dot between items, not before the first. */
-  .meta li + li::before {
-    content: '·';
-    margin-right: var(--s-4);
-    color: var(--border-strong);
   }
 
   @media (max-width: 768px) {
