@@ -34,6 +34,14 @@ const MESSAGES = {
 };
 
 const el = (id) => document.getElementById(id);
+
+// The tokens are dark by default; data-theme="paper" swaps the colour map, same
+// as the desktop app's toggle does. PAPER is the light scheme's name: warm stock
+// with ink on it, because signing is a document act.
+if (matchMedia("(prefers-color-scheme: light)").matches) {
+  document.documentElement.dataset.theme = "paper";
+}
+
 const signer = new DocSigner();
 let certificates = [];
 
@@ -61,9 +69,24 @@ el("sign").addEventListener("click", signDocument);
 el("doctype").addEventListener("change", applyDoctype);
 el("method").addEventListener("change", applyDoctype);
 el("visible").addEventListener("change", () => {
-  el("visible-controls").style.display = el("visible").checked ? "" : "none";
+  el("visible-controls").style.display = el("visible").checked ? "flex" : "none";
 });
 el("verify").addEventListener("click", verifyDocument);
+
+// Two jobs, two tabs. The panels are plain sections; `hidden` does the hiding.
+const tabs = document.querySelectorAll('[role="tab"]');
+for (const tab of tabs) {
+  tab.addEventListener("click", () => {
+    for (const other of tabs) {
+      const on = other === tab;
+      other.classList.toggle("active", on);
+      other.setAttribute("aria-selected", String(on));
+      el(other.dataset.panel).hidden = !on;
+    }
+    setStatus("", "");
+  });
+}
+
 applyDoctype();
 
 // PIN lives until the tab closes, and no longer. Think hard before you keep
@@ -83,7 +106,8 @@ function applyDoctype() {
     + (kind === "pdf" ? " Select several files to bulk-sign them with one PIN." : "");
   el("method").disabled = kind !== "pdf"; // CAdES is token-only, XAdES server-only
   if (kind !== "pdf") el("method").value = kind === "xades" ? "server" : "token";
-  el("cert-fieldset").style.opacity = ui.needsCert && !serverKey ? "" : "0.45";
+  // A step you cannot use is gone, not dimmed.
+  el("cert-fieldset").hidden = !(ui.needsCert && !serverKey);
   for (const option of el("profile").options) {
     const isBt = option.value === "B-B" || option.value === "B-T";
     option.disabled = ui.profiles === "bt" ? !isBt : false;
@@ -144,6 +168,9 @@ function renderCertificates() {
       select.appendChild(option);
     });
   select.disabled = certificates.length === 0;
+  el("cert-state").textContent = certificates.length
+    ? `${certificates.length} found`
+    : "not listed yet";
 }
 
 function commonName(subject) {
@@ -385,4 +412,6 @@ function setStatus(kind, text, links = null) {
     if (link.href.startsWith("http")) a.target = "_blank";
     status.appendChild(a);
   }
+  // The outcome is at the end of a long form; bring it to the reader.
+  if (text) status.scrollIntoView({ block: "nearest" });
 }

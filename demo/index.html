@@ -13,164 +13,352 @@
     Serve the repo root over HTTP, e.g.:  python3 -m http.server 8080
     then open http://localhost:8080/demo/
   -->
+  <!-- The design system straight from design/, then the app's app.css for the
+       .field / .control / .btn / .chip components this page reuses. Served from
+       the repo root, same as ../js/docsigner.js.
+
+       Not the app's base.css: that pins an app shell to the viewport
+       (height:100%, overflow:hidden) and this page is a scrolling document. -->
+  <link rel="stylesheet" href="../design/tokens.css">
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="../design/base.css">
+  <link rel="stylesheet" href="../desktop/frontend/src/app.css">
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      font-size: 15px;
-      color: #1a1a1a;
-      max-width: 640px;
-      margin: 40px auto;
-      padding: 0 16px;
+    /* app.css is written for the desktop app's 14px base, and this page reuses
+       its controls, so it takes the same density knob. */
+    html { font-size: 87.5%; }
+    body { background: var(--bg-deep); }
+    .page {
+      max-width: 660px;
+      margin: 0 auto;
+      padding: var(--s-8) var(--s-4) var(--s-24);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-5);
     }
-    h1 { font-size: 22px; }
-    fieldset {
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      margin: 0 0 16px;
-      padding: 12px 16px 16px;
+    /* base.css draws .brand-mark as the gradient tile; this page puts the
+       rendered icon inside it. */
+    .brand-mark img { width: var(--icon-sm); height: var(--icon-sm); }
+    .lede { margin-top: var(--s-1); }
+
+    /* ---- tabs ---- */
+    .tabs { display: flex; gap: var(--s-2); }
+    .tabs .chip { height: var(--control-h-sm); }
+    .panel { display: flex; flex-direction: column; gap: var(--s-5); }
+    .panel[hidden] { display: none; }
+
+    /* ---- steps ---- */
+    /* One card per step, numbered in the heading so the order is the UI. */
+    /* Card recipe: --surface, one hairline, --radius, no shadow. A thing that
+       needs a shadow is a menu or a modal. */
+    .card {
+      background: var(--surface);
+      border: var(--hairline);
+      border-radius: var(--radius);
+      padding: var(--s-4) var(--s-5) var(--s-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
     }
-    legend { font-weight: 600; padding: 0 6px; }
-    label { display: block; margin: 8px 0 4px; }
-    select, input[type="text"], input[type="password"] {
+    .card[hidden] { display: none; }
+    /* .label from base.css carries the uppercase micro-label; this adds only
+       the layout. */
+    .card-head {
+      display: flex;
+      align-items: baseline;
+      gap: var(--s-2);
+    }
+    .card-head .step {
+      color: var(--action-ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .card-head .state {
+      margin-left: auto;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: var(--fw-semibold);
+      color: var(--dim);
+    }
+
+    /* ---- controls ---- */
+    .control { background: var(--well); }
+    /* The file row doubles as a drop target: dropping onto a file input sets it,
+       no JS needed. */
+    input[type='file'].control {
+      padding: var(--s-4);
+      font-size: var(--text-sm);
+      border-style: dashed;
+      border-color: var(--border-strong);
+      cursor: pointer;
+      height: auto;
+    }
+    input[type='file'].control:hover { background: var(--hover); }
+    input[type='file']::file-selector-button {
       font: inherit;
-      width: 100%;
-      box-sizing: border-box;
-      padding: 6px 8px;
-      border: 1px solid #bbb;
-      border-radius: 4px;
-    }
-    .inline { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
-    .inline input { width: auto; }
-    button {
-      font: inherit;
-      padding: 8px 20px;
-      border-radius: 4px;
-      border: 1px solid #1a56db;
-      background: #1a56db;
-      color: #fff;
+      font-weight: var(--fw-semibold);
+      margin-right: var(--s-3);
+      padding: var(--s-1) var(--s-3);
+      border-radius: var(--radius-card);
+      border: var(--hairline);
+      background: var(--raised);
+      color: var(--text);
       cursor: pointer;
     }
-    button.secondary { background: #fff; color: #1a56db; }
-    .hint { font-size: 13px; color: #666; margin: 4px 0 0; }
-    button:disabled { opacity: 0.5; cursor: default; }
+    .hint { font-size: var(--text-xs); color: var(--faint); }
+    .field > .hint { margin-top: -2px; }
+    .inline { display: flex; align-items: center; gap: var(--s-2); }
+    .inline label { font-size: var(--text-body); }
+    #visible-controls {
+      flex-direction: column;
+      gap: var(--s-4);
+      padding-left: var(--s-3);
+      border-left: var(--accent-bar) solid var(--border);
+    }
+
+    /* Everything a first run should not have to read. */
+    details.adv > summary {
+      cursor: pointer;
+      font-size: var(--text-sm);
+      font-weight: var(--fw-semibold);
+      color: var(--dim);
+      list-style: none;
+    }
+    details.adv > summary::before { content: '▸ '; }
+    details.adv[open] > summary::before { content: '▾ '; }
+    details.adv > summary:hover { color: var(--text); }
+    details.adv > div {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
+      margin-top: var(--s-4);
+    }
+
+    /* ---- outcome ---- */
+    /* Callout recipe: hairline all round, --accent-bar on the leading edge in
+       the tone's -ink. */
     #status {
-      margin-top: 16px;
-      padding: 12px;
-      border-radius: 6px;
       display: none;
       white-space: pre-wrap;
+      font-size: var(--text-sm);
+      padding: var(--s-3) var(--s-4);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: var(--hairline);
+      border-left-width: var(--accent-bar);
+      border-left-color: var(--border-strong);
     }
-    #status.info { display: block; background: #eef4ff; }
-    #status.error { display: block; background: #fdecec; }
-    #status.success { display: block; background: #e8f7ee; }
-    #status a { color: inherit; display: block; }
+    #status.info, #status.error, #status.success { display: block; }
+    #status.info { border-left-color: var(--action-ink); }
+    #status.error {
+      border-left-color: var(--red-ink);
+      color: var(--red-ink);
+      background: var(--red-soft);
+    }
+    #status.success { border-left-color: var(--green-ink); }
+    /* One download per line, however many came back. */
+    #status a {
+      color: var(--action-ink);
+      display: block;
+      width: fit-content;
+      margin-top: var(--s-2);
+      font-weight: var(--fw-semibold);
+    }
+    #status a + a { margin-top: var(--s-1); }
+
+    /* .label again, plus layout. */
+    .server-row {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+    }
+    .server-row .control {
+      flex: 1;
+      min-width: 0;
+      font-family: var(--mono);
+      font-size: var(--text-sm);
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
     .sig-card {
-      border: 1px solid #ddd; border-radius: 6px;
-      padding: 10px 12px; margin-top: 10px; font-size: 14px;
+      background: var(--surface);
+      border: var(--hairline);
+      border-radius: var(--radius-sm);
+      padding: var(--s-3);
+      margin-top: var(--s-3);
+      font-size: var(--text-sm);
     }
-    .sig-card .ok { color: #157347; font-weight: 600; }
-    .sig-card .bad { color: #b02a37; font-weight: 600; }
-    .sig-card .meta { color: #666; font-size: 13px; margin-top: 4px; white-space: pre-wrap; }
+    .sig-card .ok { color: var(--green-ink); font-weight: var(--fw-semibold); }
+    .sig-card .bad { color: var(--red-ink); font-weight: var(--fw-semibold); }
+    .sig-card .meta {
+      color: var(--dim);
+      font-size: var(--text-xs);
+      margin-top: var(--s-1);
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-  <h1>DocSigner demo</h1>
-  <p>Signs a PDF with a certificate on your USB token. The PDF goes to your own server; only a hash reaches the token.</p>
+  <main class="page">
+    <header>
+      <div class="brand">
+        <span class="brand-mark"><img src="../assets/icon.svg" alt=""></span>
+        DocSigner demo
+      </div>
+      <p class="lede">Sign a file with the certificate on your USB token, or check a signature someone else made. The file goes to your own server; only a hash reaches the token.</p>
+    </header>
 
-  <fieldset>
-    <legend>1. Document</legend>
-    <label for="doctype">What to sign</label>
-    <select id="doctype">
-      <option value="pdf" selected>PDF (PAdES / CCA signature inside the file)</option>
-      <option value="cades">Any file (detached CAdES .p7s, signed by the token)</option>
-      <option value="xades">XML (enveloped XAdES, server-held key)</option>
-    </select>
-    <input type="file" id="file" accept="application/pdf,.pdf">
-    <p class="hint" id="doctype-hint"></p>
-  </fieldset>
-
-  <fieldset id="cert-fieldset">
-    <legend>2. Certificate</legend>
-    <button id="list" class="secondary" type="button">List certificates</button>
-    <label for="cert">Signer</label>
-    <select id="cert" disabled>
-      <option>Click "List certificates" first</option>
-    </select>
-  </fieldset>
-
-  <fieldset>
-    <legend>3. Options</legend>
-    <label for="profile">Signature profile</label>
-    <select id="profile">
-      <option value="B-B" selected>PAdES B-B (basic)</option>
-      <option value="B-T">PAdES B-T (with timestamp)</option>
-      <option value="B-LT">PAdES B-LT (long-term, embeds revocation data)</option>
-      <option value="B-LTA">PAdES B-LTA (long-term with archive timestamp)</option>
-      <option value="CCA-LTV">CCA-LTV (India: PKCS#7 with pdfRevocationInfoArchival)</option>
-      <option value="CCA-LTA">CCA-LTA (India: CCA-LTV plus RFC 3161 timestamp)</option>
-    </select>
-    <p class="hint">B-T, B-LT, B-LTA and CCA-LTA need TSA_URL on the server; B-LT, B-LTA, CCA-LTV and CCA-LTA also need TRUST_DIR with your CA chain and reachable OCSP/CRL endpoints.</p>
-    <label for="tsa">Timestamp authority</label>
-    <select id="tsa">
-      <option value="" selected>Server default (TSA_URL)</option>
-      <option value="digicert">DigiCert</option>
-      <option value="sectigo">Sectigo</option>
-      <option value="certum">Certum</option>
-      <option value="entrust">Entrust</option>
-      <option value="ssl-com">SSL.com</option>
-    </select>
-    <p class="hint">Used by profiles that timestamp. Each option's root sits in trust/tsa/ (Entrust's public TSA is served by Sectigo), so the timestamp validates for the LTV profiles too.</p>
-    <label for="method">Sign with</label>
-    <select id="method">
-      <option value="token" selected>USB token (browser extension)</option>
-      <option value="server">Server-held key (P12_PATH on the server)</option>
-    </select>
-    <label for="reason">Reason (optional)</label>
-    <input type="text" id="reason" placeholder="Approved / Certified true copy">
-    <label for="location">Location (optional)</label>
-    <input type="text" id="location" placeholder="Mumbai">
-    <label for="digest">Digest algorithm</label>
-    <select id="digest">
-      <option value="sha256" selected>SHA-256</option>
-      <option value="sha384">SHA-384</option>
-      <option value="sha512">SHA-512</option>
-    </select>
-    <div class="inline" id="visible-row">
-      <input type="checkbox" id="visible">
-      <label for="visible" style="margin:0">Visible signature</label>
+    <div class="tabs" role="tablist">
+      <button class="chip active" role="tab" type="button" aria-selected="true" aria-controls="sign-panel" data-panel="sign-panel">Sign</button>
+      <button class="chip" role="tab" type="button" aria-selected="false" aria-controls="verify-panel" data-panel="verify-panel">Verify</button>
     </div>
-    <div id="visible-controls" style="display:none">
-      <label for="sigpage">Page (1 = first page)</label>
-      <input type="text" id="sigpage" value="1">
-      <label for="sigpos">Position</label>
-      <select id="sigpos">
-        <option value="bottom-left" selected>Bottom left</option>
-        <option value="bottom-right">Bottom right</option>
-        <option value="top-left">Top left</option>
-        <option value="top-right">Top right</option>
-      </select>
-      <label for="sigtext">Stamp text (optional; {signer}, {ts} and {reason} are filled in)</label>
-      <input type="text" id="sigtext" placeholder="Signed by {signer} — {reason}">
-      <label for="siglogo">Logo (optional image, drawn behind the text)</label>
-      <input type="file" id="siglogo" accept="image/*">
-    </div>
-    <label for="pin">Token PIN (optional — leave empty to use the native prompt)</label>
-    <input type="password" id="pin" autocomplete="off" placeholder="Prompted by the token app if empty">
-    <label for="server">Server URL</label>
-    <input type="text" id="server" value="http://127.0.0.1:8001">
-  </fieldset>
 
-  <button id="sign" type="button" disabled>Sign</button>
+    <!-- ------------------------------------------------------------ sign -->
+    <section class="panel" id="sign-panel" role="tabpanel">
+      <div class="card">
+        <div class="card-head label"><span class="step">1</span> Document</div>
+        <div class="field">
+          <label for="doctype">What to sign</label>
+          <select id="doctype" class="control">
+            <option value="pdf" selected>PDF (PAdES / CCA signature inside the file)</option>
+            <option value="cades">Any file (detached CAdES .p7s, signed by the token)</option>
+            <option value="xades">XML (enveloped XAdES, server-held key)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="method">Sign with</label>
+          <select id="method" class="control">
+            <option value="token" selected>USB token (browser extension)</option>
+            <option value="server">Server-held key (P12_PATH on the server)</option>
+          </select>
+        </div>
+        <div class="field">
+          <input type="file" id="file" class="control" accept="application/pdf,.pdf">
+          <p class="hint" id="doctype-hint"></p>
+        </div>
+      </div>
 
-  <div id="status"></div>
+      <!-- Hidden outright when the server holds the key: a step you cannot use
+           should not be on screen. -->
+      <div class="card" id="cert-fieldset">
+        <div class="card-head label">
+          <span class="step">2</span> Certificate
+          <span class="state" id="cert-state">not listed yet</span>
+        </div>
+        <div class="field">
+          <label for="cert">Signer</label>
+          <select id="cert" class="control" disabled>
+            <option>List your certificates to choose a signer</option>
+          </select>
+        </div>
+        <button id="list" class="btn default sm" type="button" style="align-self:flex-start">List certificates</button>
+      </div>
 
-  <fieldset style="margin-top:24px">
-    <legend>Verify a signed PDF</legend>
-    <p class="hint">Drop any signed PDF here — yours or anyone's — to see its signatures, timestamps and trust status straight from the server's /api/validate.</p>
-    <input type="file" id="verify-file" accept="application/pdf,.pdf">
-    <button id="verify" class="secondary" type="button" style="margin-top:10px">Verify</button>
-    <div id="verify-result"></div>
-  </fieldset>
+      <div class="card">
+        <div class="card-head label"><span class="step">3</span> Signature</div>
+        <div class="field">
+          <label for="profile">Profile</label>
+          <select id="profile" class="control">
+            <option value="B-B" selected>PAdES B-B (basic)</option>
+            <option value="B-T">PAdES B-T (with timestamp)</option>
+            <option value="B-LT">PAdES B-LT (long-term, embeds revocation data)</option>
+            <option value="B-LTA">PAdES B-LTA (long-term with archive timestamp)</option>
+            <option value="CCA-LTV">CCA-LTV (India: PKCS#7 with pdfRevocationInfoArchival)</option>
+            <option value="CCA-LTA">CCA-LTA (India: CCA-LTV plus RFC 3161 timestamp)</option>
+          </select>
+          <p class="hint">B-T, B-LT, B-LTA and CCA-LTA need TSA_URL on the server; B-LT, B-LTA, CCA-LTV and CCA-LTA also need TRUST_DIR with your CA chain and reachable OCSP/CRL endpoints.</p>
+        </div>
+        <div class="field">
+          <label for="reason">Reason (optional)</label>
+          <input type="text" id="reason" class="control" placeholder="Approved / Certified true copy">
+        </div>
+        <div class="field">
+          <label for="location">Location (optional)</label>
+          <input type="text" id="location" class="control" placeholder="Mumbai">
+        </div>
+        <div class="inline" id="visible-row">
+          <input type="checkbox" id="visible">
+          <label for="visible">Draw a visible stamp on the page</label>
+        </div>
+        <div id="visible-controls" style="display:none">
+          <div class="field">
+            <label for="sigpage">Page (1 = first page)</label>
+            <input type="text" id="sigpage" class="control" value="1">
+          </div>
+          <div class="field">
+            <label for="sigpos">Position</label>
+            <select id="sigpos" class="control">
+              <option value="bottom-left" selected>Bottom left</option>
+              <option value="bottom-right">Bottom right</option>
+              <option value="top-left">Top left</option>
+              <option value="top-right">Top right</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sigtext">Stamp text (optional; {signer}, {ts} and {reason} are filled in)</label>
+            <input type="text" id="sigtext" class="control" placeholder="Signed by {signer} — {reason}">
+          </div>
+          <div class="field">
+            <label for="siglogo">Logo (optional image, drawn behind the text)</label>
+            <input type="file" id="siglogo" class="control" accept="image/*">
+          </div>
+        </div>
+      </div>
+
+      <details class="adv">
+        <summary>Timestamp, digest and PIN</summary>
+        <div>
+          <div class="field">
+            <label for="tsa">Timestamp authority</label>
+            <select id="tsa" class="control">
+              <option value="" selected>Server default (TSA_URL)</option>
+              <option value="digicert">DigiCert</option>
+              <option value="sectigo">Sectigo</option>
+              <option value="certum">Certum</option>
+              <option value="entrust">Entrust</option>
+              <option value="ssl-com">SSL.com</option>
+            </select>
+            <p class="hint">Used by profiles that timestamp. Each option's root sits in trust/tsa/ (Entrust's public TSA is served by Sectigo), so the timestamp validates for the LTV profiles too.</p>
+          </div>
+          <div class="field">
+            <label for="digest">Digest algorithm</label>
+            <select id="digest" class="control">
+              <option value="sha256" selected>SHA-256</option>
+              <option value="sha384">SHA-384</option>
+              <option value="sha512">SHA-512</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="pin">Token PIN</label>
+            <input type="password" id="pin" class="control" autocomplete="off" placeholder="Leave empty to be prompted by the token app">
+          </div>
+        </div>
+      </details>
+
+      <button id="sign" class="btn primary lg" type="button" disabled>Sign</button>
+    </section>
+
+    <!-- ---------------------------------------------------------- verify -->
+    <section class="panel" id="verify-panel" role="tabpanel" hidden>
+      <div class="card">
+        <div class="card-head label">Verify a signed PDF</div>
+        <p class="hint">Any signed PDF — yours or anyone's. The server's /api/validate reports its signatures, timestamps and trust status.</p>
+        <input type="file" id="verify-file" class="control" accept="application/pdf,.pdf">
+        <button id="verify" class="btn default sm" type="button" style="align-self:flex-start">Verify</button>
+        <div id="verify-result"></div>
+      </div>
+    </section>
+
+    <!-- Outside both panels: either tab can report an error here. -->
+    <div id="status"></div>
+
+    <!-- Both tabs post to the same server, so the address is not a per-tab
+         option. -->
+    <footer class="server-row label">
+      <label for="server">Server</label>
+      <input type="text" id="server" class="control" value="http://127.0.0.1:8001">
+    </footer>
+  </main>
 
   <script type="module" src="demo.js"></script>
 </body>
