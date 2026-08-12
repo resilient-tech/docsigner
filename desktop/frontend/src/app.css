@@ -82,7 +82,7 @@
 }
 .count-pill {
   background: rgba(44, 167, 255, 0.15);
-  color: var(--action);
+  color: var(--action-ink);
   border-radius: var(--pill);
   padding: 4px 11px;
   font-size: 12px;
@@ -110,12 +110,12 @@
 }
 .banner.error {
   background: color-mix(in srgb, var(--red) 13%, var(--surface));
-  color: var(--red);
+  color: var(--red-ink);
   border-bottom-color: color-mix(in srgb, var(--red) 32%, transparent);
 }
 .banner.warn {
   background: color-mix(in srgb, var(--amber) 15%, var(--surface));
-  color: var(--amber);
+  color: var(--amber-ink);
   border-bottom-color: color-mix(in srgb, var(--amber) 32%, transparent);
 }
 .banner-btn {
@@ -186,7 +186,7 @@
   color: var(--faint);
 }
 .q-clear:hover {
-  color: var(--red);
+  color: var(--red-ink);
 }
 .queue-list {
   flex: 1;
@@ -221,7 +221,7 @@
   flex: none;
 }
 .qrow-ic {
-  color: var(--red);
+  color: var(--red-ink);
   flex: none;
 }
 .qrow-main {
@@ -244,15 +244,15 @@
   text-overflow: ellipsis;
 }
 .s-ok {
-  color: var(--green);
+  color: var(--green-ink);
   flex: none;
 }
 .s-err {
-  color: var(--red);
+  color: var(--red-ink);
   flex: none;
 }
 .s-skip {
-  color: var(--amber);
+  color: var(--amber-ink);
   flex: none;
 }
 .qrow-remove {
@@ -276,7 +276,7 @@
 }
 .qrow-remove:hover {
   background: var(--hover);
-  color: var(--red);
+  color: var(--red-ink);
 }
 
 /* ---- canvas ---- */
@@ -495,7 +495,7 @@ input.control::placeholder {
   text-align: right;
   font-family: var(--mono);
   font-size: 12.5px;
-  color: var(--green);
+  color: var(--green-ink);
   background: var(--well);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -503,7 +503,7 @@ input.control::placeholder {
 }
 .hint-warn {
   font-size: 11.5px;
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 /* "Token plugged in, driver missing": the one empty-list case that is both
    common and fixable, so it gets a box rather than a line of small print. */
@@ -515,7 +515,7 @@ input.control::placeholder {
   padding: 9px 10px;
   font-size: 11.5px;
   line-height: 1.45;
-  color: var(--amber);
+  color: var(--amber-ink);
   background: var(--well);
   border: 1px solid var(--border);
   border-left: 2px solid var(--amber);
@@ -588,7 +588,7 @@ input.control::placeholder {
   filter: brightness(1.06);
 }
 .btn.danger {
-  color: var(--red);
+  color: var(--red-ink);
 }
 .btn.danger:hover:not(:disabled) {
   background: rgba(229, 72, 77, 0.12);
@@ -622,12 +622,12 @@ input.control::placeholder {
   white-space: nowrap;
 }
 .chip.active {
-  border-color: var(--action);
-  color: var(--action);
+  border-color: var(--action-ink);
+  color: var(--action-ink);
   background: rgba(44, 167, 255, 0.1);
 }
 input[type='checkbox'] {
-  accent-color: var(--green);
+  accent-color: var(--green-ink);
   width: 15px;
   height: 15px;
 }
@@ -695,7 +695,7 @@ input[type='checkbox'] {
 }
 .prof.active {
   background: var(--surface);
-  color: var(--green);
+  color: var(--green-ink);
 }
 .prof-editor {
   flex: 1;
@@ -737,7 +737,7 @@ input[type='checkbox'] {
 }
 /* A rejected upload, said next to the control that rejected it. */
 .field-error {
-  color: var(--red);
+  color: var(--red-ink);
   font-weight: 600;
 }
 .img-thumb {
@@ -779,7 +779,7 @@ input[type='checkbox'] {
   height: 44px;
   border-radius: 50%;
   background: var(--well);
-  color: var(--green);
+  color: var(--green-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -805,9 +805,13 @@ input[type='checkbox'] {
   border-radius: var(--radius-sm);
   color: var(--text);
 }
-.pin-field:focus {
-  outline: none;
-  border-color: var(--action);
+/* The ring stays. This is the PIN field: if any control in the app has to show
+   unmistakably where focus is, it's this one. `outline: none` left a 1px border
+   change doing the whole job. */
+.pin-field:focus-visible {
+  outline: 2px solid var(--action-ink);
+  outline-offset: 1px;
+  border-color: var(--action-ink);
 }
 .pin-actions {
   display: flex;
