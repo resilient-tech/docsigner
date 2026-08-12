@@ -21,21 +21,10 @@
    public/), so there is nothing to override here. */
 
 /*
- * Deck scrolling, for the homepage's full-height sections.
- *
- * `proximity`, never `mandatory`: proximity nudges to the nearest slide when you
- * stop near one and otherwise leaves the scroll alone, so a section taller than
- * the viewport stays reachable. Mandatory would trap the tail of any slide that
- * outgrows a short laptop screen.
- *
- * Off below 700px of height, which is where a landscape phone and a short laptop
- * live, and off for anyone who asked for less motion. Snapping is motion.
+ * Only the hero fills the screen. There is no scroll-snap: with one full-height
+ * section there is nothing to snap between, and the sections below earn their
+ * height from their content rather than claiming a screen each.
  */
-@media (min-height: 700px) and (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-snap-type: y proximity;
-  }
-}
 
 /* An in-page anchor should not land under the sticky nav. */
 html {

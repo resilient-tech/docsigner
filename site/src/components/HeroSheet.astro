@@ -36,4 +36,27 @@
     height: auto;
     display: block;
   }
+
+  /* The signature draws itself once, on load, then holds. pathLength="1" on the
+     path lets one dash rule drive it regardless of the path's real length.
+     This is the moment on the page, so nothing else animates on arrival. */
+  .hero-sheet .ink {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: ink-draw 1500ms var(--ease) 400ms forwards;
+  }
+
+  @keyframes ink-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Drawn, not animated: the signature is the point, so it stays visible. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-sheet .ink {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+  }
 </style>

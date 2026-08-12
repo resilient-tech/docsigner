@@ -3,42 +3,41 @@ import Layout from '../components/Layout.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
 import HeroSheet from '../components/HeroSheet.astro';
+import ProductShot from '../components/ProductShot.astro';
 import Wire from '../components/Wire.astro';
-import SurfaceCard from '../components/SurfaceCard.astro';
-import { links, REPO_PUBLIC, ready } from '../config';
+import { REPO_PUBLIC } from '../config';
 
 /*
- * Five screens. Four of them fill the viewport and snap; the closing band does
- * not, because it holds one sentence and a button and a half-empty 100svh is
- * worse than an honest short one.
+ * The hero is the only full-height section. Everything under it is as short as
+ * it can be and still be true.
  *
- * Slide 2 is the spine: three surfaces, read as "which of these am I", because
- * three different people arrive here wanting three different first steps.
+ * There is no "which of these are you" block here any more. Routing three
+ * audiences is the navigation's job, not a slab in the middle of a landing page.
+ * That content moved to /how-it-works.
  */
 
 const profiles = [
   ['B-B', 'The signature.'],
-  ['B-T', 'RFC 3161 timestamp.'],
-  ['B-LT', 'Embedded revocation data, OCSP or CRL.'],
-  ['B-LTA', 'Archival timestamp chain on top of B-LT.'],
+  ['B-T', 'A timestamp, per RFC 3161.'],
+  ['B-LT', 'Revocation data embedded, OCSP or CRL.'],
+  ['B-LTA', 'An archival timestamp chain on top of B-LT.'],
   ['CCA-LTV', "India's CCA variant, per ESAIG 1.19."],
-  ['CCA-LTA', 'CCA-LTV plus an RFC 3161 timestamp.'],
+  ['CCA-LTA', 'CCA-LTV, plus a timestamp.'],
 ];
 ---
 
 <Layout
   title="DocSigner"
-  description="Open-source digital signatures for PDFs. Sign with a USB token from any website, from a desktop app, or from ERPNext. Self-hosted, Apache-2.0, PAdES and India's CCA profiles."
+  description="Open-source PDF signing. Use the DSC token you already have, on a server you control. Apache-2.0, every piece of it."
 >
-  <!-- 1 ─ what it is, and the artifact it produces -->
-  <Section full class="hero centred">
+  <!-- The whole statement, on one screen. -->
+  <Section full class="hero">
     <div class="hero-grid">
       <div class="hero-copy">
-        <p class="label">Apache-2.0 · PAdES and India's CCA profiles</p>
-        <h1>Sign PDFs with a USB token, from any website</h1>
+        <h1>Open-source PDF signing</h1>
         <p class="lede">
-          Self-hosted and open source. The document stays on your server: the
-          browser carries a 32-byte hash out and a signature back.
+          Use the DSC token you already have, on a server you control. Every
+          piece of it is Apache-2.0.
         </p>
         <div class="hero-cta">
           <Button href="/download" variant="primary" size="lg">Download</Button>
@@ -50,62 +49,21 @@ const profiles = [
     </div>
   </Section>
 
-  <!-- 2 ─ the router. Three people, three first steps. -->
-  <Section
-    full
-    ground="deep"
-    label="Three ways in"
-    title="Which of these are you?"
-    lede="One signing engine underneath all three. What changes is where it runs and who holds the key."
-  >
-    <div class="surfaces">
-      <SurfaceCard
-        icon="lucide:globe"
-        who="For developers"
-        title="In your own web app"
-        body="Your page asks the token for a signature and your server does the rest. One JS file with no dependencies, and an HTTP API behind it."
-        href={REPO_PUBLIC ? links.docsJs : undefined}
-        cta="Read the page library docs"
-        pending="Docs open up when the repository goes public."
-      />
-      <SurfaceCard
-        icon="lucide:folder-check"
-        who="For anyone with a DSC"
-        title="A folder of PDFs, right now"
-        body="A desktop app that signs every PDF in a folder against your token, one PIN for the run. No server, no browser, no extension."
-        href="/download"
-        cta="Download the app"
-      />
-      <SurfaceCard
-        icon="lucide:receipt"
-        who="For ERPNext admins"
-        title="Invoices, on submit"
-        body="A Frappe app: sign print formats from the desk, bulk-sign with one PIN, auto-sign on submit, and QR-verifiable e-copies."
-        href={REPO_PUBLIC ? links.roadmap : undefined}
-        cta="Read the plan"
-        pending="Ships in its own repo, docsigner_integration."
-      />
+  <Section ground="deep" label="What it looks like" title="Signing, on your own page">
+    <div class="shot-wrap">
+      <ProductShot />
     </div>
   </Section>
 
-  <!-- 3 ─ how, once, without theatre -->
   <Section
-    full
     label="How it works"
-    title="The token signs 32 bytes, not the file"
-    lede="A token holds a private key and will not hand it over. So the server prepares the signature inside the PDF, the token signs one small hash, and the server puts the answer back."
+    title="The token only ever sees 32 bytes"
+    lede="A token holds a private key and will not hand it over. So your server builds the signature inside the PDF, the token signs one small hash, and your server puts the answer back."
   >
     <Wire />
   </Section>
 
-  <!-- 4 ─ what the signature actually claims -->
-  <Section
-    full
-    ground="deep"
-    label="Standards"
-    title="What the signature claims"
-    lede="PAdES B-B through B-LTA per ETSI EN 319 142-1, and India's CCA profiles with revocation data in the pdfRevocationInfoArchival attribute."
-  >
+  <Section ground="deep" label="Standards" title="What the signature claims">
     <div class="std">
       <div class="std-table scroll-x">
         <table>
@@ -126,35 +84,32 @@ const profiles = [
       </div>
       <div class="std-notes">
         <p>
-          Beyond PDF: detached CAdES-BES over any file, and enveloped XAdES-B
-          over XML with a server-held key. RSA and ECDSA, SHA-256, 384 and 512.
+          PAdES per ETSI EN 319 142-1, and India's CCA profiles. Detached CAdES
+          over any file, enveloped XAdES over XML. RSA and ECDSA, SHA-256, 384
+          and 512.
         </p>
-        <p>
-          Signed output validates as PAdES in Adobe and in the EU DSS validator.
-        </p>
+        <p>The output opens as signed in Adobe, and passes the EU DSS validator.</p>
         <p class="no-overrides">
-          No localhost certificate to trust, no <code>/etc/hosts</code> entry, no
-          Java. Reaching the token needs none of them.
+          Nothing to click past: no localhost certificate to trust, no
+          <code>/etc/hosts</code> line, no Java.
         </p>
       </div>
     </div>
   </Section>
 
-  <!-- 5 ─ the close. Deliberately not full height. -->
-  <Section ground="bg" centre>
+  <Section centre>
     <div class="end">
       <h2>Sign something</h2>
       <p class="lede">
-        The helper is about 1 MB of Rust. The page library is one file with no
+        The helper is about a megabyte. The page library is one file, no
         dependencies.
       </p>
       <Button href="/download" variant="primary" size="lg">Download</Button>
       {
         !REPO_PUBLIC && (
           <p class="note">
-            Nothing is published yet: the first release waits on the repository
-            going public, and the extension has not been submitted to either
-            store.
+            Not published yet. The first release is waiting on the repository
+            going public, and the extension has not been submitted to the stores.
           </p>
         )
       }
@@ -163,10 +118,10 @@ const profiles = [
 </Layout>
 
 <style>
-  /* ---- 1 hero ---- */
+  /* ---- hero ---- */
   .hero-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
     gap: var(--s-16);
     align-items: center;
   }
@@ -174,29 +129,37 @@ const profiles = [
   .hero-copy {
     display: flex;
     flex-direction: column;
-    gap: var(--s-4);
+    gap: var(--s-5);
+  }
+
+  /* One tier above --display-1: the headline is the page. No cap of its own,
+     the column is already the measure and capping it forced hyphen breaks. */
+  .hero-copy h1 {
+    font-size: var(--display-hero);
+    max-width: none;
+  }
+
+  .hero-copy .lede {
+    max-width: 40ch;
   }
 
   .hero-cta {
-    margin-top: var(--s-4);
+    margin-top: var(--s-2);
   }
 
-  /* The sheet sits slightly off-square, the way a page does on a desk. */
+  /* A page on a desk, not a screenshot in a box. */
   .hero-art {
     padding: var(--s-6) var(--s-6) var(--s-8);
     transform: rotate(-1.4deg);
     box-shadow: var(--shadow-lift);
   }
 
-  /* ---- 2 router ---- */
-  .surfaces {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: var(--s-4);
-    align-items: stretch;
+  /* ---- product shot ---- */
+  .shot-wrap {
+    max-width: 760px;
   }
 
-  /* ---- 4 standards ---- */
+  /* ---- standards ---- */
   .std {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -257,7 +220,7 @@ const profiles = [
     color: var(--text);
   }
 
-  /* ---- 5 close ---- */
+  /* ---- close ---- */
   .end {
     display: flex;
     flex-direction: column;
@@ -272,7 +235,7 @@ const profiles = [
     margin-top: var(--s-2);
   }
 
-  /* --bp-lg: the hero's two columns and the standards split both need room. */
+  /* --bp-lg */
   @media (max-width: 1024px) {
     .hero-grid,
     .std {
@@ -280,15 +243,14 @@ const profiles = [
       gap: var(--s-8);
     }
 
-    .hero-grid {
-      gap: var(--s-8);
+    .hero-copy .lede {
+      max-width: var(--measure-h1);
     }
 
-    /* The sheet follows the copy when stacked. Leading with it looked better and
-       pushed the headline and the one call to action below the fold on a phone,
-       which is the wrong trade on the screen that has to say what this is. */
+    /* Copy leads when stacked: the headline has to be read first, and the sheet
+       peeking in below is what invites the scroll. */
     .hero-art {
-      max-width: 420px;
+      max-width: 440px;
     }
   }
 
