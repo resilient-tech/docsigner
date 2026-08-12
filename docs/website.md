@@ -289,17 +289,59 @@ Stroke width 1.75 to match the app's `base.css`. Icons are `1em` and inherit
 
 ### 2.6 Accessibility, not negotiable
 
-- Every accent pair clears WCAG AA on its own ground. `--faint` on `--bg` is the
-  tight one at 4.6:1 dark, so it's for captions only, never body.
-- Focus ring is `2px solid var(--action)` with `2px` offset, visible on both
-  themes, never removed.
+Contrast is the one property here you can compute, so it has a check rather than
+a promise: `site/scripts/check_contrast.py`, which runs over any `tokens.css`.
+
+```bash
+python3 site/scripts/check_contrast.py \
+    site/src/styles/tokens.css desktop/frontend/src/tokens.css
+```
+
+It found 26 failing pairs on the first run, and the values in §2.2 are what came
+out of fixing them. Two lessons worth keeping:
+
+- **A hue picked for a dark UI does not carry text on a light one.** The colour
+  map was measured off the dark app and reused unchanged, so `--faint` sat at
+  2.26:1 in light and mint managed 1.9:1. Hence the `-ink` pair: `color:` takes
+  `-ink`, `background:` takes the base hue. And it isn't only a light-theme
+  problem, `--red` failed in dark too.
+- **A tint is a ground.** The "your platform" pill puts `--green-ink` on
+  `--green-soft`, and that pair was 4.27:1 while every flat ground passed.
+
+The rest needs eyes, and these are the rules:
+
+- Focus ring is `2px solid var(--action-ink)` at `2px` offset, never removed, and
+  it sets no `border-radius`. Setting one reshapes the focused element; a 6px
+  button snapped to 4px on tab.
+- Colour never carries meaning alone. The platform-matched download card says
+  "Your platform" in words next to the green edge.
 - `/setup` state changes announce via `aria-live="polite"`. The three rows are a
   `<ul>` with real text in each state, so a screen reader gets the state without
   the colour.
-- Colour never carries meaning alone. Valid and invalid both get an icon and a
-  word.
-- Theme toggle is a real `<button>` with `aria-pressed`.
+- Theme toggle is a real `<button>` whose accessible name says what the click
+  does. No `aria-pressed`: with a changing name it reads as "switch to dark
+  theme, toggle button, not pressed".
+- `prefers-reduced-motion` and `prefers-contrast: more` both answered.
 - Skip link to `<main>`.
+
+### 2.7 The other surfaces
+
+The colour map is shared, so a token defect is never only the website's. Fixed at
+the same time, and worth knowing about before touching either:
+
+- **The desktop app** used `--faint` as a text colour in 13 rules and had 20
+  accent-as-text declarations. Its `tokens.css` is the origin of the map, so the
+  fix went there first and the site copied it forward. The demo page links that
+  stylesheet directly, so it came along.
+- **The app's PIN field** had `outline: none` with a 1px border change as its
+  only focus indicator. Of every control in the product that one has the least
+  business hiding focus.
+- **The extension's consent dialog** was the only surface off the design system
+  altogether: five hardcoded hex values and `color-scheme: light` pinned, so it
+  flashed white over a dark browser. It now has both themes, stated explicitly in
+  each branch. It stays self-contained on purpose, with the tokens copied rather
+  than imported, because it has to render correctly even when nothing else
+  loads.
 
 ---
 

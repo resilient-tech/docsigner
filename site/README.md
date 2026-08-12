@@ -21,6 +21,14 @@ pnpm preview      # serves dist/
 pnpm check        # types and unused props
 ```
 
+After touching `src/styles/tokens.css`, re-run the contrast check. It takes both
+token files, since the colour map is shared with the desktop app:
+
+```bash
+python3 scripts/check_contrast.py \
+    src/styles/tokens.css ../desktop/frontend/src/tokens.css
+```
+
 `pnpm install` needs `pnpm-workspace.yaml`'s `allowBuilds` block. pnpm 10 and
 newer refuse to run a dependency's install scripts until they're named there.
 
@@ -65,6 +73,19 @@ one flag flip.
 **Client JavaScript is the exception, not the default.** Every page ships zero
 except the theme toggle and the copy buttons. Tabs are radio inputs and CSS. The
 mobile menu is a checkbox. Adding a `<script>` should feel like a decision.
+
+## Colour
+
+Two rules, and the check enforces the second one:
+
+**`color:` takes an `-ink` token, `background:` takes the base.** A hue chosen to
+sit on `#131314` does not automatically carry text on `#ffffff`: brand mint is
+7.9:1 on the dark grounds and 1.9:1 on the light ones. So `--green` is a fill and
+`--green-ink` is the text and any line that means something. On dark they mostly
+coincide, which is why the split is easy to forget.
+
+**A tint counts as a ground.** `--green-soft` under `--green-ink` was 4.27:1 while
+every flat ground passed.
 
 ## Theme
 
