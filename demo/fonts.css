@@ -1,0 +1,32 @@
+/*
+ * Faces for the demo page. design/fonts.css is the reference; only the url()
+ * paths differ per consumer, which is why they cannot live in tokens.css.
+ *
+ * The demo is served from the repo root (python3 -m http.server, then
+ * /demo/), so the site's public/ folder is reachable as an absolute path and
+ * there is no second copy of the woff2 files.
+ */
+
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/site/public/fonts/nunito-sans-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/site/public/fonts/nunito-sans-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/site/public/fonts/PlusJakartaSans-SemiBold.woff2') format('woff2');
+}

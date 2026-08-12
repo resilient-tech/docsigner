@@ -5,6 +5,25 @@ on:
   pull_request:
 
 jobs:
+  # design/ is the one source of colour for the site, the app, the extension and
+  # the demo. Both gates are pure stdlib, so this job needs no install step.
+  design:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # Every text token clears AA on every ground in its own theme, including
+      # the -soft tints, which are the tightest ground and the easy one to miss.
+      - name: Contrast
+        run: python3 design/check-contrast.py
+      # The extension ships as a zip of extension/ with no build step, so it
+      # carries a generated copy of tokens.css. This fails if the copy is stale,
+      # rather than shipping a consent dialog on last month's colours.
+      - name: Token copies are current
+        run: python3 design/sync.py --check
+
   python:
     runs-on: ubuntu-latest
     steps:
