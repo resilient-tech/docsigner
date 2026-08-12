@@ -184,166 +184,181 @@ it on a page that can be pulled without touching the rest of the site.
 
 ## 2. Design system
 
-Dark by default, because the app is. `data-theme="light"` on `<html>` swaps the
-colour map and nothing else, same mechanism the desktop app and the demo page
-already use.
+It lives in [`design/`](../design/design-system.md) and it is the one source for
+all four consumers: the site, the desktop app, the extension and the demo. That
+page is the authority; this section says only how the site consumes it.
 
-### 2.1 Where the tokens come from
+Dark is the default. The light scheme is called **PAPER**: warm stock with ink on
+it rather than a screen with the lights turned up, because signing is a document
+act. `data-theme="paper"` on `<html>` swaps the colour map and nothing else.
 
-`site/src/styles/tokens.css` starts as a copy of
-`desktop/frontend/src/tokens.css`, with a header comment naming the source.
+### 2.1 How the site loads it
 
-A copy, not an import. Cloudflare Pages builds with `site/` as the root
-directory, so reaching up into `desktop/` would work locally and break in CI.
-The two files will drift, and that's fine: marketing needs a display type tier
-the app has no use for, and the app needs component tokens the site never
-touches. The shared part is the colour map, which changes about once a year.
+`site/src/styles/site.css` is three `@import` lines:
 
-Skipped: a CI check that the colour blocks match. Add one if drift ever causes a
-visible problem.
+```css
+@import '../../../design/tokens.css';
+@import '../../../design/fonts.css';
+@import '../../../design/base.css';
+```
+
+Reaching up out of `site/` works. Cloudflare Pages checks out the whole repo and
+then builds with `site/` as its root, so `../../../design` is on disk; the
+bundler resolves it and inlines the result. The dev server needs
+`vite.server.fs.allow` in `astro.config.mjs`, which is set.
+
+There used to be a hand-copy of `tokens.css` and `base.css` here, mirrored from
+the app. The two had already drifted, which is the reason `design/` exists. The
+copy is gone.
+
+Only the extension still holds a copy, because it ships as a zip of
+`extension/` with no build step. `design/sync.py` generates it and CI runs
+`--check`, so a stale copy fails the build instead of shipping a consent dialog
+on last month's colours.
 
 ### 2.2 Colour
 
-Four hues total: a grey ramp, mint, action blue, and red. Red appears only on an
-invalid signature or a failed check, so when it shows up it means something.
+Four hues: a grey ramp, mint, action blue, amber, and red. Red appears only on a
+check that did not pass, so when it shows up it carries weight. The values are
+in [`design/tokens.css`](../design/tokens.css) and are not repeated here.
 
-| Token | Dark | Light | Used for |
-|---|---|---|---|
-| `--bg` | `#131314` | `#f5f6f8` | page |
-| `--bg-deep` | `#0b0b0c` | `#eef0f3` | alternating sections |
-| `--surface` | `#212123` | `#ffffff` | cards |
-| `--raised` | `#282828` | `#ffffff` | menus, popovers |
-| `--well` | `#08090a` | `#edeff2` | code blocks, insets |
-| `--hover` | `#3c3c3c` | `#eceef2` | hover fill |
-| `--border` | `#303132` | `#e2e5ea` | hairlines |
-| `--border-strong` | `#48484a` | `#ccd2db` | inputs, dashed drops |
-| `--text` | `#e6e6e6` | `#1d2433` | body |
-| `--dim` | `#a0a0a0` | `#5b6472` | secondary |
-| `--faint` | `#7c7c7c` | `#98a1b0` | captions, labels |
-| `--green` | `#4dcd7d` | same | brand, valid, primary CTA |
-| `--action` | `#2ca7ff` | same | links, focus ring |
-| `--amber` | `#e0a04b` | same | update available, warning |
-| `--red` | `#e5484d` | same | invalid, error |
+Two rules matter when writing a component, and both are easy to get wrong:
 
-The accents hold across both themes. They read on either ground, which is why
-the app gets away with one set.
+**`color:` takes an `-ink` token, `background:` takes the base.** A hue chosen to
+sit on `#131314` does not carry text on warm stock: brand mint is 7.9:1 on the
+dark grounds and 1.9:1 on the paper ones. So `--green` is a fill and
+`--green-ink` is text, borders and icons. On dark the two mostly coincide, which
+is exactly why the split gets forgotten.
 
-The logo keeps its own mint gradient (`#4dcd7d` to `#37a862`) inside the mark.
-It's the only gradient on the site.
+**A `-soft` tint is a ground.** A chip or a status pill puts a hue's ink on its
+own tint, and that is the tightest pair in the system, tighter than any of the
+five flat grounds. It is what `design/check-contrast.py` now checks and what
+moved paper's mint, blue and red one shade darker.
+
+The primary button carries no border. The mint fill is the statement, and the
+focus ring has its own ground-coloured inner band so it stays visible on mint
+without one.
 
 ### 2.3 Type
 
-The app's stack, plus a self-hosted fallback so the site doesn't change face
-between a Mac and a Windows laptop:
+Three faces, all from `design/`: Avenir Next where it is native, Nunito Sans
+self-hosted everywhere else, system mono for code, and Plus Jakarta SemiBold for
+the wordmark and nothing else. The site loads them via
+`design/fonts.css`, whose default paths are already the site's own
+(`/fonts/…`, absolute from `public/`).
 
-```css
---font: 'Avenir Next', 'Avenir', 'Nunito Sans', system-ui, -apple-system,
-        'Segoe UI', Roboto, Arial, sans-serif;
---mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+Every size is in `rem` off one ladder, which is how the site and the app share a
+scale while reading at different densities:
+
+```
+site         html { font-size: 100%  }   16px base
+desktop app  html { font-size: 87.5% }   14px base
+extension    html { font-size: 87.5% }
+demo         html { font-size: 87.5% }   reuses the app's controls
 ```
 
-Avenir Next renders natively on macOS. Everyone else gets Nunito Sans, self
-hosted as two woff2 files (400 and 600, latin subset, about 35 KB together),
-`font-display: swap`, with the 400 preloaded. Mono is the system stack, zero
-bytes, and code looks native.
+The ladder runs `--text-xs` `--text-sm` `--text-body` `--text-lede`
+`--display-3` `--display-2` `--display-1`. Nothing in the site writes a `px`
+font size.
 
-The app tops out at 28px. A marketing page needs more, and it needs a bigger
-body than the app's 14px:
-
-| Token | Size | Used for |
-|---|---|---|
-| `--display-1` | `clamp(2.25rem, 5vw, 3.25rem)` | hero headline, 600 |
-| `--display-2` | `clamp(1.75rem, 3.5vw, 2.25rem)` | section headline, 600 |
-| `--display-3` | `1.375rem` | card and subsection titles, 600 |
-| `--text-lede` | `1.125rem` | hero subhead, 400 |
-| `--text-body` | `1rem` | body, 400 |
-| `--text-sm` | `0.875rem` | captions, table cells |
-| `--text-xs` | `0.75rem` | uppercase labels, 0.08em tracked |
-
-Headlines get `letter-spacing: -0.01em` and `line-height: 1.15`. Body runs
-`1.6`. Prose columns cap at `68ch`.
+`.brand` is the one rule allowed to ask for `--font-brand`. Wanting it elsewhere
+means shipping another cut of Jakarta.
 
 ### 2.4 Spacing, radius, motion
 
-4px base, inherited: `4 8 12 16 24 32 48 64 96 128`. Section padding is
-`96px` desktop, `64px` mobile. Radii come from the app (`4px` chips, `6px`
-inputs, `10px` cards, `100px` pills) with one addition, `--radius-lg: 16px`, for
-the hero and feature cards, because a marketing card at 10px reads cramped at
-that size.
+Spacing stays in `px` on the 4px grid, deliberately: it is physical distance, not
+reading size, so it should not move when the density knob does.
 
-Motion stays the app's: `--dur: 0.2s`, `--dur-fast: 0.05s`, `--ease:
-cubic-bezier(0.33, 0, 0, 1)`. Everything respects
-`prefers-reduced-motion: reduce`.
+Radii, motion and shadows are the app's, unchanged. Paper adds almost no blur:
+depth in that theme is carried by the hairline, which is why `--hairline` is a
+token and not a habit.
 
-No scroll-triggered animation, no parallax, no counters that tick up. Hover and
-focus states, and the theme transition. That's the budget.
+No scroll-triggered animation, no parallax, no counters that tick up, and no
+transition on the theme swap. Hover and focus states. That's the budget.
+
+`--bp-sm/md/lg` (640/768/1024) are the only three breakpoints. `@media` cannot
+read a custom property, so the numbers are still typed as literals; the tokens are
+where they are written down.
 
 ### 2.5 Icons
 
 Lucide, via `astro-icon` and `@iconify-json/lucide`. Inlined as SVG at build
-time, so no runtime and no icon font. The logo mark is Lucide's `signature`
-already, and `NOTICE` already carries the ISC attribution.
+time, so no runtime and no icon font. The logo mark is Lucide's `signature`, and
+`NOTICE` carries the ISC attribution.
 
-Stroke width 1.75 to match the app's `base.css`. Icons are `1em` and inherit
-`currentColor`. Decorative ones get `aria-hidden`.
+Four sizes and one stroke weight, from `design/`: `--icon-xs/sm/md/lg`
+(14/16/20/24) at `--icon-stroke: 1.75`. `svg.lucide` in `base.css` sets the
+default, so a component only says a size when it wants a different one.
+Decorative icons get `aria-hidden`.
 
 ### 2.6 Accessibility, not negotiable
 
-Contrast is the one property here you can compute, so it has a check rather than
-a promise: `site/scripts/check_contrast.py`, which runs over any `tokens.css`.
+Contrast is the one property here you can compute, so it has a gate rather than a
+promise. It lives with the tokens:
 
 ```bash
-python3 site/scripts/check_contrast.py \
-    site/src/styles/tokens.css desktop/frontend/src/tokens.css
+python3 design/check-contrast.py     # exits non-zero on a failure
+python3 design/sync.py --check       # the extension's copy is current
 ```
 
-It found 26 failing pairs on the first run, and the values in §2.2 are what came
-out of fixing them. Two lessons worth keeping:
+CI runs both in the `design` job. Between them they cover every text token
+against every ground in its own theme, every `-ink` on its own `-soft` tint, and
+`--on-accent` on every fill.
 
-- **A hue picked for a dark UI does not carry text on a light one.** The colour
-  map was measured off the dark app and reused unchanged, so `--faint` sat at
-  2.26:1 in light and mint managed 1.9:1. Hence the `-ink` pair: `color:` takes
-  `-ink`, `background:` takes the base hue. And it isn't only a light-theme
-  problem, `--red` failed in dark too.
-- **A tint is a ground.** The "your platform" pill puts `--green-ink` on
-  `--green-soft`, and that pair was 4.27:1 while every flat ground passed.
+Two findings worth carrying forward, because both generalise:
+
+- **A hue picked for a dark UI does not carry text on a light one.** That is what
+  the `-ink` pair exists for, and it is not only a light-theme problem: `--red`
+  at `#e5484d` was 3.77:1 on the app's own red-tinted surface, failing in dark.
+- **A tint is a ground, and it is the tightest one.** The pill on the download
+  card puts `--green-ink` on `--green-soft`. Every flat ground passed while that
+  pair sat at 4.46:1, so paper's mint, blue and red each moved a shade darker.
 
 The rest needs eyes, and these are the rules:
 
-- Focus ring is `2px solid var(--action-ink)` at `2px` offset, never removed, and
-  it sets no `border-radius`. Setting one reshapes the focused element; a 6px
-  button snapped to 4px on tab.
+- One focus ring, `--focus-ring`, never removed. It is a `box-shadow` with a
+  ground-coloured inner band, which is what keeps it visible on a mint-filled
+  button where an outline at offset 0 could not be. It sets no `border-radius`:
+  doing that reshapes the focused element, and a 6px button snapped to 4px on tab.
 - Colour never carries meaning alone. The platform-matched download card says
-  "Your platform" in words next to the green edge.
+  "Your platform" in words beside the green edge.
 - `/setup` state changes announce via `aria-live="polite"`. The three rows are a
   `<ul>` with real text in each state, so a screen reader gets the state without
   the colour.
 - Theme toggle is a real `<button>` whose accessible name says what the click
   does. No `aria-pressed`: with a changing name it reads as "switch to dark
   theme, toggle button, not pressed".
-- `prefers-reduced-motion` and `prefers-contrast: more` both answered.
+- `prefers-reduced-motion` is answered at the token layer, `prefers-contrast:
+  more` in `design/base.css`, so no component has to remember either.
 - Skip link to `<main>`.
 
 ### 2.7 The other surfaces
 
-The colour map is shared, so a token defect is never only the website's. Fixed at
-the same time, and worth knowing about before touching either:
+`design/` serves four consumers, so a token defect is never only the website's,
+and neither is a fix. All four now load the same file:
+
+| | How it loads `design/` |
+|---|---|
+| `site/` | `@import` in `src/styles/site.css` |
+| `desktop/frontend/` | `@import` in `src/tokens.css` and `src/base.css`, plus `html { font-size: 87.5% }` |
+| `demo/` | `<link>` to `../design/`, and the app's `app.css` for its controls |
+| `extension/` | a generated copy, `design/sync.py` |
+
+What that turned up on the way through:
 
 - **The desktop app** used `--faint` as a text colour in 13 rules and had 20
-  accent-as-text declarations. Its `tokens.css` is the origin of the map, so the
-  fix went there first and the site copied it forward. The demo page links that
-  stylesheet directly, so it came along.
-- **The app's PIN field** had `outline: none` with a 1px border change as its
-  only focus indicator. Of every control in the product that one has the least
-  business hiding focus.
-- **The extension's consent dialog** was the only surface off the design system
-  altogether: five hardcoded hex values and `color-scheme: light` pinned, so it
-  flashed white over a dark browser. It now has both themes, stated explicitly in
-  each branch. It stays self-contained on purpose, with the tokens copied rather
-  than imported, because it has to render correctly even when nothing else
-  loads.
-
----
+  accent-as-text declarations, none of which had a paper form. Its 31 hardcoded
+  font sizes are now the `rem` ladder, so the density knob actually reaches them.
+- **The app's PIN field** had `outline: none` with a 1px border change as its only
+  focus indicator. Of every control in the product that one has the least
+  business hiding focus. It takes the shared ring now.
+- **The extension's consent dialog** had zero tokens and its own blue, a fifth
+  accent nobody approved. It is pinned to `data-theme="paper"`, which is both the
+  fix for the black-on-black bug it was dodging and the right picture: a consent
+  prompt on warm stock.
+- **The demo** got a working paper theme for free, having had none.
+- `--scrim` is new. The app was hardcoding a cool purple-grey modal backdrop,
+  which was the one value that could not follow the theme.
 
 ## 3. Structure
 
