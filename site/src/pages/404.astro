@@ -1,0 +1,63 @@
+---
+import Layout from '../components/Layout.astro';
+import Button from '../components/Button.astro';
+import { ready } from '../config';
+
+/* Every failure state gets a way out. This one is small, but the rule holds. */
+const outs = [
+  { href: '/', label: 'Home' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/download', label: 'Download' },
+  { href: '/setup', label: 'Set up' },
+].filter((o) => ready(o.href));
+---
+
+<Layout title="Not found" description="That page does not exist.">
+  <section class="notfound">
+    <div class="wrap">
+      <p class="label">404</p>
+      <h1>That page isn't here</h1>
+      <p class="lede">
+        It may have moved while the site is being built out. These are the pages
+        that exist right now.
+      </p>
+      <div class="outs">
+        {
+          outs.map((o, i) => (
+            <Button href={o.href} variant={i === 0 ? 'primary' : 'default'} size="md">
+              {o.label}
+            </Button>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .notfound {
+    padding-block: var(--s-32) var(--s-24);
+  }
+
+  h1 {
+    margin-top: var(--s-2);
+  }
+
+  .lede {
+    margin-top: var(--s-4);
+    max-width: 48ch;
+  }
+
+  .outs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-8);
+  }
+
+  @media (max-width: 768px) {
+    .notfound {
+      padding-block: var(--s-16);
+    }
+  }
+</style>

@@ -1,0 +1,210 @@
+---
+import { Icon } from 'astro-icon/components';
+import Button from './Button.astro';
+import { formatSize, type Artifact } from '../lib/release';
+
+interface Props {
+  title: string;
+  blurb: string;
+  icon: string;
+  version: string;
+  artifact?: Artifact;
+  /* Shell one-liner shown instead of a button, for the Homebrew paths. */
+  command?: string;
+  /* Marks the card the visitor's platform detection lit up. Set client-side. */
+  os?: string;
+}
+
+const { title, blurb, icon, version, artifact, command, os } = Astro.props;
+const size = formatSize(artifact?.size ?? null);
+
+/*
+ * The trust block. Publishing size, hash and a verify command next to the button
+ * is the thing a signing tool of all things should not be omitting, and it costs
+ * nothing: the release already writes SHA256SUMS.
+ *
+ * Attestations are not wired into CI yet (roadmap D7), so no `gh attestation
+ * verify` line is offered. Claiming one that doesn't exist would be worse than
+ * having none.
+ */
+const verify = artifact?.sha256
+  ? `shasum -a 256 ${artifact.filename}\n# expect ${artifact.sha256}`
+  : null;
+---
+
+<article class="dl" data-os={os}>
+  <header>
+    <Icon name={icon} aria-hidden="true" />
+    <div>
+      <h3>{title}</h3>
+      <p class="blurb">{blurb}</p>
+    </div>
+  </header>
+
+  {
+    command ? (
+      <code class="cmd">{command}</code>
+    ) : artifact ? (
+      <>
+        <Button href={artifact.url} variant="primary" size="md" icon="lucide:download">
+          Download
+        </Button>
+        <dl class="facts">
+          <div>
+            <dt>Version</dt>
+            <dd>{version}</dd>
+          </div>
+          {size && (
+            <div>
+              <dt>Size</dt>
+              <dd>{size}</dd>
+            </div>
+          )}
+          <div class="wide">
+            <dt>File</dt>
+            <dd class="mono">{artifact.filename}</dd>
+          </div>
+          {artifact.sha256 && (
+            <div class="wide">
+              <dt>SHA-256</dt>
+              <dd class="mono hash">{artifact.sha256}</dd>
+            </div>
+          )}
+        </dl>
+        {verify && (
+          <details>
+            <summary>Check it before you run it</summary>
+            <pre>{verify}</pre>
+          </details>
+        )}
+      </>
+    ) : (
+      <p class="pending">
+        Not published yet. This build exists and is tested; the release is waiting
+        on the repository going public.
+      </p>
+    )
+  }
+</article>
+
+<style>
+  .dl {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--s-6);
+  }
+
+  /* Lit by the platform script when it matches. */
+  .dl[data-match='true'] {
+    border-color: var(--green);
+    box-shadow: 0 0 0 1px var(--green);
+  }
+
+  header {
+    display: flex;
+    gap: var(--s-3);
+    align-items: flex-start;
+  }
+
+  header :global(svg) {
+    width: 20px;
+    height: 20px;
+    color: var(--green-ink);
+    flex: none;
+    margin-top: 3px;
+  }
+
+  h3 {
+    font-size: var(--text-body);
+    letter-spacing: 0;
+  }
+
+  .blurb {
+    color: var(--dim);
+    font-size: var(--text-sm);
+    margin-top: var(--s-1);
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3) var(--s-6);
+    width: 100%;
+    margin: 0;
+    font-size: var(--text-xs);
+  }
+
+  .wide {
+    grid-column: 1 / -1;
+  }
+
+  dt {
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-label);
+    font-weight: var(--fw-semibold);
+  }
+
+  dd {
+    margin: var(--s-1) 0 0;
+    color: var(--dim);
+  }
+
+  .mono {
+    font-family: var(--mono);
+  }
+
+  /* A 64-char hash has no break points, so give it one. */
+  .hash {
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+  }
+
+  .cmd {
+    font-family: var(--mono);
+    font-size: var(--text-sm);
+    background: var(--well);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: var(--s-2) var(--s-3);
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .pending {
+    font-size: var(--text-sm);
+    color: var(--faint);
+  }
+
+  details {
+    width: 100%;
+    font-size: var(--text-xs);
+  }
+
+  summary {
+    cursor: pointer;
+    color: var(--dim);
+  }
+
+  summary:hover {
+    color: var(--text);
+  }
+
+  pre {
+    margin-top: var(--s-2);
+    padding: var(--s-3);
+    background: var(--well);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    overflow-x: auto;
+    color: var(--dim);
+  }
+</style>

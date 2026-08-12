@@ -1,0 +1,136 @@
+---
+import Layout from '../components/Layout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import FlowStrip from '../components/FlowStrip.astro';
+import Button from '../components/Button.astro';
+import { links, REPO_PUBLIC } from '../config';
+
+const steps = [
+  {
+    n: '1',
+    title: 'The page asks who you are',
+    body: 'It requests your certificates. The extension passes that to the helper, which reads them off the token.',
+  },
+  {
+    n: '2',
+    title: 'Your server prepares the signature',
+    body: 'You post the PDF and the chosen certificate to your own server. It builds the signature inside the file and returns a 32-byte hash. The PDF stays put.',
+  },
+  {
+    n: '3',
+    title: 'The token signs the hash',
+    body: 'The PIN prompt happens in a native dialog on your machine, so the PIN never reaches the browser or the network.',
+  },
+  {
+    n: '4',
+    title: 'Your server finishes the file',
+    body: 'You post the signature back. The server embeds it, adds any timestamp and revocation data, and gives you a download link.',
+  },
+];
+---
+
+<Layout
+  title="How it works"
+  description="Why signing with a USB token from a web page needs a helper app installed, and how DocSigner moves a 32-byte hash instead of your document."
+>
+  <Hero
+    kicker="Architecture"
+    title="Why a website needs a helper app"
+    lede="A browser cannot talk to a USB token. Four hops get it there."
+  />
+
+  <Section ground="deep">
+    <FlowStrip />
+  </Section>
+
+  <Section label="Token signing" title="The two-step">
+    <ol class="steps">
+      {
+        steps.map((s) => (
+          <li>
+            <span class="n">{s.n}</span>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+
+    <p class="foot-note">
+      The 32 bytes are the digest of the CMS signed attributes, which contains the
+      digest of the document. No document bytes reach the token or the browser.
+    </p>
+
+    {
+      REPO_PUBLIC && (
+        <div class="more">
+          <Button
+            href={links.docsArchitecture}
+            variant="default"
+            size="md"
+            trailing="lucide:external-link"
+          >
+            The long version, with the reasoning
+          </Button>
+        </div>
+      )
+    }
+  </Section>
+</Layout>
+
+<style>
+  .steps {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
+    max-width: 660px;
+  }
+
+  .steps li {
+    display: flex;
+    gap: var(--s-4);
+  }
+
+  .n {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--pill);
+    background: var(--green-soft);
+    color: var(--green-ink);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .steps h3 {
+    font-size: var(--text-body);
+    letter-spacing: 0;
+    margin-bottom: var(--s-1);
+  }
+
+  .steps p {
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
+  .foot-note {
+    max-width: 660px;
+    margin-top: var(--s-8);
+    padding-left: var(--s-4);
+    border-left: 2px solid var(--border);
+    font-size: var(--text-sm);
+    color: var(--faint);
+  }
+
+  .more {
+    margin-top: var(--s-8);
+  }
+</style>

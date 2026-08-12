@@ -1,0 +1,212 @@
+---
+import Layout from '../components/Layout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import DownloadCard from '../components/DownloadCard.astro';
+import Callout from '../components/Callout.astro';
+import { getRelease } from '../lib/release';
+import { brew, stores, REPO_PUBLIC } from '../config';
+
+const release = await getRelease();
+const find = (key: string) => release.artifacts.find((a) => a.key === key);
+
+const platforms = [
+  { os: 'macos', title: 'macOS', icon: 'lucide:apple' },
+  { os: 'windows', title: 'Windows', icon: 'lucide:monitor' },
+  { os: 'linux', title: 'Linux', icon: 'lucide:terminal' },
+];
+
+const anyStore = Object.values(stores).some((s) => s.ready);
+---
+
+<Layout
+  title="Download"
+  description="DocSigner downloads: the browser extension, the native helper, and the desktop batch signer. One build per operating system."
+>
+  <Hero
+    kicker={release.published ? `Version ${release.version}` : 'Unreleased'}
+    title="Download"
+    lede="One build per operating system. There is no architecture to pick."
+  >
+    {
+      !release.published && (
+        <div class="notice">
+          <Callout tone="warning" title="Nothing here is downloadable yet">
+            <p>
+              Every build below exists and is tested in CI on all three operating
+              systems. The release waits on the repository going public.
+            </p>
+          </Callout>
+        </div>
+      )
+    }
+  </Hero>
+
+  <Section
+    label="Step 1"
+    title="Browser extension"
+    lede="A web page cannot reach a USB token on its own. Skip this if your key lives on a server."
+  >
+    {
+      anyStore ? (
+        <div class="grid">
+          {Object.entries(stores)
+            .filter(([, s]) => s.ready)
+            .map(([, s]) => (
+              <DownloadCard
+                title={s.label}
+                blurb="Install from the store."
+                icon="lucide:puzzle"
+                version={release.version}
+              />
+            ))}
+        </div>
+      ) : (
+        <div class="stack">
+          <Callout tone="note" title="Not in the stores yet">
+            <p>
+              Both submissions take weeks once the repository is public, because
+              native messaging draws extra review. Until then the extension loads
+              unpacked from the zip, which is a developer path.
+            </p>
+          </Callout>
+          <div class="grid">
+            <DownloadCard
+              title="Chrome, Edge, Brave"
+              blurb="One zip for every Chromium browser."
+              icon="lucide:chrome"
+              version={release.version}
+              artifact={find('extension-chrome')}
+            />
+            <DownloadCard
+              title="Firefox"
+              blurb="Its own zip: Firefox needs the Gecko id."
+              icon="lucide:puzzle"
+              version={release.version}
+              artifact={find('extension-firefox')}
+            />
+          </div>
+        </div>
+      )
+    }
+  </Section>
+
+  <Section
+    ground="deep"
+    label="Step 2"
+    title="Native helper"
+    lede="About 1 MB of Rust. The only piece that touches the token, and the only place your PIN is typed."
+  >
+    <div class="stack">
+      {
+        brew.ready && (
+          <div class="grid">
+            <DownloadCard
+              title="Homebrew"
+              blurb="macOS, and Linux via linuxbrew."
+              icon="lucide:beer"
+              version={release.version}
+              command={brew.host}
+            />
+          </div>
+        )
+      }
+
+      <div class="grid">
+        {platforms.map((p) => (
+          <DownloadCard
+            title={p.title}
+            blurb="Unpack and run the installer."
+            icon={p.icon}
+            version={release.version}
+            artifact={find(`host-${p.os}`)}
+            os={p.os}
+          />
+        ))}
+      </div>
+
+      <Callout tone="note" title="macOS builds are x86_64, on purpose">
+        <p>
+          They run under Rosetta on Apple Silicon. Several token vendors ship
+          x86_64-only PKCS#11 drivers, and a native arm64 build could not load
+          them.
+        </p>
+      </Callout>
+
+      {
+        !REPO_PUBLIC && (
+          <Callout tone="warning" title="Windows will warn you">
+            <p>
+              The Windows binary is not code-signed yet, so SmartScreen shows
+              “Unknown publisher”. The free certificate needs the repository
+              public first.
+            </p>
+          </Callout>
+        )
+      }
+    </div>
+  </Section>
+
+  <Section
+    label="Optional"
+    title="Desktop batch signer"
+    lede="Signs every PDF in a folder, one PIN for the run. No server, no browser, no extension."
+  >
+    <div class="stack">
+      <div class="grid">
+        {platforms.map((p) => (
+          <DownloadCard
+            title={p.title}
+            blurb="Bundles its own helper."
+            icon={p.icon}
+            version={release.version}
+            artifact={find(`desktop-${p.os}`)}
+            os={p.os}
+          />
+        ))}
+      </div>
+      <p class="aside">
+        The Windows and Linux desktop builds are published from CI and have not
+        been opened on a real machine yet.
+      </p>
+    </div>
+  </Section>
+</Layout>
+
+<script>
+  /* Light up the card matching the visitor's OS. Nothing gets hidden: a guess
+     that highlights helps, a guess that hides is a dead end. */
+  import { detectOS } from '../lib/platform';
+
+  const os = detectOS();
+  if (os !== 'unknown') {
+    for (const el of document.querySelectorAll<HTMLElement>(`.dl[data-os="${os}"]`)) {
+      el.dataset.match = 'true';
+    }
+  }
+</script>
+
+<style>
+  .notice {
+    margin-top: var(--s-4);
+    max-width: 720px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--s-4);
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
+  }
+
+  .aside {
+    font-size: var(--text-sm);
+    color: var(--faint);
+    max-width: var(--measure);
+  }
+</style>

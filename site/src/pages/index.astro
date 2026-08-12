@@ -1,0 +1,89 @@
+---
+import Layout from '../components/Layout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import FlowStrip from '../components/FlowStrip.astro';
+import Button from '../components/Button.astro';
+import { ready } from '../config';
+
+const cta = ready('/setup')
+  ? { href: '/setup', label: 'Set up with my token' }
+  : { href: '/download', label: 'Download' };
+---
+
+<Layout
+  title="DocSigner"
+  description="Open-source digital signatures for PDFs. Sign with a USB token from any website, or with a key held on your own server. The document never leaves your infrastructure."
+>
+  <Hero
+    kicker="Apache-2.0"
+    title="Open-source digital signatures for PDFs"
+    lede="Sign with a USB token from any website, or with a key held on your own server."
+    primary={cta}
+    secondary={{ href: '/how-it-works', label: 'How it works' }}
+  />
+
+  <Section ground="deep" label="The one rule" title="The PDF never leaves your server">
+    <FlowStrip />
+  </Section>
+
+  <Section label="Two ways to sign" title="It depends who holds the key">
+    <div class="ways">
+      <div>
+        <h3>A person signs</h3>
+        <p>
+          The key stays on their USB token. They pick a certificate, type their
+          PIN in a dialog on their own machine, and the token signs 32 bytes.
+        </p>
+      </div>
+      <div>
+        <h3>A system signs</h3>
+        <p>
+          The key sits on your server as a <code>.p12</code>. One HTTP call, no
+          extension, no PIN. For invoices on submit and anything on a schedule.
+        </p>
+      </div>
+    </div>
+  </Section>
+
+  <Section ground="deep" centre>
+    <div class="end">
+      <h2>Sign something</h2>
+      <p class="lede">
+        Signed output validates as PAdES, in Adobe and in the EU DSS validator.
+      </p>
+      <Button href={cta.href} variant="primary" size="lg">{cta.label}</Button>
+    </div>
+  </Section>
+</Layout>
+
+<style>
+  .ways {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--s-8);
+    max-width: 860px;
+  }
+
+  .ways h3 {
+    font-size: var(--text-body);
+    letter-spacing: 0;
+    margin-bottom: var(--s-2);
+  }
+
+  .ways p {
+    color: var(--dim);
+    font-size: var(--text-sm);
+  }
+
+  .end {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-4);
+  }
+
+  .end .lede {
+    max-width: 46ch;
+  }
+</style>

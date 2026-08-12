@@ -1,0 +1,69 @@
+---
+interface Props {
+  /* Alternating ground. Sections stack bg / deep / bg so the eye gets a break
+     without a border on every seam. */
+  ground?: 'bg' | 'deep';
+  label?: string;
+  title?: string;
+  lede?: string;
+  id?: string;
+  /* Centres the heading block. Off by default: left-aligned reads faster. */
+  centre?: boolean;
+  class?: string;
+}
+
+const { ground = 'bg', label, title, lede, id, centre, class: extra } = Astro.props;
+const cls = ['section', ground, centre && 'centre', extra].filter(Boolean).join(' ');
+---
+
+<section class={cls} id={id}>
+  <div class="wrap">
+    {
+      (label || title || lede) && (
+        <header class="head">
+          {label && <p class="label">{label}</p>}
+          {title && <h2>{title}</h2>}
+          {lede && <p class="lede">{lede}</p>}
+        </header>
+      )
+    }
+    <slot />
+  </div>
+</section>
+
+<style>
+  .section {
+    padding-block: var(--section-y);
+  }
+
+  .bg {
+    background: var(--bg);
+  }
+
+  .deep {
+    background: var(--bg-deep);
+  }
+
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin-bottom: var(--s-12);
+    max-width: var(--measure);
+  }
+
+  .centre .head {
+    align-items: center;
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  @media (max-width: 768px) {
+    .section {
+      padding-block: var(--s-16);
+    }
+    .head {
+      margin-bottom: var(--s-8);
+    }
+  }
+</style>

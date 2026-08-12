@@ -1,0 +1,79 @@
+---
+import { Icon } from 'astro-icon/components';
+
+interface Props {
+  /* note: context. warning: something will bite you. limit: a stated ceiling,
+     used on /demo and /verify where the honest answer is "this can't". */
+  tone?: 'note' | 'warning' | 'limit';
+  title?: string;
+}
+
+const { tone = 'note', title } = Astro.props;
+
+const icons = {
+  note: 'lucide:info',
+  warning: 'lucide:triangle-alert',
+  limit: 'lucide:circle-slash',
+} as const;
+---
+
+<aside class={`callout ${tone}`}>
+  <Icon name={icons[tone]} aria-hidden="true" />
+  <div>
+    {title && <p class="title">{title}</p>}
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .callout {
+    display: flex;
+    gap: var(--s-3);
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    padding: var(--s-4);
+    font-size: var(--text-sm);
+    color: var(--dim);
+    background: var(--surface);
+  }
+
+  .callout :global(svg) {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    margin-top: 2px;
+  }
+
+  .title {
+    font-weight: var(--fw-semibold);
+    color: var(--text);
+    margin-bottom: var(--s-1);
+  }
+
+  .callout :global(p + p) {
+    margin-top: var(--s-2);
+  }
+
+  .note {
+    border-left-color: var(--action);
+  }
+  .note :global(svg) {
+    color: var(--action-ink);
+  }
+
+  .warning {
+    border-left-color: var(--amber);
+    background: var(--amber-soft);
+  }
+  .warning :global(svg) {
+    color: var(--amber);
+  }
+
+  .limit {
+    border-left-color: var(--border-strong);
+  }
+  .limit :global(svg) {
+    color: var(--faint);
+  }
+</style>

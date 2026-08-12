@@ -1,0 +1,115 @@
+---
+import Button from './Button.astro';
+
+interface Props {
+  title: string;
+  lede: string;
+  /* Small line above the headline. A fact, never a slogan. */
+  kicker?: string;
+  primary?: { href: string; label: string };
+  secondary?: { href: string; label: string };
+  /* Short facts under the buttons: licence, language, dependency count. */
+  meta?: string[];
+  centre?: boolean;
+}
+
+const { title, lede, kicker, primary, secondary, meta, centre } = Astro.props;
+---
+
+<section class={centre ? 'hero centre' : 'hero'}>
+  <div class="wrap inner">
+    {kicker && <p class="label">{kicker}</p>}
+    <h1>{title}</h1>
+    <p class="lede">{lede}</p>
+
+    {
+      (primary || secondary) && (
+        <div class="actions">
+          {primary && (
+            <Button href={primary.href} variant="primary" size="lg">
+              {primary.label}
+            </Button>
+          )}
+          {secondary && (
+            <Button href={secondary.href} variant="default" size="lg">
+              {secondary.label}
+            </Button>
+          )}
+        </div>
+      )
+    }
+
+    {
+      meta && (
+        <ul class="meta">
+          {meta.map((m) => (
+            <li>{m}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    <slot />
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-block: var(--s-24) var(--s-16);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+  }
+
+  .centre .inner {
+    align-items: center;
+    text-align: center;
+  }
+
+  h1 {
+    max-width: 22ch;
+  }
+
+  .centre h1 {
+    max-width: 28ch;
+  }
+
+  .lede {
+    max-width: 56ch;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  .meta {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-4);
+    margin-top: var(--s-4);
+    font-size: var(--text-sm);
+    color: var(--faint);
+  }
+
+  /* Dot between items, not before the first. */
+  .meta li + li::before {
+    content: '·';
+    margin-right: var(--s-4);
+    color: var(--border-strong);
+  }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding-block: var(--s-16) var(--s-12);
+    }
+  }
+</style>
