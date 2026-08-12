@@ -9,15 +9,35 @@ interface Props {
   id?: string;
   /* Centres the heading block. Off by default: left-aligned reads faster. */
   centre?: boolean;
+  /*
+   * Fill the viewport and become a snap target, so the homepage reads as a
+   * deck. Opt-in per section, and the rule is content-led: a section only takes
+   * this if it has enough in it to fill a screen. A half-empty 100svh band is
+   * worse than an honest short one, so the closing call to action does not get
+   * it.
+   */
+  full?: boolean;
   class?: string;
 }
 
-const { ground = 'bg', label, title, lede, id, centre, class: extra } = Astro.props;
-const cls = ['section', ground, centre && 'centre', extra].filter(Boolean).join(' ');
+const {
+  ground = 'bg',
+  label,
+  title,
+  lede,
+  id,
+  centre,
+  full,
+  class: extra,
+} = Astro.props;
+
+const cls = ['section', ground, centre && 'centre', full && 'full', extra]
+  .filter(Boolean)
+  .join(' ');
 ---
 
 <section class={cls} id={id}>
-  <div class="wrap">
+  <div class="wrap inner">
     {
       (label || title || lede) && (
         <header class="head">
@@ -44,6 +64,31 @@ const cls = ['section', ground, centre && 'centre', extra].filter(Boolean).join(
     background: var(--bg-deep);
   }
 
+  /* svh, not vh: on a phone, vh is the tallest the viewport ever gets, so a
+     100vh band sits partly under the URL bar until you scroll.
+
+     Content starts at the top, it does not centre. Centring a 400px block in an
+     840px band puts 200px of nothing above the heading, which reads as an empty
+     screen rather than a spacious one, and the fix for that is alignment rather
+     than inventing content to fill the gap. The hero opts back into centring
+     below, because there the air is the point. */
+  .full {
+    min-height: 100svh;
+    display: grid;
+    align-content: start;
+    /* The nav floats over the top of each slide, so clear it. */
+    padding-block: calc(var(--nav-h) + var(--s-12)) var(--s-12);
+    scroll-snap-align: start;
+  }
+
+  /* `safe center` centres only while the content fits. Plain `center` overflows
+     a grid equally in both directions, so on a phone the hero centred itself
+     into a band shorter than itself and put dead space above the fold with the
+     call to action below it. */
+  .full.centred {
+    align-content: safe center;
+  }
+
   .head {
     display: flex;
     flex-direction: column;
@@ -58,12 +103,16 @@ const cls = ['section', ground, centre && 'centre', extra].filter(Boolean).join(
     margin-inline: auto;
   }
 
+  /* --bp-md */
   @media (max-width: 768px) {
     .section {
       padding-block: var(--s-16);
     }
     .head {
       margin-bottom: var(--s-8);
+    }
+    .full {
+      padding-block: calc(var(--nav-h) + var(--s-8)) var(--s-8);
     }
   }
 </style>

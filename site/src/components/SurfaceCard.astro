@@ -1,0 +1,108 @@
+---
+import { Icon } from 'astro-icon/components';
+
+interface Props {
+  icon: string;
+  /* Who this is, in their own words. The card is a route, not a feature. */
+  who: string;
+  title: string;
+  body: string;
+  href?: string;
+  cta?: string;
+  /* Shown only when there is nowhere to send them yet. */
+  pending?: string;
+}
+
+const { icon, who, title, body, href, cta, pending } = Astro.props;
+const Tag = href ? 'a' : 'div';
+const external = href?.startsWith('http');
+---
+
+<Tag class={href ? 'surface linked' : 'surface'} href={href} rel={external ? 'noopener' : undefined}>
+  <p class="who label">{who}</p>
+  <h3>
+    <Icon name={icon} aria-hidden="true" />
+    {title}
+  </h3>
+  <p class="body">{body}</p>
+  {
+    href ? (
+      <span class="go">
+        {cta}
+        <Icon name="lucide:arrow-right" aria-hidden="true" />
+      </span>
+    ) : (
+      pending && <span class="pending">{pending}</span>
+    )
+  }
+</Tag>
+
+<style>
+  /* Card recipe: --surface, one hairline, --radius, --s-6, no shadow. */
+  .surface {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--radius);
+    padding: var(--s-6);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .linked {
+    transition:
+      border-color var(--dur-fast) var(--ease),
+      transform var(--dur) var(--ease);
+  }
+
+  .linked:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+  }
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--text-body);
+    letter-spacing: 0;
+  }
+
+  h3 :global(svg) {
+    color: var(--green-ink);
+  }
+
+  .body {
+    color: var(--dim);
+    font-size: var(--text-sm);
+    flex: 1;
+  }
+
+  .go {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    margin-top: var(--s-2);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--action-ink);
+  }
+
+  .go :global(svg) {
+    width: var(--icon-xs);
+    height: var(--icon-xs);
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .linked:hover .go :global(svg) {
+    transform: translateX(3px);
+  }
+
+  .pending {
+    margin-top: var(--s-2);
+    font-size: var(--text-sm);
+    color: var(--faint);
+  }
+</style>

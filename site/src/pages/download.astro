@@ -125,6 +125,19 @@ const anyStore = Object.values(stores).some((s) => s.ready);
         ))}
       </div>
 
+      <Callout tone="note" title="Will it work with your token?">
+        <p>
+          Tested on a real bench with a Capricorn token. The helper talks
+          PKCS#11, which every DSC token speaks, so others are expected to work
+          and several are already known to. There is no compatibility table yet
+          because it should be built from real reports rather than guesses.
+        </p>
+        <p>
+          If yours works, or does not, say so in an issue and it goes on the
+          list.
+        </p>
+      </Callout>
+
       <Callout tone="note" title="macOS builds are x86_64, on purpose">
         <p>
           They run under Rosetta on Apple Silicon. Several token vendors ship

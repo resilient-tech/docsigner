@@ -1,7 +1,6 @@
 ---
 import { Icon } from 'astro-icon/components';
 import ThemeToggle from './ThemeToggle.astro';
-import Button from './Button.astro';
 import { links, REPO_PUBLIC, ready } from '../config';
 
 const nav = [
@@ -11,19 +10,13 @@ const nav = [
   { href: '/download', label: 'Download' },
 ].filter((l) => ready(l.href));
 
-/* The CTA follows whatever is built. /setup is the real destination once phase 2
-   lands; until then the download page is the honest next step. */
-const cta = ready('/setup')
-  ? { href: '/setup', label: 'Set up' }
-  : { href: '/download', label: 'Download' };
-
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 ---
 
-<header class="nav">
+<!-- No Download button here. It was the same action as the hero's, twice on one
+     screen, and the right-hand slot is better spent on the source. -->
+<header class="nav" data-nav>
   <div class="wrap inner">
-    <!-- .brand and .brand-mark come from design/base.css: the gradient tile is
-         the logo, drawn rather than fetched, so it takes the theme's tokens. -->
     <a href="/" class="brand">
       <span class="brand-mark" aria-hidden="true">
         <Icon name="lucide:signature" />
@@ -42,7 +35,6 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     </nav>
 
     <div class="right">
-      <ThemeToggle />
       {
         REPO_PUBLIC && (
           <a class="gh" href={links.repo} rel="noopener" aria-label="Source on GitHub">
@@ -50,7 +42,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
           </a>
         )
       }
-      <Button href={cta.href} variant="primary" size="sm" class="cta">{cta.label}</Button>
+      <ThemeToggle />
     </div>
 
     <input type="checkbox" id="menu" aria-label="Menu" />
@@ -67,25 +59,52 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
           </a>
         ))
       }
-      <a href={cta.href} class="sheet-cta">{cta.label}</a>
+      {
+        REPO_PUBLIC && (
+          <a href={links.repo} rel="noopener">
+            Source on GitHub
+          </a>
+        )
+      }
     </div>
   </div>
 </header>
+
+<script>
+  /* The nav sits on the hero with no edge, and grows one only once it is
+     covering something. 12 lines instead of a border that is always there. */
+  const nav = document.querySelector<HTMLElement>('[data-nav]');
+  const sync = () => nav?.toggleAttribute('data-scrolled', window.scrollY > 8);
+  addEventListener('scroll', sync, { passive: true });
+  sync();
+</script>
 
 <style>
   .nav {
     position: sticky;
     top: 0;
     z-index: var(--z-nav);
+    /* Transparent and edgeless on the first screen. */
+    background: transparent;
+    border-bottom: 1px solid transparent;
+    transition:
+      background var(--dur) var(--ease),
+      border-color var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease);
+  }
+
+  /* Once it is over content, it earns its edge. */
+  .nav[data-scrolled] {
     background: color-mix(in srgb, var(--bg) var(--nav-veil), transparent);
     backdrop-filter: blur(var(--nav-blur));
-    border-bottom: var(--hairline);
+    border-bottom-color: var(--border);
+    box-shadow: var(--shadow-card);
   }
 
   .inner {
     display: flex;
     align-items: center;
-    gap: var(--s-8);
+    gap: var(--s-6);
     height: var(--nav-h);
   }
 
@@ -95,16 +114,19 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     flex: none;
   }
 
-  /* The lockup is 28px in base.css; the nav wants it a shade smaller. */
   .brand :global(.brand-mark) {
     width: var(--icon-lg);
     height: var(--icon-lg);
   }
 
+  /* Centred, and genuinely centred: the brand and the right-hand group are the
+     same kind of flex item, so the links sit in the middle of the bar rather
+     than in the middle of what is left over. */
   .links {
     display: flex;
+    justify-content: center;
     gap: var(--s-6);
-    margin-right: auto;
+    flex: 1;
   }
 
   .links a {
@@ -119,8 +141,6 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     color: var(--text);
   }
 
-  /* aria-current carries this for assistive tech and the text colour shifts
-     too, so the rule is reinforcement rather than the only signal. */
   .links a[aria-current='page'] {
     color: var(--text);
     box-shadow: inset 0 calc(-1 * var(--underline-w)) 0 var(--green);
@@ -129,8 +149,12 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   .right {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--s-2);
+    /* Matches .brand's rendered width closely enough that the centred links
+       read as centred. */
     flex: none;
+    min-width: 120px;
   }
 
   .gh {
@@ -153,12 +177,17 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     display: none;
   }
 
-  /* --bp-md. @media cannot read a custom property, so the number is typed;
-     the token is where it is written down. */
+  /* --bp-md. Centred links do not fit beside a wordmark on a phone, and the
+     previous version simply hid them, which left three destinations with no
+     route at all. */
   @media (max-width: 768px) {
-    .links,
-    .right {
+    .links {
       display: none;
+    }
+
+    .right {
+      min-width: 0;
+      margin-left: auto;
     }
 
     .burger {
@@ -166,7 +195,6 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       place-items: center;
       width: var(--control-h-md);
       height: var(--control-h-md);
-      margin-left: auto;
       color: var(--dim);
       cursor: pointer;
       border: var(--hairline);
@@ -202,7 +230,8 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       flex-direction: column;
       gap: var(--s-1);
       background: var(--bg);
-      border-bottom: var(--hairline);
+      border-block: var(--hairline);
+      box-shadow: var(--shadow-menu);
       padding: var(--s-4) var(--s-4) var(--s-6);
     }
 
@@ -220,14 +249,6 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 
     .sheet a[aria-current='page'] {
       box-shadow: inset var(--accent-bar) 0 0 var(--green);
-    }
-
-    .sheet-cta {
-      background: var(--green);
-      color: var(--on-accent);
-      text-align: center;
-      margin-top: var(--s-2);
-      font-weight: var(--fw-semibold);
     }
   }
 </style>
