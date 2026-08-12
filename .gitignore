@@ -66,3 +66,6 @@ tags
 
 # ── Local reference material (not ours, not shipped) ──
 learn/
+
+# Astro generated types (site/)
+.astro/

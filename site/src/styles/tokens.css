@@ -1,0 +1,144 @@
+/*
+ * Design tokens. The whole theme is here.
+ *
+ * The colour map is copied from desktop/frontend/src/tokens.css so the site and
+ * the app read as one product. A copy rather than an import: Cloudflare Pages
+ * builds with site/ as its root, so reaching up into desktop/ works locally and
+ * fails in CI. The two files drift on purpose, since marketing needs a display
+ * type tier the app has no use for. The shared part is the colour map, which
+ * moves about once a year.
+ *
+ * Dark is the default. data-theme="light" swaps colours and nothing else: type,
+ * spacing, radii and motion are shared.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Ground ------------------------------------------------------- */
+  --bg: #131314;
+  --bg-deep: #0b0b0c;
+  --surface: #212123;
+  --raised: #282828;
+  --hover: #3c3c3c;
+  --well: #08090a;
+  --border: #303132;
+  --border-strong: #48484a;
+
+  /* ---- Text --------------------------------------------------------- */
+  --text: #e6e6e6;
+  --dim: #a0a0a0;
+  --faint: #7c7c7c;
+  --on-accent: #06110a;
+
+  /* ---- Accents (shared across both themes) -------------------------- */
+  /* Four hues, total. Red only ever means a failed check, so when it shows up
+     on a signing site it carries weight. */
+  --green: #4dcd7d;
+  --action: #2ca7ff;
+  --amber: #e0a04b;
+  --red: #e5484d;
+
+  --green-soft: rgba(77, 205, 125, 0.14);
+  --action-soft: rgba(44, 167, 255, 0.12);
+  --amber-soft: rgba(224, 160, 75, 0.12);
+  --red-soft: rgba(229, 72, 77, 0.12);
+
+  /* On dark the accents already carry text at 7:1 or better, so the -ink pair
+     points at them. Components always use -ink for text and the plain token for
+     fills, and get the right answer on both themes with no media query. */
+  --green-ink: #4dcd7d;
+  --action-ink: #2ca7ff;
+
+  /* ---- Type --------------------------------------------------------- */
+  /* Avenir Next is native on macOS. Everyone else gets Nunito Sans, self
+     hosted, so the site doesn't change face between a Mac and a Windows
+     laptop. Mono is the system stack: no bytes, and code looks native. */
+  --font: 'Avenir Next', 'Avenir', 'Nunito Sans', system-ui, -apple-system,
+    'Segoe UI', Roboto, Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* The app tops out at 28px and sets 14px body. A page someone lands on cold
+     needs more room than a tool someone lives in. */
+  --display-1: clamp(2.25rem, 5vw, 3.25rem);
+  --display-2: clamp(1.75rem, 3.5vw, 2.25rem);
+  --display-3: 1.375rem;
+  --text-lede: 1.125rem;
+  --text-body: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  --lh-display: 1.15;
+  --lh-body: 1.6;
+  --tracking-display: -0.01em;
+  --tracking-label: 0.08em;
+
+  /* Prose caps at 68ch. Past that the eye loses the line return. */
+  --measure: 68ch;
+  --page-max: 1120px;
+
+  /* ---- Spacing (4px base) ------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-24: 96px;
+  --s-32: 128px;
+
+  --section-y: var(--s-24);
+
+  /* ---- Radii -------------------------------------------------------- */
+  --radius-card: 4px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --pill: 100px;
+
+  /* ---- Elevation ---------------------------------------------------- */
+  --shadow-card: rgba(0, 0, 0, 0.9) 1px 2px 4px 0;
+  --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 12px 44px rgba(0, 0, 0, 0.55);
+
+  /* ---- Motion ------------------------------------------------------- */
+  --dur: 0.2s;
+  --dur-fast: 0.05s;
+  --ease: cubic-bezier(0.33, 0, 0, 1);
+}
+
+/* Light theme: colours only. The accents read on both grounds, which is why one
+   set covers it. */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f5f6f8;
+  --bg-deep: #eef0f3;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --hover: #eceef2;
+  --well: #edeff2;
+  --border: #e2e5ea;
+  --border-strong: #ccd2db;
+
+  --text: #1d2433;
+  --dim: #5b6472;
+  --faint: #98a1b0;
+  --on-accent: #06110a;
+
+  /* Mint at 9.3:1 on #131314 drops to 1.7:1 on white, so it can't carry text
+     there. The -ink pair is the darkened form for text, links and borders;
+     fills keep the brand mint on both themes. 5.4:1 and 5.4:1 on white. */
+  --green-ink: #1f7a45;
+  --action-ink: #0b6bbf;
+
+  --shadow-card: 0 1px 2px rgba(20, 26, 40, 0.08), 0 1px 3px rgba(20, 26, 40, 0.08);
+  --shadow-menu: 0 4px 16px rgba(20, 26, 40, 0.14);
+  --shadow-lift: 0 12px 40px rgba(20, 26, 40, 0.16);
+}

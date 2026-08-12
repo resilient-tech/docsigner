@@ -1,0 +1,17 @@
+{
+  "name": "docsigner-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.68",
+    "astro": "^5.14.1",
+    "astro-icon": "^1.1.5"
+  },
+  "packageManager": "pnpm@11.12.0"
+}

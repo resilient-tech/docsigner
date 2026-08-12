@@ -1,0 +1,6 @@
+# pnpm 10+ refuses to run a dependency's install scripts until they're named
+# here. Both are needed by the toolchain, not by anything this site ships:
+# esbuild links its platform binary, sharp builds Astro's image service.
+allowBuilds:
+  esbuild: true
+  sharp: true

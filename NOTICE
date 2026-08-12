@@ -40,6 +40,13 @@ desktop/frontend/src/fonts/.
   Copyright 2020 The Plus Jakarta Sans Project Authors
   (https://github.com/tokotype/PlusJakartaSans)
 
+The website serves Nunito Sans, again under the SIL Open Font License 1.1, as
+the cross-platform stand-in for Avenir Next. The two weights and the licence
+they travel with are in site/public/fonts/.
+
+  Copyright 2016 The Nunito Project Authors
+  (https://github.com/googlefonts/nunito)
+
 Runtime dependencies are installed, not vendored, and carry their own
 licenses (MIT, BSD, and Apache-2.0). Builds that bundle them -- the desktop
 .app, .dmg and .exe -- ship those notices alongside the binary.
