@@ -157,15 +157,21 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     min-width: 120px;
   }
 
+  /* Borderless, same as the theme toggle, so the pair reads as a pair. */
   .gh {
     display: grid;
     place-items: center;
     width: var(--control-sq);
     height: var(--control-sq);
+    border-radius: var(--radius-sm);
     color: var(--dim);
+    transition:
+      color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
   }
 
   .gh:hover {
+    background: var(--hover);
     color: var(--text);
   }
 
@@ -190,15 +196,22 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       margin-left: auto;
     }
 
+    /* Borderless too. With the toggle bare, a boxed burger beside it was the
+       only outlined thing on the screen. */
     .burger {
       display: grid;
       place-items: center;
-      width: var(--control-h-md);
-      height: var(--control-h-md);
+      width: var(--control-sq);
+      height: var(--control-sq);
       color: var(--dim);
       cursor: pointer;
-      border: var(--hairline);
       border-radius: var(--radius-sm);
+      transition: background var(--dur-fast) var(--ease);
+    }
+
+    .burger:hover {
+      background: var(--hover);
+      color: var(--text);
     }
 
     .burger :global(svg) {

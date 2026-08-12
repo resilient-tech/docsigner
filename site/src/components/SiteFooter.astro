@@ -4,6 +4,7 @@ import { links, site, REPO_PUBLIC, ready } from '../config';
 /* One row. A sitemap is for a site with pages worth mapping. */
 const items = [
   { href: '/how-it-works', label: 'How it works' },
+  { href: '/standards', label: 'Standards' },
   { href: '/download', label: 'Download' },
   { href: links.docs, label: 'Docs', repo: true },
   { href: links.repo, label: 'Source', repo: true },
@@ -29,8 +30,9 @@ const items = [
 </footer>
 
 <style>
+  /* No rule above it. The section it follows already changes ground, and one
+     more hairline just drew a line under a line. */
   .foot {
-    border-top: var(--hairline);
     padding-block: var(--s-8);
     font-size: var(--text-sm);
   }

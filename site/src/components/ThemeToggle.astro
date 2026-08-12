@@ -39,23 +39,23 @@ import { Icon } from 'astro-icon/components';
 </script>
 
 <style>
+  /* No border. A boxed icon in the corner of a bare nav reads as a stray
+     control; the glyph alone is enough, and hover carries the affordance. Same
+     treatment as the source link beside it, so the pair looks like a pair. */
   .toggle {
     display: grid;
     place-items: center;
     width: var(--control-sq);
     height: var(--control-sq);
-    border: var(--hairline);
     border-radius: var(--radius-sm);
     color: var(--dim);
     transition:
       color var(--dur-fast) var(--ease),
-      background var(--dur-fast) var(--ease),
-      border-color var(--dur-fast) var(--ease);
+      background var(--dur-fast) var(--ease);
   }
 
   .toggle:hover {
     background: var(--hover);
-    border-color: var(--border-strong);
     color: var(--text);
   }
 

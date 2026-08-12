@@ -1,0 +1,288 @@
+---
+import Layout from '../components/Layout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import Button from '../components/Button.astro';
+import { links, REPO_PUBLIC } from '../config';
+
+/*
+ * The profile ladder, and what each rung costs you in configuration.
+ *
+ * That second column is the reason this page exists. Every signing product
+ * lists the profiles it supports; none of them tell you that B-LT needs a trust
+ * folder and reachable revocation endpoints before it will produce anything. It
+ * is the question a person actually has, so it gets a column.
+ */
+
+const profiles = [
+  {
+    id: 'B-B',
+    adds: 'The signature itself.',
+    needs: null,
+  },
+  {
+    id: 'B-T',
+    adds: 'A trusted timestamp, per RFC 3161. Proves the signature existed by a date.',
+    needs: 'A timestamp authority',
+  },
+  {
+    id: 'B-LT',
+    adds: 'Revocation data embedded in the file, OCSP or CRL. It still validates once the certificate expires.',
+    needs: 'A timestamp authority, your CA chain, reachable OCSP or CRL',
+  },
+  {
+    id: 'B-LTA',
+    adds: 'An archival timestamp over the whole thing, so the chain can be re-timestamped for decades.',
+    needs: 'A timestamp authority, your CA chain, reachable OCSP or CRL',
+  },
+  {
+    id: 'CCA-LTV',
+    adds: "India's variant: the same revocation data, in the pdfRevocationInfoArchival attribute, per ESAIG 1.19.",
+    needs: 'Your CA chain, reachable OCSP or CRL',
+  },
+  {
+    id: 'CCA-LTA',
+    adds: 'CCA-LTV, plus a timestamp.',
+    needs: 'A timestamp authority, your CA chain, reachable OCSP or CRL',
+  },
+];
+
+const skipped = [
+  ['Safari', 'The extension needs a signed macOS app wrapper around it. Parked until someone asks.'],
+  [
+    'EU trust lists',
+    'EU trust arrives as signed per-country XML and needs its own parser. A folder of PEM files covers every other region.',
+  ],
+  ['RSA-PSS', 'Nearly every DSC token in the field uses PKCS#1 v1.5.'],
+];
+---
+
+<Layout
+  title="Standards"
+  description="Which signature profiles DocSigner produces, from PAdES B-B to B-LTA and India's CCA-LTV and CCA-LTA, and what each one needs configured before it will sign."
+>
+  <Hero
+    kicker="Standards"
+    title="What the signature claims"
+    lede="Six profiles, and the honest cost of each. Picking a longer-lived one is mostly a configuration question."
+  />
+
+  <Section ground="deep">
+    <div class="ladder scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th>Profile</th>
+            <th>What it adds</th>
+            <th>What it needs</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            profiles.map((p) => (
+              <tr>
+                <td><code>{p.id}</code></td>
+                <td>{p.adds}</td>
+                <td class="needs">
+                  {p.needs ?? <span class="none">Nothing. It signs as-is.</span>}
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <p class="after">
+      PAdES per ETSI EN 319 142-1. The output opens as signed in Adobe Reader and
+      passes the EU DSS validator.
+    </p>
+  </Section>
+
+  <Section label="Beyond PDF" title="Two other shapes">
+    <div class="pair">
+      <div>
+        <h3>Detached CAdES</h3>
+        <p>
+          A <code>.p7s</code> beside any file, of any type, signed by the token
+          or by a server key. Use it when the thing being signed is not a
+          document: an archive, a database dump, a firmware image.
+        </p>
+      </div>
+      <div>
+        <h3>Enveloped XAdES</h3>
+        <p>
+          The signature sits inside the XML it signs. Server-held keys only, for
+          now, because the token flow has nobody asking for it yet.
+        </p>
+      </div>
+    </div>
+  </Section>
+
+  <Section ground="deep" label="Keys" title="What it will sign with">
+    <dl class="keys">
+      <div>
+        <dt class="label">Algorithms</dt>
+        <dd>RSA and ECDSA</dd>
+      </div>
+      <div>
+        <dt class="label">Digests</dt>
+        <dd>SHA-256, SHA-384, SHA-512</dd>
+      </div>
+      <div>
+        <dt class="label">Timestamp authorities</dt>
+        <dd>DigiCert, Sectigo, Certum, Entrust, SSL.com, or your own</dd>
+      </div>
+    </dl>
+    <p class="after">
+      The roots for those authorities ship with the server, so a timestamp
+      validates for the long-lived profiles without you fetching anything.
+    </p>
+  </Section>
+
+  <Section label="Not supported" title="On purpose, and here is why">
+    <dl class="skipped">
+      {
+        skipped.map(([what, why]) => (
+          <div>
+            <dt>{what}</dt>
+            <dd>{why}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    <p class="after">
+      Each of these moves onto the list the day someone needs it. Saying so
+      beats a support matrix with a footnote.
+    </p>
+
+    {
+      REPO_PUBLIC && (
+        <div class="more">
+          <Button
+            href={links.docsArchitecture}
+            variant="default"
+            size="md"
+            trailing="lucide:external-link"
+          >
+            The reasoning, in full
+          </Button>
+        </div>
+      )
+    }
+  </Section>
+</Layout>
+
+<style>
+  .ladder {
+    border: var(--hairline);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+    /* The profile column never wraps and the other two share what is left. */
+    min-width: 640px;
+  }
+
+  th {
+    text-align: left;
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--faint);
+    padding: var(--s-3) var(--s-4);
+    border-bottom: var(--hairline);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--s-4);
+    border-bottom: var(--hairline);
+    color: var(--dim);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  td:first-child {
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .needs {
+    color: var(--faint);
+  }
+
+  /* The one rung that costs nothing is the one worth pointing at. */
+  .none {
+    color: var(--green-ink);
+  }
+
+  .after {
+    margin-top: var(--s-6);
+    font-size: var(--text-sm);
+    color: var(--faint);
+    max-width: var(--measure);
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--s-8);
+  }
+
+  .pair h3 {
+    font-size: var(--text-body);
+    letter-spacing: 0;
+    margin-bottom: var(--s-2);
+  }
+
+  .pair p {
+    font-size: var(--text-sm);
+    color: var(--dim);
+    max-width: 46ch;
+  }
+
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-6);
+    margin: 0;
+  }
+
+  .keys dd {
+    margin: var(--s-2) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text);
+  }
+
+  .skipped {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    margin: 0;
+    max-width: 680px;
+  }
+
+  .skipped dt {
+    font-weight: var(--fw-semibold);
+    font-size: var(--text-body);
+  }
+
+  .skipped dd {
+    margin: var(--s-1) 0 0;
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
+  .more {
+    margin-top: var(--s-8);
+  }
+</style>

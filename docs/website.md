@@ -360,6 +360,37 @@ What that turned up on the way through:
 - `--scrim` is new. The app was hardcoding a cool purple-grey modal backdrop,
   which was the one value that could not follow the theme.
 
+### 2.8 The homepage, and why it is shaped like this
+
+It took three passes. Worth writing down so the fourth does not repeat them.
+
+**Only the hero fills the screen.** medium.com, which this was measured against,
+fits its entire homepage in exactly 1.00 screens: a three-word headline, a
+nine-word subhead, one button, and art carrying the rest. Four full-height bands
+in a row moved the same content further apart rather than saying more.
+
+**The headline is the shortest true thing.** "The open-source way to sign PDFs"
+was 32 characters at 72px in a 531px column, which broke it over three lines and
+split "open-source" at the hyphen. "Open-source PDF signing" is two clean lines,
+and open source leads because that is the differentiator: plenty of tools sign a
+PDF, and this is the one whose code you can read.
+
+**The full-height section subtracts the nav.** The nav is `sticky`, so it is in
+normal flow and takes its 60px above the section. A plain `100svh` made the first
+screen 960px on a 900px window: a scrollbar on a page that should not have one,
+and centred content sitting low.
+
+**Nothing routes an audience from the middle of a landing page.** A "which of
+these are you" block belongs in the navigation. That content lives on
+`/how-it-works` now.
+
+**The profile table belongs on `/standards`.** What a landing page owes the
+reader is the claim and a way through, not six rows of configuration detail.
+
+The order that survived: what it is → what it looks like → how it works → what it
+claims → go. Five sections, one screen each in importance and none in height
+except the first.
+
 ## 3. Structure
 
 Astro, static output, no React. The repo's own line is "Python backend, plain JS
@@ -586,11 +617,11 @@ Phases follow the strategy plan's §7, adjusted for what §1 removed.
 | Phase | Ship | Notes |
 |---|---|---|
 | 0 | Domain | §1.7. Do it before any store submission or package metadata. |
-| 1 | **Done.** `site/` scaffold, design system, `Layout`, nav, footer, theme toggle, `/`, `/how-it-works`, `/download`, `security.txt`, 404 | Still open from this phase: `SECURITY.md` at the repo root, and the `og.png`. |
+| 1 | **Done.** `site/` scaffold, design system, `Layout`, nav, footer, theme toggle, `/`, `/how-it-works`, `/download`, `/standards`, `security.txt`, 404 | Still open from this phase: `SECURITY.md` at the repo root, and the `og.png`. |
 | 2 | `/setup` | Three rows, poll plus `focus` and `visibilitychange`, diagnostics with a copy button, the frozen error codes. Plus `js/messages.js` (§3.2) and the 6-line `onInstalled` hand-back (§1.2). |
 | 3 | `/verify` | Client-side PAdES validation. No off-the-shelf equivalent exists, so this is real engineering, not a page. Weeks. |
 | 4 | `/demo` | Pyodide. Print the pyHanko version (§1.8). Worker, lazy-loaded behind a click, real byte counter. |
-| 5 | `/standards`, `/compare`, `/components`, `/security` | Mostly writing. `/standards` is the sharpest differentiator per the plan's §3 and the material is already in `docs/architecture.md`. |
+| 5 | ~~`/standards`~~ done. `/compare`, `/components`, `/security` | `/standards` landed early: it was the sharpest differentiator and it took the profile table off the homepage, which was the real win. The others are writing, and only worth it when there is something true to put on them. |
 | 6 | Blog, Hindi, integrator docs for linking to `/setup` | |
 
 Phases 1, 2, and 5 are days each. Phases 3 and 4 are the ones that can slip, and

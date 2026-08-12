@@ -217,9 +217,9 @@ import { Icon } from 'astro-icon/components';
       gap: var(--s-3);
     }
 
-    /* The URL is the first thing that has to give on a phone. */
+    /* The URL is the first thing that has to give on a phone. It keeps
+       --text-xs and truncates instead of dropping below the ladder. */
     .url {
-      font-size: 10px;
       padding-inline: var(--s-2);
     }
   }

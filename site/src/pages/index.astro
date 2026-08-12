@@ -36,8 +36,7 @@ const profiles = [
       <div class="hero-copy">
         <h1>Open-source PDF signing</h1>
         <p class="lede">
-          Use the DSC token you already have, on a server you control. Every
-          piece of it is Apache-2.0.
+          Use the DSC token you already have, on a server you control.
         </p>
         <div class="hero-cta">
           <Button href="/download" variant="primary" size="lg">Download</Button>
@@ -63,37 +62,20 @@ const profiles = [
     <Wire />
   </Section>
 
-  <Section ground="deep" label="Standards" title="What the signature claims">
+  <Section ground="deep" label="Standards" title="Signatures that outlive the certificate">
     <div class="std">
-      <div class="std-table scroll-x">
-        <table>
-          <thead>
-            <tr><th>Profile</th><th>What it adds</th></tr>
-          </thead>
-          <tbody>
-            {
-              profiles.map(([p, what]) => (
-                <tr>
-                  <td><code>{p}</code></td>
-                  <td>{what}</td>
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
-      </div>
-      <div class="std-notes">
-        <p>
-          PAdES per ETSI EN 319 142-1, and India's CCA profiles. Detached CAdES
-          over any file, enveloped XAdES over XML. RSA and ECDSA, SHA-256, 384
-          and 512.
-        </p>
-        <p>The output opens as signed in Adobe, and passes the EU DSS validator.</p>
-        <p class="no-overrides">
-          Nothing to click past: no localhost certificate to trust, no
-          <code>/etc/hosts</code> line, no Java.
-        </p>
-      </div>
+      <p>
+        PAdES B-B through B-LTA, and India's CCA-LTV and CCA-LTA. The long-lived
+        profiles embed their own revocation data and timestamps, so a signature
+        still checks out years after the certificate behind it expired.
+      </p>
+      <p class="no-overrides">
+        Nothing to click past on the way there: no localhost certificate to
+        trust, no <code>/etc/hosts</code> line, no Java.
+      </p>
+      <Button href="/standards" variant="default" size="md" trailing="lucide:arrow-right">
+        Every profile, and what it needs
+      </Button>
     </div>
   </Section>
 
@@ -161,57 +143,13 @@ const profiles = [
 
   /* ---- standards ---- */
   .std {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-    gap: var(--s-8);
-    align-items: start;
-  }
-
-  .std-table {
-    border: var(--hairline);
-    border-radius: var(--radius);
-    background: var(--surface);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-  }
-
-  th {
-    text-align: left;
-    font-size: var(--text-xs);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--faint);
-    padding: var(--s-3) var(--s-4);
-    border-bottom: var(--hairline);
-  }
-
-  td {
-    padding: var(--s-3) var(--s-4);
-    border-bottom: var(--hairline);
-    color: var(--dim);
-  }
-
-  tbody tr:last-child td {
-    border-bottom: 0;
-  }
-
-  td:first-child {
-    color: var(--text);
-    white-space: nowrap;
-  }
-
-  .std-notes {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: var(--s-4);
+    max-width: var(--measure);
     color: var(--dim);
     font-size: var(--text-sm);
-    max-width: var(--measure);
   }
 
   .no-overrides {
@@ -237,8 +175,7 @@ const profiles = [
 
   /* --bp-lg */
   @media (max-width: 1024px) {
-    .hero-grid,
-    .std {
+    .hero-grid {
       grid-template-columns: 1fr;
       gap: var(--s-8);
     }
