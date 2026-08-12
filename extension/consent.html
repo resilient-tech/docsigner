@@ -5,45 +5,82 @@
   <title>DocSigner</title>
   <link rel="icon" href="icons/icon128.png">
   <style>
+    /*
+     * Deliberately self-contained: no import, no build step. This dialog is the
+     * one place a person grants a website access to their certificates, so it
+     * has to render correctly even if everything else fails to load. The values
+     * are the product's design tokens, copied in rather than linked.
+     *
+     * Every colour is stated in BOTH themes. Stating only one is what once left
+     * near-black text on a browser-supplied dark background, and the casualty
+     * was the heading naming what is being consented to.
+     */
+    :root {
+      color-scheme: light dark;
+      --panel: #ffffff;
+      --well: #edeff2;
+      --text: #1d2433;
+      --dim: #5b6472;
+      --edge: #7f8996;   /* 3.08:1 on the panel, the floor for a control edge */
+      --warn: #865e2c;
+      --accent: #0b6bbf; /* 5.4:1 under white text, 5.4:1 against the panel */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --panel: #212123;
+        --well: #08090a;
+        --text: #e6e6e6;
+        --dim: #a0a0a0;
+        --edge: #6e6e6e;
+        --warn: #e0a04b;
+        /* A shade up. The Allow button is squeezed from both sides: it needs
+           3:1 against the panel so the button reads as a button, and 4.5:1
+           under its white label. On this panel #0b6bbf only reaches 2.96:1,
+           and going much lighter loses the label. */
+        --accent: #0f72c9;
+      }
+    }
+
     body {
       font-family: system-ui, sans-serif;
       font-size: 14px;
       margin: 0;
       padding: 20px;
-      color: #1a1a1a;
-      /* Both stated, and color-scheme pinned. Without them the page kept its
-         near-black text on whatever the browser supplied, so on a dark-mode
-         machine the heading came out black-on-black — the one line naming what
-         is being consented to, invisible. */
-      background: #fff;
-      color-scheme: light;
+      color: var(--text);
+      background: var(--panel);
     }
     h1 { font-size: 15px; margin: 0 0 8px; }
     #origin {
       display: block;
       font-family: monospace;
       font-size: 13px;
-      background: #f2f2f2;
+      background: var(--well);
       border-radius: 4px;
       padding: 6px 8px;
       margin: 10px 0;
       word-break: break-all;
     }
-    p { margin: 0 0 6px; color: #444; }
+    p { margin: 0 0 6px; color: var(--dim); }
     /* Hidden until the check comes back saying there is something to say. */
-    #update { display: none; margin: 12px 0 0; font-size: 13px; color: #7a4c00; }
+    #update { display: none; margin: 12px 0 0; font-size: 13px; color: var(--warn); }
     #update.show { display: block; }
-    #update a { color: #7a4c00; }
+    #update a { color: var(--warn); }
     .buttons { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
     button {
       font: inherit;
       padding: 6px 18px;
       border-radius: 4px;
-      border: 1px solid #bbb;
-      background: #fff;
+      /* Was #bbb, which is 1.9:1 on white: the Deny button had no visible edge
+         on the dialog that decides whether a site gets your certificates. */
+      border: 1px solid var(--edge);
+      background: var(--panel);
+      color: var(--text);
       cursor: pointer;
     }
-    #allow { background: #1a56db; border-color: #1a56db; color: #fff; }
+    #allow { background: var(--accent); border-color: var(--accent); color: #fff; }
+    /* The browser default ring is fine, but not against the accent fill. */
+    button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
   </style>
 </head>
 <body>
