@@ -11,9 +11,8 @@ import { links } from '../config';
  * helper app has to exist at all (the hop chain), and the two design decisions
  * people ask about.
  *
- * The "which of these am I" cards moved to /what-you-need. Choosing parts and
- * understanding the mechanism are different jobs and were fighting each other
- * on one page.
+ * The "which of these am I" cards moved to /download, where choosing a product
+ * and getting it happen together.
  */
 
 const hops = [
@@ -43,7 +42,7 @@ const hops = [
   <Hero
     kicker="How it works"
     title="Your page sits in the middle"
-    lede="A server cannot reach a USB port. A token cannot reach the internet. The page is the only one that can talk to both, which is what the four steps are about."
+    lede="A server cannot reach a USB port, and a token cannot reach the internet. Your page is the only one that can talk to both."
   />
 
   <Section ground="deep">
@@ -53,7 +52,7 @@ const hops = [
   <Section
     label="The hop chain"
     title="Why a helper app has to exist"
-    lede="A web page cannot open a USB device, and no browser will ever let it. Four hops get the question to the hardware, and each one is there for a reason."
+    lede="No browser will let a page open a USB device. Four hops get the question to the hardware."
   >
     <ol class="hops">
       {
@@ -119,9 +118,9 @@ const hops = [
 
   <Section centre>
     <div class="end">
-      <h2>Which parts do I need?</h2>
-      <p class="lede">Four jobs, and most take fewer pieces than you would think.</p>
-      <Button href="/what-you-need" variant="primary" size="lg">What you need</Button>
+      <h2>Which one do I need?</h2>
+      <p class="lede">Four ways to sign. Most people need exactly one.</p>
+      <Button href="/download" variant="primary" size="lg">See them</Button>
     </div>
   </Section>
 </Layout>

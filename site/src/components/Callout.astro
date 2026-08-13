@@ -36,12 +36,15 @@ const icons = {
     border-radius: var(--radius-sm);
     padding: var(--s-4);
     font-size: var(--text-sm);
-    color: var(--dim);
+    color: var(--text);
     background: var(--surface);
   }
 
+  /* Bigger than the base 16px. A warning icon has to carry from a glance. */
   .callout :global(svg) {
-    margin-top: 2px;
+    width: var(--icon-md);
+    height: var(--icon-md);
+    margin-top: 1px;
   }
 
   .title {

@@ -3,31 +3,24 @@ import Layout from '../components/Layout.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
 import HeroSheet from '../components/HeroSheet.astro';
-import ProductShot from '../components/ProductShot.astro';
-import Wire from '../components/Wire.astro';
+import Surfaces from '../components/Surfaces.astro';
 
 /*
- * The hero is the only full-height section. Everything under it is as short as
- * it can be and still be true.
+ * Four blocks: what it is, what it looks like, why it exists, go.
  *
- * There is no "which of these are you" block here any more. Routing three
- * audiences is the navigation's job, not a slab in the middle of a landing page.
- * That content moved to /how-it-works.
+ * There is no "how it works" section here any more. It was the byte-counter
+ * wire, and /how-it-works now has a steppable version of the same sequence that
+ * says everything the wire said and more. Two takes on one mechanism is one too
+ * many, and the landing page is the one that should give.
+ *
+ * The standards ladder is gone from here too. It is a table of configuration
+ * detail, and /standards is where somebody goes looking for it.
  */
-
-const profiles = [
-  ['B-B', 'The signature.'],
-  ['B-T', 'A timestamp, per RFC 3161.'],
-  ['B-LT', 'Revocation data embedded, OCSP or CRL.'],
-  ['B-LTA', 'An archival timestamp chain on top of B-LT.'],
-  ['CCA-LTV', "India's CCA variant, per ESAIG 1.19."],
-  ['CCA-LTA', 'CCA-LTV, plus a timestamp.'],
-];
 ---
 
 <Layout
   title="DocSigner"
-  description="Open-source PDF signing. Use the DSC token you already have, on a server you control. Apache-2.0, every piece of it."
+  description="Open-source PDF signing. Use the DSC token you already have, on a server you control."
 >
   <!-- The whole statement, on one screen. -->
   <Section full class="hero">
@@ -47,49 +40,33 @@ const profiles = [
     </div>
   </Section>
 
-  <Section ground="deep" label="What it looks like" title="Signing, on your own page">
-    <div class="shot-wrap">
-      <ProductShot />
-    </div>
-  </Section>
-
   <Section
-    label="How it works"
-    title="The token only ever sees 32 bytes"
-    lede="A token holds a private key and will not hand it over. So your server builds the signature inside the PDF, the token signs one small hash, and your server puts the answer back."
+    ground="deep"
+    label="What it looks like"
+    title="The same signature, three places"
   >
-    <Wire />
+    <Surfaces />
   </Section>
 
-  <Section ground="deep" label="Standards" title="Signatures that outlive the certificate">
-    <div class="std">
+  <Section label="Why it exists" title="Nothing open source did this">
+    <div class="why">
       <p>
-        PAdES B-B through B-LTA, and India's CCA-LTV and CCA-LTA. The long-lived
-        profiles embed their own revocation data and timestamps, so a signature
-        still checks out years after the certificate behind it expired.
+        Plenty of open-source tools will sign a PDF with a key in a file. We could
+        not find one that signs with a certificate on a USB token, in bulk, from a
+        browser, on all three operating systems. That gap is the reason for this.
       </p>
-      <p class="no-overrides">
-        Nothing to click past on the way there: no localhost certificate to
-        trust, no <code>/etc/hosts</code> line, no Java.
+      <p>
+        And a signature that never becomes paper is one fewer page printed,
+        couriered and scanned back in. A small thing, but it adds up.
       </p>
-      <Button href="/standards" variant="default" size="md" trailing="lucide:arrow-right">
-        Every profile, and what it needs
-      </Button>
     </div>
   </Section>
 
-  <Section centre>
+  <Section ground="deep" centre>
     <div class="end">
       <h2>Sign something</h2>
-      <p class="lede">
-        The helper is about a megabyte. The page library is one file, no
-        dependencies.
-      </p>
+      <p class="lede">Four ways in. Most people need exactly one.</p>
       <Button href="/download" variant="primary" size="lg">Download</Button>
-      <p class="note">
-        Free, and it stays free. If something does not work, the issue tracker is
-        the same one we use.
-      </p>
     </div>
   </Section>
 </Layout>
@@ -131,26 +108,13 @@ const profiles = [
     box-shadow: var(--shadow-lift);
   }
 
-  /* ---- product shot ---- */
-  .shot-wrap {
-    max-width: 760px;
-  }
-
-  /* ---- standards ---- */
-  .std {
+  /* ---- why ---- */
+  .why {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: var(--s-4);
     max-width: var(--measure);
     color: var(--dim);
-    font-size: var(--text-sm);
-  }
-
-  .no-overrides {
-    padding-left: var(--s-4);
-    border-left: var(--accent-bar) solid var(--green);
-    color: var(--text);
   }
 
   /* ---- close ---- */
@@ -159,13 +123,6 @@ const profiles = [
     flex-direction: column;
     align-items: center;
     gap: var(--s-4);
-  }
-
-  .end .note {
-    font-size: var(--text-sm);
-    color: var(--faint);
-    max-width: 52ch;
-    margin-top: var(--s-2);
   }
 
   /* --bp-lg */

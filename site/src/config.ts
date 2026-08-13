@@ -92,7 +92,6 @@ export const pages = {
   '/verify': false, // phase 3
   '/demo': false, // phase 4
   '/standards': true,
-  '/what-you-need': true,
   '/components': false, // phase 5
   '/security': false, // phase 5
   '/compare': false, // phase 5

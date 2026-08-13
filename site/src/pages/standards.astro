@@ -3,7 +3,7 @@ import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
-import { links, REPO_PUBLIC } from '../config';
+import { links } from '../config';
 
 /*
  * The profile ladder, and what each rung costs you in configuration.
@@ -64,7 +64,7 @@ const skipped = [
   <Hero
     kicker="Standards"
     title="What the signature claims"
-    lede="Six profiles, and the honest cost of each. Picking a longer-lived one is mostly a configuration question."
+    lede="Six profiles. The longer-lived ones need more set up, so here is what each costs."
   />
 
   <Section ground="deep">
@@ -140,36 +140,25 @@ const skipped = [
     </p>
   </Section>
 
-  <Section label="Not supported" title="On purpose, and here is why">
-    <dl class="skipped">
-      {
-        skipped.map(([what, why]) => (
-          <div>
-            <dt>{what}</dt>
-            <dd>{why}</dd>
-          </div>
-        ))
-      }
-    </dl>
-    <p class="after">
-      Each of these moves onto the list the day someone needs it. Saying so
-      beats a support matrix with a footnote.
+  <Section label="Not supported" title="Three things it will not do">
+    <p class="plain">
+      Safari needs the extension wrapped in a signed macOS app, which is not
+      built. EU trust lists arrive as signed per-country XML and need their own
+      parser, so trust anchors are a folder of PEM files instead. RSA-PSS is
+      absent because nearly every DSC token in the field uses PKCS#1 v1.5.
+      Any of them moves onto the list the day someone needs it.
     </p>
 
-    {
-      REPO_PUBLIC && (
-        <div class="more">
-          <Button
-            href={links.docsArchitecture}
-            variant="default"
-            size="md"
-            trailing="lucide:external-link"
-          >
-            The reasoning, in full
-          </Button>
-        </div>
-      )
-    }
+    <div class="more">
+      <Button
+        href={links.docsArchitecture}
+        variant="default"
+        size="md"
+        trailing="lucide:external-link"
+      >
+        The reasoning, in full
+      </Button>
+    </div>
   </Section>
 </Layout>
 
@@ -263,22 +252,8 @@ const skipped = [
     color: var(--text);
   }
 
-  .skipped {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-5);
-    margin: 0;
-    max-width: 680px;
-  }
-
-  .skipped dt {
-    font-weight: var(--fw-semibold);
-    font-size: var(--text-body);
-  }
-
-  .skipped dd {
-    margin: var(--s-1) 0 0;
-    font-size: var(--text-sm);
+  .plain {
+    max-width: var(--measure);
     color: var(--dim);
   }
 

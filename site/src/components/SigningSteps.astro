@@ -338,7 +338,7 @@ const steps = [
   .pip {
     position: absolute;
     top: 50%;
-    left: 50%;
+    left: var(--from);
     width: 8px;
     height: 8px;
     margin-top: -4px;
@@ -386,11 +386,22 @@ const steps = [
     animation: leg-back 1.1s var(--ease) 1.25s forwards;
   }
 
-  /* Requests originate at the page, so "out" runs away from the middle:
-     leftwards down the server leg, rightwards down the token leg. */
+  /* Every request starts at the page, so --from is whichever end of the leg the
+     page is on and --to is the far end. Starting at 50% ran the pip over half
+     the line and stopped it in the middle. */
+  [data-link='server'] {
+    --from: 100%;
+    --to: 0%;
+  }
+
+  [data-link='token'] {
+    --from: 0%;
+    --to: 100%;
+  }
+
   @keyframes leg-out {
     0% {
-      left: 50%;
+      left: var(--from);
       opacity: 0;
     }
     12%,
@@ -398,14 +409,14 @@ const steps = [
       opacity: 1;
     }
     100% {
-      left: var(--away);
+      left: var(--to);
       opacity: 0;
     }
   }
 
   @keyframes leg-back {
     0% {
-      left: var(--away);
+      left: var(--to);
       opacity: 0;
     }
     12%,
@@ -413,17 +424,9 @@ const steps = [
       opacity: 1;
     }
     100% {
-      left: 50%;
+      left: var(--from);
       opacity: 0;
     }
-  }
-
-  [data-link='server'] {
-    --away: 0%;
-  }
-
-  [data-link='token'] {
-    --away: 100%;
   }
 
   /* ---- the step list ---- */

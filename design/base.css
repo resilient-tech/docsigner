@@ -164,7 +164,7 @@ hr {
    The same block was written three times across DownloadCard, demo/.card-head
    and demo/.server-row, with two different weights. This is the one. */
 .label {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;

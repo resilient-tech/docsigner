@@ -4,8 +4,22 @@ import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import DownloadCard from '../components/DownloadCard.astro';
 import Callout from '../components/Callout.astro';
+import Button from '../components/Button.astro';
+import { Icon } from 'astro-icon/components';
 import { getRelease } from '../lib/release';
-import { brew, stores, WINDOWS_SIGNED } from '../config';
+import { brew, stores, links, WINDOWS_SIGNED } from '../config';
+
+/*
+ * One page, four products.
+ *
+ * It used to be Step 1 / Step 2 / Optional, which is the install order and not
+ * how anyone arrives. People come knowing the job, so the page is named by
+ * product: web signer, desktop signer, server, ERPNext. The old /what-you-need
+ * page is folded in here, because choosing and getting should not be two visits.
+ *
+ * Seven package names still exist and are still true; they are just not the
+ * first thing you have to learn.
+ */
 
 const release = await getRelease();
 const find = (key: string) => release.artifacts.find((a) => a.key === key);
@@ -17,25 +31,55 @@ const platforms = [
 ];
 
 const anyStore = Object.values(stores).some((s) => s.ready);
+
+const products = [
+  {
+    id: 'web',
+    icon: 'lucide:globe',
+    name: 'Web signer',
+    for: 'Sign from any website, with your token',
+    body: 'Two small installs and any site that uses DocSigner can ask your token for a signature. Your documents go to that site’s own server, never to us.',
+  },
+  {
+    id: 'desktop',
+    icon: 'lucide:folder-check',
+    name: 'Desktop signer',
+    for: 'Sign a folder of PDFs, one PIN',
+    body: 'One app, nothing else. Point it at a folder, pick a profile, type the PIN once. No server and no browser involved.',
+  },
+  {
+    id: 'server',
+    icon: 'lucide:server',
+    name: 'Server',
+    for: 'Sign without a person present',
+    body: 'For invoices on submit and statements on a schedule. The key sits on the server and one HTTP call returns a signed file.',
+  },
+  {
+    id: 'erpnext',
+    icon: 'lucide:receipt',
+    name: 'ERPNext app',
+    for: 'Sign print formats from the desk',
+    body: 'Bulk-sign with one PIN, auto-sign on submit, QR-verifiable copies. It embeds the signing engine, so there is no separate server to run.',
+  },
+];
 ---
 
 <Layout
   title="Download"
-  description="DocSigner downloads: the browser extension, the native helper, and the desktop batch signer. One build per operating system."
+  description="DocSigner downloads by product: the web signer for signing from any site with your token, the desktop signer for a folder of PDFs, the server for unattended signing, and the ERPNext app."
 >
   <Hero
-    kicker={release.published ? `Version ${release.version}` : 'Unreleased'}
-    title="Download"
-    lede="One build per operating system. There is no architecture to pick."
+    kicker={release.published ? `Version ${release.version}` : 'Download'}
+    title="Four ways to sign"
+    lede="Pick the one that matches the job. Most people need exactly one."
   >
     {
       !release.published && (
         <div class="notice">
           <Callout tone="warn" title="The first release is not out yet">
             <p>
-              Every build below is assembled and tested in CI on all three
-              operating systems. This page fills itself in from the release feed,
-              so the versions and checksums appear the moment one is published.
+              Versions and checksums fill in from the release feed the moment one
+              is published.
             </p>
           </Callout>
         </div>
@@ -43,63 +87,70 @@ const anyStore = Object.values(stores).some((s) => s.ready);
     }
   </Hero>
 
-  <Section
-    label="Step 1"
-    title="Browser extension"
-    lede="A web page cannot reach a USB token on its own. Skip this if your key lives on a server."
-  >
-    {
-      anyStore ? (
-        <div class="grid">
-          {Object.entries(stores)
-            .filter(([, s]) => s.ready)
-            .map(([, s]) => (
-              <DownloadCard
-                title={s.label}
-                blurb="Install from the store."
-                icon="lucide:puzzle"
-                version={release.version}
-              />
-            ))}
-        </div>
-      ) : (
-        <div class="stack">
-          <Callout tone="note" title="Store listings are still in review">
-            <p>
-              An extension that talks to a native app draws extra scrutiny, and
-              both stores take weeks over it. Until they clear, install the zip
-              directly: unpack it and load it from your browser’s extensions
-              page. The build is the same one the stores will serve.
-            </p>
-          </Callout>
-          <div class="grid">
-            <DownloadCard
-              title="Chrome, Edge, Brave"
-              blurb="One zip for every Chromium browser."
-              icon="lucide:chrome"
-              version={release.version}
-              artifact={find('extension-chrome')}
-            />
-            <DownloadCard
-              title="Firefox"
-              blurb="Its own zip: Firefox needs the Gecko id."
-              icon="lucide:puzzle"
-              version={release.version}
-              artifact={find('extension-firefox')}
-            />
-          </div>
-        </div>
-      )
-    }
+  <!-- The chooser. Four cards, each jumping to its own section below. -->
+  <Section ground="deep">
+    <nav class="chooser" aria-label="Products">
+      {
+        products.map((p) => (
+          <a href={`#${p.id}`}>
+            <span class="ch-ic"><Icon name={p.icon} aria-hidden="true" /></span>
+            <span class="ch-name">{p.name}</span>
+            <span class="ch-for">{p.for}</span>
+          </a>
+        ))
+      }
+    </nav>
   </Section>
 
+  <!-- ------------------------------------------------------ web signer -->
   <Section
-    ground="deep"
-    label="Step 2"
-    title="Native helper"
-    lede="About 1 MB of Rust. The only piece that touches the token, and the only place your PIN is typed."
+    id="web"
+    label="Web signer"
+    title="Sign from any website, with your token"
+    lede="Two installs, once. After that any site built on DocSigner can ask your token to sign, and the document stays on that site’s server."
   >
     <div class="stack">
+      <div class="pair">
+        <div>
+          <h3>1. The extension</h3>
+          <p class="sub">Carries messages between the page and the helper.</p>
+        </div>
+        <div>
+          <h3>2. The helper app</h3>
+          <p class="sub">Reads the token and asks for your PIN. About a megabyte.</p>
+        </div>
+      </div>
+
+      {
+        !anyStore && (
+          <Callout tone="note" title="Store listings are still in review">
+            <p>
+              An extension that talks to a native app draws extra scrutiny. Until
+              they clear, install the zip below: unpack it, then load it from your
+              browser’s extensions page.
+            </p>
+          </Callout>
+        )
+      }
+
+      <div class="grid">
+        <DownloadCard
+          title="Chrome, Edge, Brave"
+          blurb="One zip for every Chromium browser."
+          icon="lucide:chrome"
+          version={release.version}
+          artifact={find('extension-chrome')}
+        />
+        <DownloadCard
+          title="Firefox"
+          blurb="Its own zip: Firefox needs the Gecko id."
+          icon="lucide:puzzle"
+          version={release.version}
+          artifact={find('extension-firefox')}
+        />
+      </div>
+
+      <h3 class="sub-head">The helper app</h3>
       {
         brew.ready && (
           <div class="grid">
@@ -113,7 +164,6 @@ const anyStore = Object.values(stores).some((s) => s.ready);
           </div>
         )
       }
-
       <div class="grid">
         {platforms.map((p) => (
           <DownloadCard
@@ -129,22 +179,9 @@ const anyStore = Object.values(stores).some((s) => s.ready);
 
       <Callout tone="note" title="Will it work with your token?">
         <p>
-          Tested on a real bench with a Capricorn token. The helper talks
-          PKCS#11, which every DSC token speaks, so others are expected to work
-          and several are already known to. There is no compatibility table yet
-          because it should be built from real reports rather than guesses.
-        </p>
-        <p>
-          If yours works, or does not, say so in an issue and it goes on the
-          list.
-        </p>
-      </Callout>
-
-      <Callout tone="note" title="macOS builds are x86_64, on purpose">
-        <p>
-          They run under Rosetta on Apple Silicon. Several token vendors ship
-          x86_64-only PKCS#11 drivers, and a native arm64 build could not load
-          them.
+          The helper speaks PKCS#11, which every DSC token does. Tested on a real
+          bench with a Capricorn token, and several others are known to work. If
+          yours does or does not, an issue puts it on the list.
         </p>
       </Callout>
 
@@ -152,22 +189,45 @@ const anyStore = Object.values(stores).some((s) => s.ready);
         !WINDOWS_SIGNED && (
           <Callout tone="warn" title="Windows will warn you">
             <p>
-              The Windows binaries are not code-signed yet, so SmartScreen shows
-              “Unknown publisher” the first time you run one. Check the SHA-256
-              above against the file and it is the build we published.
+              The Windows builds are not code-signed yet, so SmartScreen says
+              “Unknown publisher” the first time. Check the SHA-256 and it is the
+              build we published.
             </p>
           </Callout>
         )
       }
+
+      <Callout tone="note" title="macOS builds are x86_64, on purpose">
+        <p>
+          They run under Rosetta on Apple Silicon. Several token vendors ship
+          x86_64-only drivers, and a native arm64 build could not load them.
+        </p>
+      </Callout>
     </div>
   </Section>
 
+  <!-- -------------------------------------------------- desktop signer -->
   <Section
-    label="Optional"
-    title="Desktop batch signer"
-    lede="Signs every PDF in a folder, one PIN for the run. No server, no browser, no extension."
+    id="desktop"
+    ground="deep"
+    label="Desktop signer"
+    title="A folder of PDFs, one PIN"
+    lede="One app and nothing else. It carries its own helper, so there is no second install and no browser involved."
   >
     <div class="stack">
+      {
+        brew.ready && (
+          <div class="grid">
+            <DownloadCard
+              title="Homebrew"
+              blurb="macOS."
+              icon="lucide:beer"
+              version={release.version}
+              command={brew.desktop}
+            />
+          </div>
+        )
+      }
       <div class="grid">
         {platforms.map((p) => (
           <DownloadCard
@@ -179,6 +239,50 @@ const anyStore = Object.values(stores).some((s) => s.ready);
             os={p.os}
           />
         ))}
+      </div>
+    </div>
+  </Section>
+
+  <!-- ---------------------------------------------------------- server -->
+  <Section
+    id="server"
+    label="Server"
+    title="Signing with nobody watching"
+    lede="The key sits on your server and one call returns a signed file. Same engine as the token flow, minus everything that needs a person."
+  >
+    <div class="stack">
+      <div class="install">
+        <p class="sub">Python 3.10 or newer.</p>
+        <code>pip install docsigner-server</code>
+      </div>
+      <div class="links-row">
+        <Button href={links.docsServer} variant="default" size="md" trailing="lucide:external-link">
+          Server docs and API
+        </Button>
+        <Button href={links.docsJs} variant="ghost" size="md" trailing="lucide:external-link">
+          The page library
+        </Button>
+      </div>
+    </div>
+  </Section>
+
+  <!-- --------------------------------------------------------- erpnext -->
+  <Section
+    id="erpnext"
+    ground="deep"
+    label="ERPNext app"
+    title="Signing from the desk"
+    lede="Print formats signed on submit, bulk runs on one PIN, and copies anyone can verify from a QR."
+  >
+    <div class="stack">
+      <div class="install">
+        <p class="sub">On your bench.</p>
+        <code>bench get-app docsigner_integration</code>
+      </div>
+      <div class="links-row">
+        <Button href={links.roadmap} variant="default" size="md" trailing="lucide:external-link">
+          What it does, and what is left
+        </Button>
       </div>
     </div>
   </Section>
@@ -200,7 +304,60 @@ const anyStore = Object.values(stores).some((s) => s.ready);
 <style>
   .notice {
     margin-top: var(--s-4);
-    max-width: 720px;
+    max-width: 640px;
+  }
+
+  /* ---- the chooser ---- */
+  .chooser {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-4);
+  }
+
+  .chooser a {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding: var(--s-5);
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--radius);
+    color: inherit;
+    text-decoration: none;
+    transition:
+      border-color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
+  }
+
+  .chooser a:hover {
+    border-color: var(--green);
+    background: var(--hover);
+  }
+
+  .ch-ic {
+    color: var(--green-ink);
+    margin-bottom: var(--s-2);
+  }
+
+  .ch-ic :global(svg) {
+    width: var(--icon-md);
+    height: var(--icon-md);
+  }
+
+  .ch-name {
+    font-weight: var(--fw-semibold);
+  }
+
+  .ch-for {
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
+  /* ---- shared ---- */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
   }
 
   .grid {
@@ -209,15 +366,42 @@ const anyStore = Object.values(stores).some((s) => s.ready);
     gap: var(--s-4);
   }
 
-  .stack {
-    display: flex;
-    flex-direction: column;
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: var(--s-6);
   }
 
-  .aside {
+  h3,
+  .sub-head {
+    font-size: var(--text-body);
+    letter-spacing: 0;
+  }
+
+  .sub {
     font-size: var(--text-sm);
-    color: var(--faint);
-    max-width: var(--measure);
+    color: var(--dim);
+    margin-top: var(--s-1);
+  }
+
+  .install {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    align-items: flex-start;
+  }
+
+  .install code {
+    font-size: var(--text-body);
+    padding: var(--s-3) var(--s-4);
+    white-space: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .links-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
   }
 </style>
