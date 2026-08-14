@@ -123,9 +123,8 @@
 }
 .sign-btn {
   flex: none;
-  height: 34px;
-  padding: 0 13px;
-  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
   font-size: var(--text-body);
   margin-left: 2px;
 }
