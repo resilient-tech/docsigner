@@ -123,8 +123,9 @@
 }
 .sign-btn {
   flex: none;
-  height: 36px;
-  padding: 0 18px;
+  height: 34px;
+  padding: 0 13px;
+  gap: 7px;
   font-size: var(--text-body);
   margin-left: 2px;
 }
@@ -528,10 +529,17 @@ input.control::placeholder {
 .out-row {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+/* The label takes what it needs; the box gets the rest. It used to be a fixed
+   116px with the label flexing, so a longer suffix was clipped. */
+.out-label {
+  flex: none;
 }
 .suffix-input {
-  width: 116px;
-  text-align: right;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
   font-family: var(--mono);
   font-size: var(--text-sm);
   color: var(--green-ink);
@@ -704,6 +712,12 @@ input[type='checkbox'] {
   align-items: flex-start;
   justify-content: center;
   padding: 8vh 24px;
+}
+/* Top-aligned suits the tall profile editor. A short dialog like the PIN prompt
+   belongs in the middle. */
+.modal-overlay.centred {
+  align-items: center;
+  padding: 24px;
 }
 .modal {
   width: 720px;

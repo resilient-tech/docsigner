@@ -15,7 +15,7 @@ export function PinDialog({
 }) {
   const [pin, setPin] = useState('')
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay centred" onClick={onCancel}>
       <form
         className="pin-modal"
         onClick={(e) => e.stopPropagation()}
