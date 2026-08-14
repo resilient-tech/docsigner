@@ -1,26 +1,7 @@
-import { useState } from 'react'
 import { RefreshCw, UsbIcon } from 'lucide-react'
 import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
 import { StampPreview } from './StampPreview'
-
-/** An empty value sends nothing and lets the backend choose: DOCSIGNER_TSA_URL if
- *  it is set, DigiCert otherwise. So "Default" is not a synonym for DigiCert, and
- *  the label below names whatever it actually resolved to. */
-//
-// Only servers checked against this signer. Sectigo's public endpoint was listed
-// here and removed: it serves its own code-signing customers and answers
-// pyHanko's request with "Error in communication with timestamp server". A preset
-// that does not work is worse than no preset, because the list implies it does.
-const TSA_PRESETS = [
-  { url: '', label: 'Default' },
-  { url: 'http://timestamp.digicert.com', label: 'DigiCert' },
-  { url: 'http://timestamp.identrust.com', label: 'IdenTrust' },
-]
-const CUSTOM = '__custom__'
-
-/** `http://timestamp.digicert.com` -> `timestamp.digicert.com` */
-const host = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 // The card is a fixed shape, so the preview shows what the signature *contains*
 // rather than jumping about as the box is resized on the canvas.
@@ -69,10 +50,6 @@ export function SetupPanel(props: {
 }) {
   const p = props.profile
   const std = STANDARDS.find((s) => s.value === props.standard)
-  // A saved address that is not one of the presets means the user typed it.
-  const [customTsa, setCustomTsa] = useState(
-    props.tsaUrl !== '' && !TSA_PRESETS.some((t) => t.url === props.tsaUrl),
-  )
 
   return (
     <aside className="setup">
@@ -164,39 +141,18 @@ export function SetupPanel(props: {
         {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (DOCSIGNER_TRUST_DIR).</span>}
       </div>
 
-      {/* Only the standards that actually use a timestamp. A list, not a bare box:
-          nobody knows these addresses by heart, and a typo only surfaces as a
-          network error once signing has already started. */}
+      {/* Only the standards that actually use a timestamp. A dropdown of presets
+          was tried here and reverted: see the review notes. Blank uses the
+          backend's default, which is the answer for almost everyone. */}
       {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
-          <select
+          <input
             className="control"
-            value={customTsa ? CUSTOM : props.tsaUrl}
-            onChange={(e) => {
-              if (e.target.value === CUSTOM) {
-                setCustomTsa(true)
-                return
-              }
-              setCustomTsa(false)
-              props.onTsaUrl(e.target.value)
-            }}
-          >
-            {TSA_PRESETS.map((t) => (
-              <option key={t.url || 'default'} value={t.url}>
-                {t.url === '' && props.tsaDefault ? `Default (${host(props.tsaDefault)})` : t.label}
-              </option>
-            ))}
-            <option value={CUSTOM}>Custom…</option>
-          </select>
-          {customTsa && (
-            <input
-              className="control"
-              value={props.tsaUrl}
-              placeholder="http://timestamp.example.com"
-              onChange={(e) => props.onTsaUrl(e.target.value)}
-            />
-          )}
+            value={props.tsaUrl}
+            placeholder={props.tsaDefault || 'RFC 3161 TSA URL'}
+            onChange={(e) => props.onTsaUrl(e.target.value)}
+          />
         </div>
       )}
 
