@@ -123,9 +123,11 @@ export function ProfileEditor({
                         </option>
                       ))}
                     </select>
+                    {/* Extensions only. The font/* MIME types made Windows fall
+                        back to showing every file. */}
                     <label className="btn ghost sm" title="A handwriting font file — not a picture of your signature">
                       <Upload size={13} /> Add your font
-                      <input type="file" accept=".ttf,.otf,font/ttf,font/otf" onChange={onPickFont} hidden />
+                      <input type="file" accept=".ttf,.otf" onChange={onPickFont} hidden />
                     </label>
                     {/* A native <select> cannot carry a button per option, so the
                         delete sits outside it — labelled, so it is clear what it
@@ -134,9 +136,9 @@ export function ProfileEditor({
                       <button
                         className="btn ghost sm danger"
                         onClick={() => removeFont(selectedFont.slug)}
-                        title={`Delete "${selectedFont.label}" — removes the font, not just this profile's choice`}
+                        title={`Delete "${selectedFont.label}" — removes the font itself, not just this profile's choice`}
                       >
-                        <Trash2 size={13} /> Delete font
+                        <Trash2 size={13} /> Delete
                       </button>
                     )}
                   </div>
@@ -146,12 +148,18 @@ export function ProfileEditor({
               {profile.style === 'image' && (
                 <label className="ef">
                   <span>Image</span>
+                  {/* A styled label over a hidden input, matching the font row. A
+                      bare file input drew its own button and kept saying "No file
+                      chosen" even with an image loaded. */}
                   <div className="img-row">
                     {profile.image && <img src={profile.image} alt="signature" className="img-thumb" />}
-                    <input type="file" accept="image/png,image/jpeg" onChange={onPickImage} />
+                    <label className="btn ghost sm" title="A picture of your signature (PNG or JPEG)">
+                      <Upload size={13} /> Choose image
+                      <input type="file" accept=".png,.jpg,.jpeg" onChange={onPickImage} hidden />
+                    </label>
                     {profile.image && (
-                      <button className="btn ghost sm" onClick={() => set({ image: null })}>
-                        Remove
+                      <button className="btn ghost sm danger" onClick={() => set({ image: null })} title="Remove this image from the profile">
+                        <Trash2 size={13} /> Delete
                       </button>
                     )}
                   </div>
