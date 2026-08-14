@@ -45,11 +45,17 @@
   background: var(--bg);
   flex: none;
 }
+.path-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
 .path-input {
   flex: 1;
   min-width: 0;
   height: 32px;
-  padding: 0 11px;
+  padding: 0 52px 0 11px; /* room for the recents caret and the clear button */
   background: var(--surface);
   border: var(--hairline);
   border-radius: var(--radius-sm);
@@ -58,14 +64,62 @@
 .path-input::placeholder {
   color: var(--faint);
 }
-.count-pill {
-  background: var(--action-soft);
-  color: var(--action-ink);
-  border-radius: var(--pill);
-  padding: 4px 11px;
+.path-caret,
+.path-clear {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  color: var(--faint);
+}
+.path-caret {
+  right: 27px;
+}
+.path-clear {
+  right: 5px;
+}
+.path-caret:hover,
+.path-clear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+/* Recent folders. Spans the whole box, so a full path fits instead of being
+   clipped the way the native datalist popup clipped it. */
+.recent-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-overlay);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.recent-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
   font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
+  text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-menu button:hover {
+  background: var(--hover);
 }
 .sign-btn {
   flex: none;
@@ -595,6 +649,23 @@ input.control::placeholder {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.ic-btn.danger {
+  color: var(--red-ink);
+}
+.ic-btn.danger:hover:not(:disabled) {
+  background: var(--red-soft);
+  color: var(--red-ink);
+}
+/* The status tick/cross carries the reason as its tooltip, so give it a target
+   worth pointing at rather than a bare 15px glyph. */
+.qrow-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
 .chip {
   flex: none;
   height: 26px;
@@ -732,11 +803,13 @@ input[type='checkbox'] {
   border-radius: var(--radius-card);
   background: var(--paper);
 }
+/* Two by two: four single-line toggles in one column left a tall thin gap beside
+   the preview. */
 .toggles {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+  margin-top: 8px;
 }
 .tog {
   display: flex;
@@ -838,7 +911,7 @@ input[type='checkbox'] {
     height: auto;
     padding: 8px 12px;
   }
-  .path-input {
+  .path-wrap {
     order: 5;
     flex-basis: 100%;
   }

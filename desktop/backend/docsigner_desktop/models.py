@@ -54,6 +54,8 @@ class SignRequest(BaseModel):
 
 class Settings(BaseModel):
     last_folder: Optional[str] = None
+    # Most recent first, newest 5 kept. Feeds the path box's dropdown.
+    recent_folders: list[str] = Field(default_factory=list)
     identity_id: Optional[str] = None
     profile_id: Optional[str] = None
     standard: str = "B-B"

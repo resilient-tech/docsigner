@@ -20,6 +20,7 @@ export interface AppearanceProfile {
 
 export interface Settings {
   last_folder: string | null
+  recent_folders: string[]
   identity_id: string | null
   profile_id: string | null
   standard: string
@@ -108,9 +109,13 @@ export interface SignRequest {
   pin?: string | null
 }
 
+// All six of core's profiles (docsigner_core.profiles.Profile). The two archive
+// ones were missing here, so they were unreachable from the app.
 export const STANDARDS: { value: string; label: string; needsConfig?: boolean }[] = [
   { value: 'B-B', label: 'PAdES B-B (basic)' },
   { value: 'B-T', label: 'PAdES B-T (+ timestamp)', needsConfig: true },
   { value: 'B-LT', label: 'PAdES B-LT (+ LTV)', needsConfig: true },
+  { value: 'B-LTA', label: 'PAdES B-LTA (+ archive timestamp)', needsConfig: true },
   { value: 'CCA-LTV', label: 'CCA-LTV (India)', needsConfig: true },
+  { value: 'CCA-LTA', label: 'CCA-LTA (India, + timestamp)', needsConfig: true },
 ]

@@ -1,7 +1,27 @@
 import { RefreshCw, UsbIcon } from 'lucide-react'
-import { type ReactNode } from 'react'
 import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
+import { StampPreview } from './StampPreview'
+
+// The card is a fixed shape, so the preview shows what the signature *contains*
+// rather than jumping about as the box is resized on the canvas.
+const CARD_W = 220
+const CARD_H = 60
+
+/**
+ * The certificate's expiry as `4 June 2027`.
+ *
+ * Not the OS short-date format: Windows' "14-Aug-26" is a Control Panel setting
+ * the webview never sees, so toLocaleDateString() only ever returned the
+ * webview's own locale (8/9/2036) and looked wrong. Day-month-year with the month
+ * spelled out cannot be misread in any locale, and the month name still
+ * translates.
+ */
+function localDate(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return `${d.getDate()} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getFullYear()}`
+}
 
 export function SetupPanel(props: {
   identities: Identity[]
@@ -14,8 +34,7 @@ export function SetupPanel(props: {
   profile: AppearanceProfile | null
   onProfile: (id: string) => void
   onEditProfiles: () => void
-  preview: ReactNode
-  boxAspect: string
+  signerName: string
   standard: string
   onStandard: (v: string) => void
   trustConfigured: boolean
@@ -41,7 +60,7 @@ export function SetupPanel(props: {
             {props.identities.length === 0 && <option value="">No certificates found</option>}
             {props.identities.map((i) => (
               <option key={i.id} value={i.id}>
-                {i.name} · {i.kind === 'token' ? 'token' : 'key'} · to {i.notAfter}
+                {i.name} · {i.kind === 'token' ? 'Token' : 'Key'} · Valid till {localDate(i.notAfter)}
               </option>
             ))}
           </select>
@@ -74,8 +93,15 @@ export function SetupPanel(props: {
       <div className="field">
         <label>Signature</label>
         {p && (
-          <div className="sig-paper" style={{ aspectRatio: props.boxAspect }}>
-            {props.preview}
+          <div className="sig-paper" style={{ aspectRatio: `${CARD_W} / ${CARD_H}` }}>
+            <StampPreview
+              profile={p}
+              signerName={props.signerName}
+              reason={props.reason}
+              location={props.location}
+              boxW={CARD_W}
+              boxH={CARD_H}
+            />
           </div>
         )}
         <div className="profile-row">

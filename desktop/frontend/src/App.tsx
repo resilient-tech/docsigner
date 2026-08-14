@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature } from 'lucide-react'
+import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature, ChevronDown } from 'lucide-react'
 import * as api from './api'
 import type { AppConfig, FontOption, Identity, PdfFile, Placement, RenderResult, Settings, SignResult, TokenHint } from './types'
 import { PlacementCanvas } from './components/PlacementCanvas'
@@ -9,6 +9,11 @@ import { PinDialog } from './components/PinDialog'
 import { StampPreview, fontFaceCss } from './components/StampPreview'
 
 const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, fh: 0.1 }
+
+/** Backend messages start lowercase ("no token is present"). Shown to a person,
+ *  they should start like a sentence. */
+const sentence = (s?: string | null): string | undefined =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1) : undefined
 
 export function App() {
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -26,6 +31,10 @@ export function App() {
   const [pinOpen, setPinOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [recentOpen, setRecentOpen] = useState(false)
+  const [warnHidden, setWarnHidden] = useState(false)
+  const pathWrapRef = useRef<HTMLSpanElement>(null)
   const persistReady = useRef(false)
 
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches)
@@ -89,6 +98,16 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, pageForRender])
 
+  // Close the recents menu on any click outside it.
+  useEffect(() => {
+    if (!recentOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (!pathWrapRef.current?.contains(e.target as Node)) setRecentOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [recentOpen])
+
   function patch(p: Partial<Settings>) {
     setSettings((s) => (s ? { ...s, ...p } : s))
   }
@@ -102,11 +121,19 @@ export function App() {
     setSettings((cur) => (cur ? { ...cur, last_folder: folder } : cur))
   }
 
+  // Most recent first, five kept. Feeds the path box's dropdown.
+  function remember(folder: string) {
+    setSettings((cur) =>
+      cur ? { ...cur, recent_folders: [folder, ...(cur.recent_folders ?? []).filter((f) => f !== folder)].slice(0, 5) } : cur,
+    )
+  }
+
   async function loadFolder(path: string) {
     setError(null)
     try {
       const res = await api.getFolder(path)
       applyFiles(res.folder, res.files)
+      remember(res.folder)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setFiles([])
@@ -174,9 +201,15 @@ export function App() {
         for (const f of res.files) if (!existing.has(f.path) || prev.has(f.path)) next.add(f.path)
         return next
       })
+      // Drop a "signed" mark whose output file has since been deleted, so the
+      // original stops claiming a signed copy that is no longer there.
+      const present = new Set(res.files.map((f) => f.name))
       setResults((prev) => {
         const next: Record<string, SignResult> = {}
-        for (const f of res.files) if (prev[f.path]) next[f.path] = prev[f.path]
+        for (const f of res.files) {
+          const r = prev[f.path]
+          if (r && (!r.ok || (r.name && present.has(r.name)))) next[f.path] = r
+        }
         return next
       })
       setSelected((cur) => (cur && res.files.some((f) => f.path === cur) ? cur : (res.files[0]?.path ?? null)))
@@ -197,6 +230,8 @@ export function App() {
     ]
     try {
       await navigator.clipboard.writeText(lines.join('\n'))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
     } catch {
       /* clipboard blocked; the log file still holds the detail */
     }
@@ -260,6 +295,7 @@ export function App() {
     <StampPreview profile={currentProfile} signerName={signerName} reason={settings.reason} location={settings.location} boxW={boxW} boxH={boxH} />
   ) : null
 
+  const recent = settings.recent_folders ?? []
   const signedCount = Object.values(results).filter((r) => r.ok).length
   const skippedCount = Object.values(results).filter((r) => r.skipped).length
   const failedCount = Object.values(results).filter((r) => !r.ok && !r.skipped).length
@@ -303,13 +339,55 @@ export function App() {
         <button className="btn ghost sm" onClick={chooseFiles}>
           Files…
         </button>
-        <input
-          className="path-input"
-          value={folderPath}
-          placeholder="or paste a path…"
-          onChange={(e) => setFolderPath(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && loadFolder(folderPath)}
-        />
+        {/* Not a <datalist>: its popup cannot be sized or styled, so long paths
+            came out truncated and its arrow did not match the app's selects. */}
+        <span className="path-wrap" ref={pathWrapRef}>
+          <input
+            className="path-input"
+            value={folderPath}
+            placeholder="or paste a path…"
+            onChange={(e) => setFolderPath(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') loadFolder(folderPath)
+              if (e.key === 'Escape') setRecentOpen(false)
+            }}
+          />
+          {recent.length > 0 && (
+            <button
+              className="path-caret"
+              onClick={() => setRecentOpen((o) => !o)}
+              title="Recent folders"
+              aria-label="Recent folders"
+              aria-expanded={recentOpen}
+            >
+              <ChevronDown size={14} />
+            </button>
+          )}
+          {folderPath && (
+            <button className="path-clear" onClick={clearFiles} title="Clear" aria-label="Clear the path">
+              <X size={13} />
+            </button>
+          )}
+          {recentOpen && recent.length > 0 && (
+            <ul className="recent-menu" role="listbox">
+              {recent.map((f) => (
+                <li key={f}>
+                  <button
+                    role="option"
+                    aria-selected={f === folderPath}
+                    onClick={() => {
+                      setRecentOpen(false)
+                      loadFolder(f)
+                    }}
+                    title={f}
+                  >
+                    {f}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </span>
         <button
           className="ic-btn"
           onClick={refreshFolder}
@@ -319,24 +397,23 @@ export function App() {
         >
           <RefreshCw size={15} />
         </button>
-        <span className="count-pill">
-          {files.length} PDF{files.length === 1 ? '' : 's'}
-        </span>
       </div>
 
-      {(error || failedCount > 0) && (
+      {(error || (failedCount > 0 && !warnHidden)) && (
         <div className={`banner ${error ? 'error' : 'warn'}`}>
           <span className="banner-msg">
-            {error ?? `${failedCount} file${failedCount === 1 ? '' : 's'} could not be signed — hover a file for the reason.`}
+            {sentence(error) ?? `${failedCount} file${failedCount === 1 ? '' : 's'} could not be signed.`}
           </span>
           <button className="banner-btn" onClick={copyReport}>
-            Copy details
+            {copied ? 'Copied' : 'Copy details'}
           </button>
-          {error && (
-            <button className="banner-x" onClick={() => setError(null)} aria-label="Dismiss">
-              ×
-            </button>
-          )}
+          <button
+            className="banner-x"
+            onClick={() => (error ? setError(null) : setWarnHidden(true))}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -383,18 +460,26 @@ export function App() {
                   />
                   <FileText size={15} className="qrow-ic" />
                   <span className="qrow-main">
-                    <span className="qrow-name">{f.name}</span>
-                    <span className="qrow-sub" title={r && !r.ok ? r.error : undefined}>
-                      {r?.ok ? `→ ${r.name}` : r ? r.error : `${(f.size / 1024).toFixed(0)} KB`}
+                    <span className="qrow-name" title={f.name}>
+                      {f.name}
+                    </span>
+                    <span className="qrow-sub">
+                      {r && !r.ok ? sentence(r.error) : `${(f.size / 1024).toFixed(0)} KB`}
                     </span>
                   </span>
-                  {r?.ok ? (
-                    <CheckCircle2 size={15} className="s-ok" />
-                  ) : r?.skipped ? (
-                    <MinusCircle size={15} className="s-skip" />
-                  ) : r ? (
-                    <AlertCircle size={15} className="s-err" />
-                  ) : null}
+                  {/* The reason hangs off the status icon, which is where people
+                      point when a row has gone red. */}
+                  {r && (
+                    <span className="qrow-status" title={r.ok ? `Signed as ${r.name}` : sentence(r.error)}>
+                      {r.ok ? (
+                        <CheckCircle2 size={15} className="s-ok" />
+                      ) : r.skipped ? (
+                        <MinusCircle size={15} className="s-skip" />
+                      ) : (
+                        <AlertCircle size={15} className="s-err" />
+                      )}
+                    </span>
+                  )}
                   <button
                     className="qrow-remove"
                     onClick={(e) => {
@@ -440,8 +525,7 @@ export function App() {
           profile={currentProfile}
           onProfile={(id) => patch({ profile_id: id })}
           onEditProfiles={() => setEditorOpen(true)}
-          preview={stamp}
-          boxAspect={`${boxW} / ${boxH}`}
+          signerName={signerName}
           standard={settings.standard}
           onStandard={(v) => patch({ standard: v })}
           trustConfigured={cfg?.trustConfigured ?? false}
