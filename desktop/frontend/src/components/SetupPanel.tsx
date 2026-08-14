@@ -141,13 +141,14 @@ export function SetupPanel(props: {
         {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (DOCSIGNER_TRUST_DIR).</span>}
       </div>
 
-      {std?.needsConfig && (
+      {/* Only the standards that actually use a timestamp. */}
+      {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
           <input
             className="control"
             value={props.tsaUrl}
-            placeholder={props.tsaDefault || 'RFC 3161 TSA URL'}
+            placeholder={props.tsaDefault || 'Leave blank for the default'}
             onChange={(e) => props.onTsaUrl(e.target.value)}
           />
         </div>
@@ -156,8 +157,13 @@ export function SetupPanel(props: {
       <div className="field">
         <label>Save as</label>
         <div className="control out-row">
-          <span className="grow">Filename suffix</span>
-          <input className="suffix-input" value={props.suffix} onChange={(e) => props.onSuffix(e.target.value)} />
+          <span className="out-label">Filename suffix</span>
+          <input
+            className="suffix-input"
+            value={props.suffix}
+            title={props.suffix}
+            onChange={(e) => props.onSuffix(e.target.value)}
+          />
         </div>
       </div>
     </aside>
