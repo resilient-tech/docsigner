@@ -7,6 +7,18 @@ import type { AppearanceProfile } from '../types'
 const DETAIL_FONT = 'poppins'
 
 /**
+ * The date exactly as core stamps it: `%Y-%m-%d %H:%M %z`. This used to be a
+ * hardcoded sample, so the preview showed a date that was never the one signed.
+ */
+function stampTime(now = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  const mins = -now.getTimezoneOffset() // JS reports west-positive; strftime east-positive
+  const abs = Math.abs(mins)
+  const offset = `${mins < 0 ? '-' : '+'}${p(Math.floor(abs / 60))}${p(abs % 60)}`
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())} ${offset}`
+}
+
+/**
  * `@font-face` rules for the detail font plus every listed hand, served by the
  * backend from the very files docsigner-core stamps into the PDF. Injected as one
  * <style> element rather than a stylesheet, because the list grows when the user
@@ -42,7 +54,7 @@ export function StampPreview({
 }) {
   const lines: string[] = []
   if (profile.show_name) lines.push(`Digitally signed by ${signerName}`)
-  if (profile.show_date) lines.push('Date: 2026.07.13 14:50 +05:30')
+  if (profile.show_date) lines.push(`Date: ${stampTime()}`)
   if (profile.show_reason && reason) lines.push(`Reason: ${reason}`)
   if (profile.show_location && location) lines.push(`Location: ${location}`)
 
