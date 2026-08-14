@@ -35,6 +35,8 @@ export function App() {
   const [recentOpen, setRecentOpen] = useState(false)
   const [warnHidden, setWarnHidden] = useState(false)
   const pathWrapRef = useRef<HTMLSpanElement>(null)
+  const pathInputRef = useRef<HTMLInputElement>(null)
+  const recentMenuRef = useRef<HTMLUListElement>(null)
   const persistReady = useRef(false)
 
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches)
@@ -107,6 +109,14 @@ export function App() {
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
   }, [recentOpen])
+
+  /** Move focus between the recents options. They are real buttons, so Enter and
+   *  Space already activate them; this only handles the arrows. */
+  function focusOption(index: number) {
+    const items = recentMenuRef.current?.querySelectorAll('button')
+    if (!items?.length) return
+    items[(index + items.length) % items.length].focus()
+  }
 
   function patch(p: Partial<Settings>) {
     setSettings((s) => (s ? { ...s, ...p } : s))
@@ -348,9 +358,13 @@ export function App() {
             came out truncated and its arrow did not match the app's selects. */}
         <span className="path-wrap" ref={pathWrapRef}>
           <input
+            ref={pathInputRef}
             className="path-input"
             value={folderPath}
             placeholder="or paste a path…"
+            // Click opens the list even when the box is empty. Not onFocus: Escape
+            // hands focus back here, which would reopen what you just closed.
+            onClick={() => setRecentOpen(true)}
             onChange={(e) => {
               setFolderPath(e.target.value)
               setRecentOpen(true) // suggest while typing, not only on the caret
@@ -358,6 +372,12 @@ export function App() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') loadFolder(folderPath)
               if (e.key === 'Escape') setRecentOpen(false)
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setRecentOpen(true)
+                // A frame, so the list exists to focus into when it was closed.
+                requestAnimationFrame(() => focusOption(0))
+              }
             }}
           />
           {matches.length > 0 && (
@@ -377,7 +397,26 @@ export function App() {
             </button>
           )}
           {recentOpen && matches.length > 0 && (
-            <ul className="recent-menu" role="listbox">
+            <ul
+              className="recent-menu"
+              role="listbox"
+              ref={recentMenuRef}
+              onKeyDown={(e) => {
+                const items = Array.from(recentMenuRef.current?.querySelectorAll('button') ?? [])
+                const at = items.indexOf(document.activeElement as HTMLButtonElement)
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  focusOption(at + 1)
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  // Up from the first option goes back to the box, not round the end.
+                  at <= 0 ? pathInputRef.current?.focus() : focusOption(at - 1)
+                } else if (e.key === 'Escape') {
+                  setRecentOpen(false)
+                  pathInputRef.current?.focus()
+                }
+              }}
+            >
               {matches.map((f) => (
                 <li key={f}>
                   <button
