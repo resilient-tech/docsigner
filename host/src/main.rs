@@ -133,7 +133,10 @@ mod tests {
     #[test]
     fn the_terminal_still_gets_the_terminal_tool() {
         for command in CLI_COMMANDS {
-            assert!(wants_cli(Some(command), false), "{command} is a CLI command");
+            assert!(
+                wants_cli(Some(command), false),
+                "{command} is a CLI command"
+            );
         }
         // A typo prints usage rather than hanging on stdin, but only for a human.
         assert!(wants_cli(Some("lst"), true));
