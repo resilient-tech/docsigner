@@ -4,10 +4,24 @@ These used to be macOS-only, which left both buttons silently dead on Windows an
 Linux. The dialogs themselves are pywebview's, so what is worth testing is the
 two things around them: that no window degrades quietly, and that a chosen file
 is still checked before it reaches the file list.
+
+pywebview is deliberately not installed for this suite (see the python job in
+.github/workflows/test.yml), so everything here runs against a stub. The one test
+that touches the real module skips itself when it is absent.
 """
+
+import pytest
 
 from docsigner_desktop import picker
 from docsigner_desktop.models import Settings
+
+
+class _FakeFileDialog:
+    """Mirrors pywebview's FileDialog. Guarded by the last test in this file."""
+
+    OPEN = 10
+    FOLDER = 20
+    SAVE = 30
 
 
 class _FakeWindow:
@@ -22,20 +36,34 @@ class _FakeWindow:
         return self.answer
 
 
+class _FakeWebview:
+    FileDialog = _FakeFileDialog
+
+    def __init__(self, windows):
+        self.windows = windows
+
+
+@pytest.fixture(autouse=True)
+def _no_window_no_settings(monkeypatch):
+    """Default: headless, and never read the real user's settings file."""
+    monkeypatch.setattr(picker, "webview", _FakeWebview([]))
+    monkeypatch.setattr(picker.store, "load_settings", lambda: Settings())
+
+
 def _with_window(monkeypatch, answer):
     win = _FakeWindow(answer)
-    monkeypatch.setattr(picker.webview, "windows", [win])
+    monkeypatch.setattr(picker, "webview", _FakeWebview([win]))
     return win
 
 
-def test_no_window_means_no_picker(monkeypatch):
+def test_no_window_means_no_picker():
     """--server runs headless; the UI falls back to its paste-a-path box."""
-    monkeypatch.setattr(picker.webview, "windows", [])
     assert picker.pick_folder() is None
     assert picker.pick_files() == []
 
 
 def test_pywebview_missing_does_not_crash(monkeypatch):
+    """The python test job installs no GUI toolkit at all."""
     monkeypatch.setattr(picker, "webview", None)
     assert picker.pick_folder() is None
     assert picker.pick_files() == []
@@ -52,8 +80,7 @@ def test_cancelling_returns_nothing(monkeypatch):
 def test_pick_folder_asks_for_a_folder(monkeypatch, tmp_path):
     win = _with_window(monkeypatch, (str(tmp_path),))
     assert picker.pick_folder() == str(tmp_path)
-    dialog_type, _kwargs = win.calls[0]
-    assert dialog_type == picker.webview.FileDialog.FOLDER
+    assert win.calls[0][0] == _FakeFileDialog.FOLDER
 
 
 def test_pick_files_allows_multiple_and_filters_to_pdf(monkeypatch, tmp_path):
@@ -73,7 +100,7 @@ def test_pick_files_allows_multiple_and_filters_to_pdf(monkeypatch, tmp_path):
     assert entries[0]["path"] == str(good)
 
     dialog_type, kwargs = win.calls[0]
-    assert dialog_type == picker.webview.FileDialog.OPEN
+    assert dialog_type == _FakeFileDialog.OPEN
     assert kwargs["allow_multiple"] is True
     # A filter the user can widen, so the suffix check above still has to exist.
     assert kwargs["file_types"] == ("PDF files (*.pdf)",)
@@ -96,3 +123,10 @@ def test_a_stale_or_absent_last_folder_is_ignored(monkeypatch, tmp_path):
         win = _with_window(monkeypatch, None)
         assert picker.pick_folder() is None
         assert win.calls[0][1]["directory"] == ""
+
+
+def test_the_stub_still_matches_pywebview():
+    """Everything above trusts _FakeFileDialog's numbers. Catch a drift."""
+    webview = pytest.importorskip("webview", reason="not installed in the python CI job")
+    assert _FakeFileDialog.OPEN == webview.FileDialog.OPEN
+    assert _FakeFileDialog.FOLDER == webview.FileDialog.FOLDER
