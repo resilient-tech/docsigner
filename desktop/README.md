@@ -32,9 +32,12 @@ To iterate on the UI with hot reload, run the backend headless and point Vite at
 cd ../frontend && pnpm dev                         # proxies /api and /font-file to :8000
 ```
 
-Backend tests (token cache, host seam) need only `cryptography`:
+Backend tests (token cache, host seam, pickers) need only `cryptography`, but
+pytest itself is not in `requirements.txt` — that file is what the packaged app
+ships, so the test tooling lives in the repo's dev list instead:
 
 ```bash
+./.venv/bin/pip install -r ../../requirements-dev.txt
 ./.venv/bin/python -m pytest tests -q
 ```
 
