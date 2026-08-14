@@ -295,7 +295,12 @@ export function App() {
     <StampPreview profile={currentProfile} signerName={signerName} reason={settings.reason} location={settings.location} boxW={boxW} boxH={boxH} />
   ) : null
 
-  const recent = settings.recent_folders ?? []
+  // Suggestions narrow as you type. An exact match is dropped: offering the path
+  // already in the box is noise, and it is how the menu gets out of the way.
+  const typed = folderPath.trim().toLowerCase()
+  const matches = (settings.recent_folders ?? []).filter(
+    (f) => f.toLowerCase() !== typed && (!typed || f.toLowerCase().includes(typed)),
+  )
   const signedCount = Object.values(results).filter((r) => r.ok).length
   const skippedCount = Object.values(results).filter((r) => r.skipped).length
   const failedCount = Object.values(results).filter((r) => !r.ok && !r.skipped).length
@@ -346,13 +351,16 @@ export function App() {
             className="path-input"
             value={folderPath}
             placeholder="or paste a path…"
-            onChange={(e) => setFolderPath(e.target.value)}
+            onChange={(e) => {
+              setFolderPath(e.target.value)
+              setRecentOpen(true) // suggest while typing, not only on the caret
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') loadFolder(folderPath)
               if (e.key === 'Escape') setRecentOpen(false)
             }}
           />
-          {recent.length > 0 && (
+          {matches.length > 0 && (
             <button
               className="path-caret"
               onClick={() => setRecentOpen((o) => !o)}
@@ -368,9 +376,9 @@ export function App() {
               <X size={13} />
             </button>
           )}
-          {recentOpen && recent.length > 0 && (
+          {recentOpen && matches.length > 0 && (
             <ul className="recent-menu" role="listbox">
-              {recent.map((f) => (
+              {matches.map((f) => (
                 <li key={f}>
                   <button
                     role="option"
@@ -412,7 +420,7 @@ export function App() {
             onClick={() => (error ? setError(null) : setWarnHidden(true))}
             aria-label="Dismiss"
           >
-            ×
+            <X size={15} />
           </button>
         </div>
       )}
