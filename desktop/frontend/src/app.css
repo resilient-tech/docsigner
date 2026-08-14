@@ -163,16 +163,22 @@
 .banner-btn:hover {
   opacity: 1;
 }
+/* An icon in a square box, not a "×" glyph: the character sits below its own
+   centre, which left it visibly off-line against the Copy details button. */
 .banner-x {
   flex: none;
-  font-size: var(--display-3);
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
   color: inherit;
   opacity: 0.7;
-  width: 22px;
 }
 .banner-x:hover {
   opacity: 1;
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 /* ---- file queue ---- */
