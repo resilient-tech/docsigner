@@ -4,13 +4,18 @@ import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
 import { StampPreview } from './StampPreview'
 
-/** Empty means "whatever the backend is configured with". */
+/** An empty value sends nothing and lets the backend choose: DOCSIGNER_TSA_URL if
+ *  it is set, DigiCert otherwise. So "Default" is not a synonym for DigiCert, and
+ *  the label below names whatever it actually resolved to. */
 const TSA_PRESETS = [
   { url: '', label: 'Default' },
   { url: 'http://timestamp.digicert.com', label: 'DigiCert' },
   { url: 'http://timestamp.sectigo.com', label: 'Sectigo' },
 ]
 const CUSTOM = '__custom__'
+
+/** `http://timestamp.digicert.com` -> `timestamp.digicert.com` */
+const host = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 // The card is a fixed shape, so the preview shows what the signature *contains*
 // rather than jumping about as the box is resized on the canvas.
@@ -174,7 +179,7 @@ export function SetupPanel(props: {
           >
             {TSA_PRESETS.map((t) => (
               <option key={t.url || 'default'} value={t.url}>
-                {t.label}
+                {t.url === '' && props.tsaDefault ? `Default (${host(props.tsaDefault)})` : t.label}
               </option>
             ))}
             <option value={CUSTOM}>Custom…</option>
