@@ -343,6 +343,7 @@ export function App() {
           onClick={onSign}
           title={isToken ? 'Signs with your token — one PIN for the batch' : undefined}
         >
+          <Signature size={15} strokeWidth={2.25} />
           {busy ? 'Signing…' : `Sign ${filesToSign.length} PDF${filesToSign.length === 1 ? '' : 's'}`}
         </button>
       </header>
