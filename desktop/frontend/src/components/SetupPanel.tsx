@@ -1,7 +1,16 @@
+import { useState } from 'react'
 import { RefreshCw, UsbIcon } from 'lucide-react'
 import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
 import { StampPreview } from './StampPreview'
+
+/** Empty means "whatever the backend is configured with". */
+const TSA_PRESETS = [
+  { url: '', label: 'Default' },
+  { url: 'http://timestamp.digicert.com', label: 'DigiCert' },
+  { url: 'http://timestamp.sectigo.com', label: 'Sectigo' },
+]
+const CUSTOM = '__custom__'
 
 // The card is a fixed shape, so the preview shows what the signature *contains*
 // rather than jumping about as the box is resized on the canvas.
@@ -50,6 +59,10 @@ export function SetupPanel(props: {
 }) {
   const p = props.profile
   const std = STANDARDS.find((s) => s.value === props.standard)
+  // A saved address that is not one of the presets means the user typed it.
+  const [customTsa, setCustomTsa] = useState(
+    props.tsaUrl !== '' && !TSA_PRESETS.some((t) => t.url === props.tsaUrl),
+  )
 
   return (
     <aside className="setup">
@@ -141,16 +154,39 @@ export function SetupPanel(props: {
         {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (DOCSIGNER_TRUST_DIR).</span>}
       </div>
 
-      {/* Only the standards that actually use a timestamp. */}
+      {/* Only the standards that actually use a timestamp. A list, not a bare box:
+          nobody knows these addresses by heart, and a typo only surfaces as a
+          network error once signing has already started. */}
       {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
-          <input
+          <select
             className="control"
-            value={props.tsaUrl}
-            placeholder={props.tsaDefault || 'Leave blank for the default'}
-            onChange={(e) => props.onTsaUrl(e.target.value)}
-          />
+            value={customTsa ? CUSTOM : props.tsaUrl}
+            onChange={(e) => {
+              if (e.target.value === CUSTOM) {
+                setCustomTsa(true)
+                return
+              }
+              setCustomTsa(false)
+              props.onTsaUrl(e.target.value)
+            }}
+          >
+            {TSA_PRESETS.map((t) => (
+              <option key={t.url || 'default'} value={t.url}>
+                {t.label}
+              </option>
+            ))}
+            <option value={CUSTOM}>Custom…</option>
+          </select>
+          {customTsa && (
+            <input
+              className="control"
+              value={props.tsaUrl}
+              placeholder="http://timestamp.example.com"
+              onChange={(e) => props.onTsaUrl(e.target.value)}
+            />
+          )}
         </div>
       )}
 
