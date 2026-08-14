@@ -7,10 +7,15 @@ import { StampPreview } from './StampPreview'
 /** An empty value sends nothing and lets the backend choose: DOCSIGNER_TSA_URL if
  *  it is set, DigiCert otherwise. So "Default" is not a synonym for DigiCert, and
  *  the label below names whatever it actually resolved to. */
+//
+// Only servers checked against this signer. Sectigo's public endpoint was listed
+// here and removed: it serves its own code-signing customers and answers
+// pyHanko's request with "Error in communication with timestamp server". A preset
+// that does not work is worse than no preset, because the list implies it does.
 const TSA_PRESETS = [
   { url: '', label: 'Default' },
   { url: 'http://timestamp.digicert.com', label: 'DigiCert' },
-  { url: 'http://timestamp.sectigo.com', label: 'Sectigo' },
+  { url: 'http://timestamp.identrust.com', label: 'IdenTrust' },
 ]
 const CUSTOM = '__custom__'
 
