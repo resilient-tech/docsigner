@@ -31,6 +31,7 @@ export function PlacementCanvas({
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ mode: Handle; sx: number; sy: number; start: Placement; w: number; h: number } | null>(null)
   const [zoom, setZoom] = useState(1)
 
@@ -66,6 +67,26 @@ export function PlacementCanvas({
       }
     }
     onChange({ ...placement, fx: round(fx), fy: round(fy), fw: round(fw), fh: round(fh) })
+    follow()
+  }
+
+  /** Keep the box in view while it is dragged.
+   *
+   * Nudges the scroll position by however far the box has gone past an edge.
+   * scrollIntoView() was the obvious call and the wrong one: it re-aligns on
+   * every pointer event, which reads as stuttering.
+   */
+  function follow() {
+    const pane = scrollRef.current
+    const box = boxRef.current
+    if (!pane || !box) return
+    const p = pane.getBoundingClientRect()
+    const b = box.getBoundingClientRect()
+    const pad = 24 // keep a little of the page visible past the box
+    if (b.bottom > p.bottom) pane.scrollTop += b.bottom - p.bottom + pad
+    else if (b.top < p.top) pane.scrollTop -= p.top - b.top + pad
+    if (b.right > p.right) pane.scrollLeft += b.right - p.right + pad
+    else if (b.left < p.left) pane.scrollLeft -= p.left - b.left + pad
   }
 
   function end(e: PointerEvent) {
@@ -90,13 +111,25 @@ export function PlacementCanvas({
             <ChevronRight size={16} />
           </button>
         </div>
-        <button
-          className={`chip ${placement.page < 0 ? 'active' : ''}`}
-          onClick={() => onPage(placement.page < 0 ? render.page : -1)}
-          title={placement.page < 0 ? 'On the last page — click to pin this page' : 'Always sign the last page'}
-        >
-          Last page
-        </button>
+        {/* Nothing to choose in a one-page PDF, so both chips stay out of the way. */}
+        {render.pages > 1 && (
+          <>
+            <button
+              className={`chip ${placement.page === 0 ? 'active' : ''}`}
+              onClick={() => onPage(0)}
+              title="Always sign the first page"
+            >
+              First page
+            </button>
+            <button
+              className={`chip ${placement.page < 0 ? 'active' : ''}`}
+              onClick={() => onPage(placement.page < 0 ? render.page : -1)}
+              title={placement.page < 0 ? 'On the last page — click to pin this page' : 'Always sign the last page'}
+            >
+              Last page
+            </button>
+          </>
+        )}
         <div className="zoom">
           <button className="ic-btn" onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100))} aria-label="Zoom out">
             <Minus size={15} />
@@ -110,7 +143,7 @@ export function PlacementCanvas({
         </div>
       </div>
 
-      <div className="canvas-scroll">
+      <div className="canvas-scroll" ref={scrollRef}>
         <div className="page-area" ref={areaRef} style={{ width: Math.round(BASE_W * zoom) }}>
           <img src={render.image} className="page-img" draggable={false} alt="PDF page" />
           <div
