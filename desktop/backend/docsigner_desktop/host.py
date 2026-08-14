@@ -62,12 +62,6 @@ def host_binary() -> str:
 
 
 def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
-    # No system toast. The host pops one after every signature, which is right for
-    # the browser flow where nothing else reports back — but this window already
-    # shows the result per file, and on Windows the toast has to borrow
-    # PowerShell's identity to be delivered at all, so it arrives titled "Windows
-    # PowerShell" with wording meant for a website.
-    env = {**(env or os.environ), "DOCSIGNER_NO_NOTIFY": "1"}
     proc = subprocess.run(
         [host_binary(), *args],
         capture_output=True, text=True, timeout=timeout, env=env,
