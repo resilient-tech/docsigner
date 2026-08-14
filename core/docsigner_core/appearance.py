@@ -11,6 +11,13 @@ from pyhanko.stamp import TextStampStyle
 from .errors import SignerError
 
 DEFAULT_TEXT = "Signed by {signer}\n{ts}"
+
+# One format for both stamp paths. The composed stamp used to print "%Z" (the long
+# "India Standard Time" on Windows) while pyHanko's default added seconds, so the
+# same document dated itself two ways depending on the style. "%z" over "%Z"
+# because it is the only offset strftime can emit, and pyHanko takes a strftime
+# string — so this is the one shape both engines can agree on.
+TS_FORMAT = "%Y-%m-%d %H:%M %z"
 MARGIN_PT = 24
 DEFAULT_SIZE = (200.0, 50.0)
 POSITIONS = ("bottom-left", "bottom-right", "top-left", "top-right")
@@ -119,7 +126,7 @@ def build_appearance(appearance, field_name: str, writer=None, reason: str | Non
 
         background = PdfImage(_decode_image(image_b64))
 
-    style = TextStampStyle(stamp_text=stamp_text, background=background)
+    style = TextStampStyle(stamp_text=stamp_text, background=background, timestamp_format=TS_FORMAT)
     return style, spec
 
 
@@ -207,7 +214,7 @@ def _composed_stamp(appearance, box, signer_name, reason):
 
 
 def _detail_lines(appearance, signer_name, reason, handwritten):
-    ts = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    ts = datetime.now().astimezone().strftime(TS_FORMAT)
     text = appearance.get("text")
     if text:
         text = (text.replace("{signer}", signer_name or "")
