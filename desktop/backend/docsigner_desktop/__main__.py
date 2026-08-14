@@ -56,7 +56,12 @@ def main() -> None:
     port = _free_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
     _wait_until_serving(port)
-    webview.create_window("DocSigner Desktop", f"http://{HOST}:{port}", width=1200, height=820)
+    # Maximized, not fullscreen: the app is a three-column workspace and the
+    # narrow default left the canvas cramped. pywebview maps this to each OS's own
+    # "maximize", so the window keeps its title bar and controls.
+    webview.create_window(
+        "DocSigner Desktop", f"http://{HOST}:{port}", width=1200, height=820, maximized=True
+    )
     webview.start()
 
 
