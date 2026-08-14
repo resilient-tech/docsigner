@@ -94,8 +94,9 @@ export function ProfileEditor({
 
           <div className="prof-editor">
             <div className="preview-label">Live preview</div>
-            <div className="sig-paper" style={{ aspectRatio: '220 / 60' }}>
-              <StampPreview profile={profile} signerName={signerName} reason="Approved for filing" location="Ahmedabad" boxW={220} boxH={60} />
+            {/* Drawn at twice the old size: the detail lines were too small to read. */}
+            <div className="sig-paper" style={{ aspectRatio: '440 / 120' }}>
+              <StampPreview profile={profile} signerName={signerName} reason="Approved for filing" location="Ahmedabad" boxW={440} boxH={120} />
             </div>
 
             <div className="editor-fields">
@@ -122,13 +123,20 @@ export function ProfileEditor({
                         </option>
                       ))}
                     </select>
-                    <label className="btn ghost sm">
-                      <Upload size={13} /> Add your own
+                    <label className="btn ghost sm" title="A handwriting font file — not a picture of your signature">
+                      <Upload size={13} /> Add your font
                       <input type="file" accept=".ttf,.otf,font/ttf,font/otf" onChange={onPickFont} hidden />
                     </label>
+                    {/* A native <select> cannot carry a button per option, so the
+                        delete sits outside it — labelled, so it is clear what it
+                        deletes. */}
                     {selectedFont?.custom && (
-                      <button className="btn ghost sm danger" onClick={() => removeFont(selectedFont.slug)}>
-                        Remove
+                      <button
+                        className="btn ghost sm danger"
+                        onClick={() => removeFont(selectedFont.slug)}
+                        title={`Delete "${selectedFont.label}" — removes the font, not just this profile's choice`}
+                      >
+                        <Trash2 size={13} /> Delete font
                       </button>
                     )}
                   </div>
