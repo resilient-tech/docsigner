@@ -577,7 +577,6 @@ export function App() {
           onStandard={(v) => patch({ standard: v })}
           trustConfigured={cfg?.trustConfigured ?? false}
           tsaUrl={settings.tsa_url ?? ''}
-          tsaDefault={cfg?.tsaUrl ?? ''}
           onTsaUrl={(v) => patch({ tsa_url: v || null })}
           reason={settings.reason ?? ''}
           location={settings.location ?? ''}

@@ -39,7 +39,6 @@ export function SetupPanel(props: {
   onStandard: (v: string) => void
   trustConfigured: boolean
   tsaUrl: string
-  tsaDefault: string
   onTsaUrl: (v: string) => void
   reason: string
   location: string
@@ -141,16 +140,17 @@ export function SetupPanel(props: {
         {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (DOCSIGNER_TRUST_DIR).</span>}
       </div>
 
-      {/* Only the standards that actually use a timestamp. A dropdown of presets
-          was tried here and reverted: see the review notes. Blank uses the
-          backend's default, which is the answer for almost everyone. */}
+      {/* Only the standards that actually use a timestamp. Blank uses the backend's
+          default, which is the answer for almost everyone. The placeholder does not
+          echo that default URL: greyed-out text that looks like a real address
+          reads as a pre-filled value. */}
       {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
           <input
             className="control"
             value={props.tsaUrl}
-            placeholder={props.tsaDefault || 'RFC 3161 TSA URL'}
+            placeholder="Leave blank for the default"
             onChange={(e) => props.onTsaUrl(e.target.value)}
           />
         </div>
