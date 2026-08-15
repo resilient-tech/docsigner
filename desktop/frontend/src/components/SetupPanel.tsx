@@ -8,6 +8,12 @@ import { StampPreview } from './StampPreview'
 const CARD_W = 220
 const CARD_H = 60
 
+const KIND: Record<Identity['kind'], string> = {
+  token: 'Token',
+  'os-store': 'Certificate store',
+  p12: 'Key',
+}
+
 /**
  * The certificate's expiry as `4 June 2027`.
  *
@@ -59,7 +65,7 @@ export function SetupPanel(props: {
             {props.identities.length === 0 && <option value="">No certificates found</option>}
             {props.identities.map((i) => (
               <option key={i.id} value={i.id}>
-                {i.name} · {i.kind === 'token' ? 'Token' : 'Key'} · Valid till {localDate(i.notAfter)}
+                {i.name} · {KIND[i.kind]} · Valid till {localDate(i.notAfter)}
               </option>
             ))}
           </select>

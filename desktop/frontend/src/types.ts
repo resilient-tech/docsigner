@@ -43,7 +43,9 @@ export interface FontOption {
 
 export interface Identity {
   id: string
-  kind: 'token' | 'p12'
+  /** os-store: found in the OS certificate store, so its key may be on a token
+   *  that is not connected. */
+  kind: 'token' | 'os-store' | 'p12'
   name: string
   issuer: string
   notAfter: string

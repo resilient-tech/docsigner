@@ -127,9 +127,11 @@ def _scan_token_identities() -> tuple[list[dict], list[dict]]:
         tp = c.get("thumbprint")
         if not tp:
             continue
+        # A token driver copies its certificates into the OS store and leaves them
+        # there, so "the host saw it" does not mean "the token is plugged in".
         out.append({
             "id": f"token:{tp}",
-            "kind": "token",
+            "kind": "token" if c.get("source") == "pkcs11" else "os-store",
             "thumbprint": tp,
             "certificate": c.get("certificate"),
             "name": _cn_str(c.get("subject", "")) or c.get("subject", ""),
@@ -151,10 +153,21 @@ def token_hint() -> dict | None:
     None when there is nothing useful to say.
     """
     identities, readers = _token_scan()
-    if identities:
+    if any(i["kind"] == "token" for i in identities):
         return None
     missing = [r for r in readers if not r.get("driverFound")]
     if not missing:
+        if identities:
+            return {
+                "token": None,
+                "readers": [],
+                "message": "No token is connected.",
+                "action": (
+                    "The certificates listed came from this computer's certificate"
+                    " store, where the token driver left them. Signing with one"
+                    " needs the token plugged in."
+                ),
+            }
         return None
 
     named = [r["token"] for r in missing if r.get("token")]
