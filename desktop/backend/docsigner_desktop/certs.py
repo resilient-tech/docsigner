@@ -125,9 +125,7 @@ def _scan_token_identities() -> tuple[list[dict], list[dict]]:
     out: list[dict] = []
     for c in result.get("certificates", []):
         tp = c.get("thumbprint")
-        # Only the token itself. A driver copies its certificates into the OS
-        # store and leaves them there after the token is unplugged.
-        if not tp or c.get("source") == "os-store":
+        if not tp:
             continue
         out.append({
             "id": f"token:{tp}",

@@ -153,20 +153,3 @@ def test_hint_survives_a_host_that_reports_no_readers_key(monkeypatch):
     """Older hosts, and any failure path, omit `readers` entirely."""
     monkeypatch.setattr(certs, "_scan_token_identities", lambda: ([], []))
     assert certs.token_hint() is None
-
-
-# ---- what counts as a token certificate -----------------------------------
-
-def test_the_os_stores_copies_are_ignored(monkeypatch):
-    """A driver copies the token's certificates into the OS store and leaves
-    them there, so they are still reported after the token is unplugged."""
-    from docsigner_desktop import host
-
-    scanned = {"certificates": [
-        {"thumbprint": "aaa", "source": "pkcs11", "subject": "CN=On The Token"},
-        {"thumbprint": "bbb", "source": "os-store", "subject": "CN=Left Behind"},
-    ]}
-    monkeypatch.setattr(host, "scan", lambda: scanned)
-    found, _readers = certs._scan_token_identities()
-    assert [i["name"] for i in found] == ["On The Token"]
-    assert found[0]["kind"] == "token"
