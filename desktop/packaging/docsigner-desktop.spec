@@ -21,6 +21,7 @@
 #     Gatekeeper warns). Sign the .app after this build.
 
 import os
+import shutil
 import sys
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
@@ -249,6 +250,15 @@ exe = EXE(
 # applied to the stripped binaries. upx stays off: it breaks macOS code signing
 # and trips Windows antivirus.
 coll = COLLECT(exe, a.binaries, a.datas, strip=STRIP, upx=False, name="docsigner-desktop")
+
+# .NET only reads this next to the .exe, and PyInstaller puts every data file in
+# _internal, so it is copied in after COLLECT rather than declared as a data. The
+# file itself explains what breaks without it.
+if IS_WIN:
+    shutil.copy(
+        os.path.join(SPECPATH, "docsigner-desktop.exe.config"),
+        os.path.join(DISTPATH, "docsigner-desktop", "docsigner-desktop.exe.config"),
+    )
 
 app = BUNDLE(
     coll,
