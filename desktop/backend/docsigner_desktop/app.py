@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 import docsigner_core
 
-from . import certs, config, fonts, picker, signing, store
+from . import certs, config, fonts, picker, signing, startup, store
 from .models import FontUpload, Settings, SignRequest
 
 app = FastAPI(title="DocSigner Desktop")
@@ -37,6 +37,12 @@ def identities() -> dict:
         "identities": certs.list_identities(store.KEYS_DIR),
         "tokenHint": certs.token_hint(),
     }
+
+
+@app.get("/api/opened")
+def opened() -> dict:
+    """PDFs the app was launched with. Empty when it was started on its own."""
+    return startup.listing()
 
 
 @app.post("/api/pick-folder")

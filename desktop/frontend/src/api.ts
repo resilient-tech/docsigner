@@ -28,6 +28,11 @@ export const getConfig = (): Promise<AppConfig> => fetch('/api/config').then(jso
 export const getFolder = (path: string): Promise<{ folder: string; files: PdfFile[] }> =>
   fetch(`/api/folder?path=${encodeURIComponent(path)}`).then(jsonOrThrow)
 
+/** PDFs the app was launched with, via Open With or the command line.
+ *  `ignored` names anything handed over that is not a PDF. */
+export const getOpened = (): Promise<{ folder: string | null; files: PdfFile[]; ignored: string[] }> =>
+  fetch('/api/opened').then(jsonOrThrow)
+
 export const pickFolder = (): Promise<{ folder: string | null }> =>
   fetch('/api/pick-folder', { method: 'POST' }).then(jsonOrThrow)
 

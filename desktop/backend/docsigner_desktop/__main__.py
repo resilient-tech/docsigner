@@ -1,6 +1,7 @@
 """Start the app.
 
     python -m docsigner_desktop            the real window
+    python -m docsigner_desktop a.pdf b.pdf   open those, ready to sign
     python -m docsigner_desktop --server   no window, for UI work
 
 Window mode serves the built UI, so run `pnpm build` first.
@@ -13,6 +14,7 @@ import time
 
 import uvicorn
 
+from . import startup
 from .app import app
 
 HOST = "127.0.0.1"
@@ -43,6 +45,7 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
 
 def main() -> None:
     # The signing host is its own binary now, shipped beside us. host.py finds it.
+    startup.remember(sys.argv[1:])
     if "--server" in sys.argv:
         _serve(DEV_PORT)
         return

@@ -52,10 +52,22 @@ export function App() {
   }, [resolvedTheme])
 
   useEffect(() => {
-    api.getSettings().then((s) => {
+    api.getSettings().then(async (s) => {
       setSettings(s)
+      // Opened with files beats reopening last time's folder.
+      const opened = await api.getOpened().catch(() => ({ folder: null, files: [], ignored: [] }))
+      if (opened.files.length) {
+        applyFiles(opened.folder ?? 'Selected files', opened.files)
+        return
+      }
       setFolderPath(s.last_folder ?? '')
-      if (s.last_folder) loadFolder(s.last_folder)
+      if (s.last_folder) await loadFolder(s.last_folder)
+      // "Open with" can be pointed at any file type. Say so, rather than opening
+      // on the last folder as though nothing had been asked for. After the load,
+      // which clears the banner.
+      if (opened.ignored?.length) {
+        setError(`DocSigner only opens PDFs. Ignored: ${opened.ignored.join(', ')}`)
+      }
     })
     loadIdentities()
     api.getConfig().then(setCfg)
