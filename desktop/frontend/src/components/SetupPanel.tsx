@@ -141,16 +141,15 @@ export function SetupPanel(props: {
       </div>
 
       {/* Only the standards that actually use a timestamp. Blank uses the backend's
-          default, which is the answer for almost everyone. The placeholder does not
-          echo that default URL: greyed-out text that looks like a real address
-          reads as a pre-filled value. */}
+          default. The placeholder is example.com rather than that default, so it
+          cannot be read as a value already set. */}
       {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
           <input
             className="control"
             value={props.tsaUrl}
-            placeholder="Leave blank for the default"
+            placeholder="http://timestamp.example.com"
             onChange={(e) => props.onTsaUrl(e.target.value)}
           />
         </div>
