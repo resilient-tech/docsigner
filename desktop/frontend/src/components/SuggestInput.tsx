@@ -33,14 +33,19 @@ export function SuggestInput({
   clearLabel?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const wrapRef = useRef<HTMLSpanElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLUListElement>(null)
 
-  // Narrow as you type. An exact match is dropped: offering what is already in
-  // the box is noise, and it is how the menu gets out of the way.
+  // Narrow as you type, but keep an exact match in the list. Dropping it hid the
+  // caret whenever the box already held a known value — which is most of the
+  // time, so nobody could tell the field had options at all.
   const typed = value.trim().toLowerCase()
-  const matches = suggestions.filter((s) => s.toLowerCase() !== typed && (!typed || s.toLowerCase().includes(typed)))
+  const matches = suggestions.filter((s) => !typed || s.toLowerCase().includes(typed))
+  // The caret shows everything, typing narrows. Anything else and the caret is a
+  // button that reveals only what you already typed.
+  const list = showAll ? suggestions : matches
 
   useEffect(() => {
     if (!open) return
@@ -69,27 +74,40 @@ export function SuggestInput({
         className={`${inputClassName} suggest-input`}
         value={value}
         placeholder={placeholder}
-        // Click opens it even when empty. Not onFocus: Escape hands focus back
-        // here, which would reopen what you just closed.
-        onClick={() => setOpen(true)}
+        // Click opens it even when empty, showing everything: clicking the box to
+        // look is the same intent as clicking the caret. Not onFocus, because
+        // Escape hands focus back here and would reopen what you just closed.
+        onClick={() => {
+          setShowAll(true)
+          setOpen(true)
+        }}
         onChange={(e) => {
           onChange(e.target.value)
-          setOpen(true)
+          setShowAll(false)
+          // Typing a complete value closes the list, so it stops covering things
+          // once there is nothing left to choose.
+          setOpen(!suggestions.some((s) => s.toLowerCase() === e.target.value.trim().toLowerCase()))
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') onEnter?.(value)
           if (e.key === 'Escape') setOpen(false)
           if (e.key === 'ArrowDown') {
             e.preventDefault()
+            setShowAll(true)
             setOpen(true)
             requestAnimationFrame(() => focusOption(0)) // a frame, so the list exists
           }
         }}
       />
-      {matches.length > 0 && (
+      {/* Keyed off the whole list, not the filtered one: the caret is what tells
+          anyone the field has options, so it must not come and go. */}
+      {suggestions.length > 0 && (
         <button
           className="suggest-caret"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setShowAll(true)
+            setOpen((o) => !o)
+          }}
           title={caretLabel}
           aria-label={caretLabel}
           aria-expanded={open}
@@ -102,7 +120,7 @@ export function SuggestInput({
           <X size={13} />
         </button>
       )}
-      {open && matches.length > 0 && (
+      {open && list.length > 0 && (
         <ul
           className="suggest-menu"
           role="listbox"
@@ -123,7 +141,7 @@ export function SuggestInput({
             }
           }}
         >
-          {matches.map((s) => (
+          {list.map((s) => (
             <li key={s}>
               <button role="option" aria-selected={s === value} onClick={() => pick(s)} title={s}>
                 {s as ReactNode}
