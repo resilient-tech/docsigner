@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature, ChevronDown } from 'lucide-react'
+import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature } from 'lucide-react'
 import * as api from './api'
 import type { AppConfig, FontOption, Identity, PdfFile, Placement, RenderResult, Settings, SignResult, TokenHint } from './types'
 import { PlacementCanvas } from './components/PlacementCanvas'
@@ -7,6 +7,7 @@ import { SetupPanel } from './components/SetupPanel'
 import { ProfileEditor } from './components/ProfileEditor'
 import { PinDialog } from './components/PinDialog'
 import { StampPreview, fontFaceCss, stampTime } from './components/StampPreview'
+import { SuggestInput } from './components/SuggestInput'
 
 const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, fh: 0.1 }
 
@@ -32,11 +33,7 @@ export function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [recentOpen, setRecentOpen] = useState(false)
   const [warnHidden, setWarnHidden] = useState(false)
-  const pathWrapRef = useRef<HTMLSpanElement>(null)
-  const pathInputRef = useRef<HTMLInputElement>(null)
-  const recentMenuRef = useRef<HTMLUListElement>(null)
   const persistReady = useRef(false)
 
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches)
@@ -99,24 +96,6 @@ export function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, pageForRender])
-
-  // Close the recents menu on any click outside it.
-  useEffect(() => {
-    if (!recentOpen) return
-    const onDown = (e: MouseEvent) => {
-      if (!pathWrapRef.current?.contains(e.target as Node)) setRecentOpen(false)
-    }
-    document.addEventListener('pointerdown', onDown)
-    return () => document.removeEventListener('pointerdown', onDown)
-  }, [recentOpen])
-
-  /** Move focus between the recents options. They are real buttons, so Enter and
-   *  Space already activate them; this only handles the arrows. */
-  function focusOption(index: number) {
-    const items = recentMenuRef.current?.querySelectorAll('button')
-    if (!items?.length) return
-    items[(index + items.length) % items.length].focus()
-  }
 
   function patch(p: Partial<Settings>) {
     setSettings((s) => (s ? { ...s, ...p } : s))
@@ -323,12 +302,7 @@ export function App() {
     <StampPreview profile={currentProfile} signerName={signerName} reason={settings.reason} location={settings.location} boxW={boxW} boxH={boxH} />
   ) : null
 
-  // Suggestions narrow as you type. An exact match is dropped: offering the path
-  // already in the box is noise, and it is how the menu gets out of the way.
-  const typed = folderPath.trim().toLowerCase()
-  const matches = (settings.recent_folders ?? []).filter(
-    (f) => f.toLowerCase() !== typed && (!typed || f.toLowerCase().includes(typed)),
-  )
+  const recent = settings.recent_folders ?? []
   const signedCount = Object.values(results).filter((r) => r.ok).length
   const skippedCount = Object.values(results).filter((r) => r.skipped).length
   const failedCount = Object.values(results).filter((r) => !r.ok && !r.skipped).length
@@ -372,87 +346,18 @@ export function App() {
         <button className="btn ghost sm" onClick={chooseFiles}>
           Files…
         </button>
-        {/* Not a <datalist>: its popup cannot be sized or styled, so long paths
-            came out truncated and its arrow did not match the app's selects. */}
-        <span className="path-wrap" ref={pathWrapRef}>
-          <input
-            ref={pathInputRef}
-            className="path-input"
-            value={folderPath}
-            placeholder="or paste a path…"
-            // Click opens the list even when the box is empty. Not onFocus: Escape
-            // hands focus back here, which would reopen what you just closed.
-            onClick={() => setRecentOpen(true)}
-            onChange={(e) => {
-              setFolderPath(e.target.value)
-              setRecentOpen(true) // suggest while typing, not only on the caret
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') loadFolder(folderPath)
-              if (e.key === 'Escape') setRecentOpen(false)
-              if (e.key === 'ArrowDown') {
-                e.preventDefault()
-                setRecentOpen(true)
-                // A frame, so the list exists to focus into when it was closed.
-                requestAnimationFrame(() => focusOption(0))
-              }
-            }}
-          />
-          {matches.length > 0 && (
-            <button
-              className="path-caret"
-              onClick={() => setRecentOpen((o) => !o)}
-              title="Recent folders"
-              aria-label="Recent folders"
-              aria-expanded={recentOpen}
-            >
-              <ChevronDown size={14} />
-            </button>
-          )}
-          {folderPath && (
-            <button className="path-clear" onClick={clearFiles} title="Clear" aria-label="Clear the path">
-              <X size={13} />
-            </button>
-          )}
-          {recentOpen && matches.length > 0 && (
-            <ul
-              className="recent-menu"
-              role="listbox"
-              ref={recentMenuRef}
-              onKeyDown={(e) => {
-                const items = Array.from(recentMenuRef.current?.querySelectorAll('button') ?? [])
-                const at = items.indexOf(document.activeElement as HTMLButtonElement)
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault()
-                  focusOption(at + 1)
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  // Up from the first option goes back to the box, not round the end.
-                  at <= 0 ? pathInputRef.current?.focus() : focusOption(at - 1)
-                } else if (e.key === 'Escape') {
-                  setRecentOpen(false)
-                  pathInputRef.current?.focus()
-                }
-              }}
-            >
-              {matches.map((f) => (
-                <li key={f}>
-                  <button
-                    role="option"
-                    aria-selected={f === folderPath}
-                    onClick={() => {
-                      setRecentOpen(false)
-                      loadFolder(f)
-                    }}
-                    title={f}
-                  >
-                    {f}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </span>
+        <SuggestInput
+          value={folderPath}
+          onChange={setFolderPath}
+          suggestions={recent}
+          placeholder="or paste a path…"
+          inputClassName="path-input"
+          caretLabel="Recent folders"
+          onPick={loadFolder}
+          onEnter={loadFolder}
+          onClear={clearFiles}
+          clearLabel="Clear the path"
+        />
         <button
           className="ic-btn"
           onClick={refreshFolder}

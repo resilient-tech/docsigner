@@ -45,11 +45,18 @@
   background: var(--bg);
   flex: none;
 }
-.path-wrap {
+.suggest {
   position: relative;
   display: flex;
   flex: 1;
   min-width: 0;
+}
+/* The sidebar field is a column, so the box there fills the width instead. */
+.setup .suggest {
+  width: 100%;
+}
+.setup .suggest .control {
+  padding-right: 52px;
 }
 .path-input {
   flex: 1;
@@ -64,8 +71,8 @@
 .path-input::placeholder {
   color: var(--faint);
 }
-.path-caret,
-.path-clear {
+.suggest-caret,
+.suggest-clear {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -77,20 +84,20 @@
   border-radius: var(--radius-sm);
   color: var(--faint);
 }
-.path-caret {
+.suggest-caret {
   right: 27px;
 }
-.path-clear {
+.suggest-clear {
   right: 5px;
 }
-.path-caret:hover,
-.path-clear:hover {
+.suggest-caret:hover,
+.suggest-clear:hover {
   background: var(--hover);
   color: var(--text);
 }
-/* Recent folders. Spans the whole box, so a full path fits instead of being
-   clipped the way the native datalist popup clipped it. */
-.recent-menu {
+/* Spans the whole box, so a full value fits instead of being clipped the way a
+   native datalist popup clips it. */
+.suggest-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -106,7 +113,7 @@
   max-height: 220px;
   overflow-y: auto;
 }
-.recent-menu button {
+.suggest-menu button {
   display: block;
   width: 100%;
   padding: 7px 9px;
@@ -118,7 +125,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.recent-menu button:hover {
+.suggest-menu button:hover {
   background: var(--hover);
 }
 .sign-btn {
@@ -970,7 +977,7 @@ input[type='checkbox'] {
     height: auto;
     padding: 8px 12px;
   }
-  .path-wrap {
+  .suggest {
     order: 5;
     flex-basis: 100%;
   }
