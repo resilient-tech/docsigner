@@ -45,11 +45,24 @@
   background: var(--bg);
   flex: none;
 }
+.suggest {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+/* The sidebar field is a column, so the box there fills the width instead. */
+.setup .suggest {
+  width: 100%;
+}
+.setup .suggest .control {
+  padding-right: 52px;
+}
 .path-input {
   flex: 1;
   min-width: 0;
   height: 32px;
-  padding: 0 11px;
+  padding: 0 52px 0 11px; /* room for the recents caret and the clear button */
   background: var(--surface);
   border: var(--hairline);
   border-radius: var(--radius-sm);
@@ -58,19 +71,67 @@
 .path-input::placeholder {
   color: var(--faint);
 }
-.count-pill {
-  background: var(--action-soft);
-  color: var(--action-ink);
-  border-radius: var(--pill);
-  padding: 4px 11px;
+.suggest-caret,
+.suggest-clear {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  color: var(--faint);
+}
+.suggest-caret {
+  right: 27px;
+}
+.suggest-clear {
+  right: 5px;
+}
+.suggest-caret:hover,
+.suggest-clear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+/* Spans the whole box, so a full value fits instead of being clipped the way a
+   native datalist popup clips it. */
+.suggest-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-overlay);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.suggest-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
   font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
+  text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.suggest-menu button:hover {
+  background: var(--hover);
 }
 .sign-btn {
   flex: none;
-  height: 36px;
-  padding: 0 18px;
+  height: 32px;
+  padding: 0 10px;
   font-size: var(--text-body);
   margin-left: 2px;
 }
@@ -109,16 +170,22 @@
 .banner-btn:hover {
   opacity: 1;
 }
+/* An icon in a square box, not a "×" glyph: the character sits below its own
+   centre, which left it visibly off-line against the Copy details button. */
 .banner-x {
   flex: none;
-  font-size: var(--display-3);
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
   color: inherit;
   opacity: 0.7;
-  width: 22px;
 }
 .banner-x:hover {
   opacity: 1;
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 /* ---- file queue ---- */
@@ -468,10 +535,17 @@ input.control::placeholder {
 .out-row {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+/* The label takes what it needs; the box gets the rest. It used to be a fixed
+   116px with the label flexing, so a longer suffix was clipped. */
+.out-label {
+  flex: none;
 }
 .suffix-input {
-  width: 116px;
-  text-align: right;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
   font-family: var(--mono);
   font-size: var(--text-sm);
   color: var(--green-ink);
@@ -595,6 +669,23 @@ input.control::placeholder {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.ic-btn.danger {
+  color: var(--red-ink);
+}
+.ic-btn.danger:hover:not(:disabled) {
+  background: var(--red-soft);
+  color: var(--red-ink);
+}
+/* The status tick/cross carries the reason as its tooltip, so give it a target
+   worth pointing at rather than a bare 15px glyph. */
+.qrow-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
 .chip {
   flex: none;
   height: 26px;
@@ -628,6 +719,12 @@ input[type='checkbox'] {
   justify-content: center;
   padding: 8vh 24px;
 }
+/* Top-aligned suits the tall profile editor. A short dialog like the PIN prompt
+   belongs in the middle. */
+.modal-overlay.centred {
+  align-items: center;
+  padding: 24px;
+}
 .modal {
   width: 720px;
   max-width: 100%;
@@ -657,7 +754,7 @@ input[type='checkbox'] {
   overflow: hidden;
 }
 .prof-list {
-  width: 210px;
+  width: 240px;
   flex: none;
   border-right: var(--hairline);
   padding: 12px;
@@ -667,12 +764,16 @@ input[type='checkbox'] {
   overflow-y: auto;
 }
 .prof {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   text-align: left;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   color: var(--dim);
   font-size: var(--text-body);
   font-weight: var(--fw-medium);
+  position: relative;
 }
 .prof:hover {
   background: var(--surface);
@@ -681,6 +782,42 @@ input[type='checkbox'] {
 .prof.active {
   background: var(--surface);
   color: var(--green-ink);
+}
+/* Wraps rather than truncates: a name can outgrow any fixed width. */
+.prof-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.prof-grip {
+  flex: none;
+  color: var(--faint);
+  opacity: 0;
+  cursor: grab;
+}
+.prof:hover .prof-grip,
+.prof.dragging .prof-grip {
+  opacity: 1;
+}
+.prof.dragging {
+  opacity: 0.4;
+}
+/* Where it will land. */
+.prof.drop-above::before,
+.prof.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--action);
+}
+.prof.drop-above::before {
+  top: -2px;
+}
+.prof.drop-below::after {
+  bottom: -2px;
 }
 .prof-editor {
   flex: 1;
@@ -732,11 +869,13 @@ input[type='checkbox'] {
   border-radius: var(--radius-card);
   background: var(--paper);
 }
+/* Two by two. `auto` so the longest label sets the first column instead of
+   wrapping inside an even half. */
 .toggles {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  margin-top: 4px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px 18px;
+  margin-top: 8px;
 }
 .tog {
   display: flex;
@@ -838,7 +977,7 @@ input[type='checkbox'] {
     height: auto;
     padding: 8px 12px;
   }
-  .path-input {
+  .suggest {
     order: 5;
     flex-basis: 100%;
   }

@@ -4,9 +4,10 @@
 
 Writes:
     desktop/packaging/DocSigner.icns    macOS app bundle icon (macOS only)
+    desktop/packaging/DocSigner.ico     embedded in the Windows desktop .exe
     desktop/frontend/public/icon.svg    desktop window favicon (copy)
     extension/icons/icon{16,48,128}.png browser extension icons
-    host/packaging/icon.ico          embedded in the Windows host .exe
+    host/packaging/icon.ico             embedded in the Windows host .exe
 
 The outputs are committed, so building and shipping never needs this. Run it
 after editing assets/icon.svg.
@@ -39,7 +40,9 @@ SOURCE = REPO / "assets" / "icon.svg"
 ICNS = REPO / "desktop" / "packaging" / "DocSigner.icns"
 FRONTEND_ICON = REPO / "desktop" / "frontend" / "public" / "icon.svg"
 EXTENSION_ICONS = REPO / "extension" / "icons"
+# One .ico per Windows binary, each beside the packaging that embeds it.
 HOST_ICO = REPO / "host" / "packaging" / "icon.ico"
+DESKTOP_ICO = REPO / "desktop" / "packaging" / "DocSigner.ico"
 
 # Sizes Windows Explorer picks between, smallest first.
 ICO_SIZES = (16, 32, 48, 64, 128, 256)
@@ -177,9 +180,11 @@ def write_ico(browser: str, svg: Path, work: Path) -> None:
         body += png
         offset += len(png)
 
-    HOST_ICO.parent.mkdir(parents=True, exist_ok=True)
-    HOST_ICO.write_bytes(header + entries + body)
-    print("wrote", HOST_ICO.relative_to(REPO))
+    blob = header + entries + body
+    for out in (HOST_ICO, DESKTOP_ICO):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(blob)
+        print("wrote", out.relative_to(REPO))
 
 
 def main() -> None:

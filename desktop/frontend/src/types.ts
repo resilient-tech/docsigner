@@ -20,6 +20,7 @@ export interface AppearanceProfile {
 
 export interface Settings {
   last_folder: string | null
+  recent_folders: string[]
   identity_id: string | null
   profile_id: string | null
   standard: string
@@ -108,9 +109,18 @@ export interface SignRequest {
   pin?: string | null
 }
 
-export const STANDARDS: { value: string; label: string; needsConfig?: boolean }[] = [
+// All six of core's profiles (docsigner_core.profiles.Profile). The two archive
+// ones were missing here, so they were unreachable from the app.
+//
+// needsConfig = wants trust anchors. needsTsa = wants a timestamp authority. They
+// are not the same set: CCA-LTV needs anchors but no clock, and the timestamp box
+// used to key off needsConfig, so it appeared for CCA-LTV and did nothing.
+// Mirrors Profile.needs_timestamp in core/docsigner_core/profiles.py.
+export const STANDARDS: { value: string; label: string; needsConfig?: boolean; needsTsa?: boolean }[] = [
   { value: 'B-B', label: 'PAdES B-B (basic)' },
-  { value: 'B-T', label: 'PAdES B-T (+ timestamp)', needsConfig: true },
-  { value: 'B-LT', label: 'PAdES B-LT (+ LTV)', needsConfig: true },
+  { value: 'B-T', label: 'PAdES B-T (+ timestamp)', needsConfig: true, needsTsa: true },
+  { value: 'B-LT', label: 'PAdES B-LT (+ LTV)', needsConfig: true, needsTsa: true },
+  { value: 'B-LTA', label: 'PAdES B-LTA (+ archive timestamp)', needsConfig: true, needsTsa: true },
   { value: 'CCA-LTV', label: 'CCA-LTV (India)', needsConfig: true },
+  { value: 'CCA-LTA', label: 'CCA-LTA (India, + timestamp)', needsConfig: true, needsTsa: true },
 ]

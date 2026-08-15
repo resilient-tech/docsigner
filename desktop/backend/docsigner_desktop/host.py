@@ -61,10 +61,15 @@ def host_binary() -> str:
     )
 
 
+# The host is a console program and this app has no console, so Windows gives it
+# a fresh one: a black window flashes up on every certificate scan and signature.
+_NO_CONSOLE = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
+
 def _run(args: list[str], timeout: float, env: dict | None = None) -> dict:
     proc = subprocess.run(
         [host_binary(), *args],
-        capture_output=True, text=True, timeout=timeout, env=env,
+        capture_output=True, text=True, timeout=timeout, env=env, **_NO_CONSOLE,
     )
     try:
         payload = json.loads(proc.stdout)

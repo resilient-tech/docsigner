@@ -12,6 +12,24 @@
 
 use std::process::Command;
 
+/// Keep Windows from opening a console for a child process.
+///
+/// `tasklist` and the PowerShell PIN dialog are console programs. Started from
+/// the desktop app or a browser — neither of which has a console — Windows gives
+/// each one a fresh black window that flashes up and disappears. A GUI window the
+/// child opens itself, like the PIN dialog, is unaffected.
+///
+/// No-op off Windows, where a child inherits the terminal or nothing at all.
+pub fn no_console(command: &mut Command) -> &mut Command {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
+
 /// What to look for in a program's name, and what to call it when we ask the
 /// user to close it.
 const KNOWN: &[(&str, &str)] = &[
@@ -49,9 +67,7 @@ pub fn competing() -> Vec<String> {
 /// Every program we can see running. Empty if we cannot ask.
 fn process_list() -> Vec<(u32, String)> {
     #[cfg(target_os = "windows")]
-    let output = Command::new("tasklist")
-        .args(["/fo", "csv", "/nh"])
-        .output();
+    let output = no_console(Command::new("tasklist").args(["/fo", "csv", "/nh"])).output();
     #[cfg(not(target_os = "windows"))]
     let output = Command::new("ps").args(["-A", "-o", "pid=,comm="]).output();
 

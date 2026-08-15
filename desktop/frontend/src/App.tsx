@@ -6,9 +6,15 @@ import { PlacementCanvas } from './components/PlacementCanvas'
 import { SetupPanel } from './components/SetupPanel'
 import { ProfileEditor } from './components/ProfileEditor'
 import { PinDialog } from './components/PinDialog'
-import { StampPreview, fontFaceCss } from './components/StampPreview'
+import { StampPreview, fontFaceCss, stampTime } from './components/StampPreview'
+import { SuggestInput } from './components/SuggestInput'
 
 const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, fh: 0.1 }
+
+/** Backend messages start lowercase ("no token is present"). Shown to a person,
+ *  they should start like a sentence. */
+const sentence = (s?: string | null): string | undefined =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1) : undefined
 
 export function App() {
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -26,6 +32,8 @@ export function App() {
   const [pinOpen, setPinOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [warnHidden, setWarnHidden] = useState(false)
   const persistReady = useRef(false)
 
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches)
@@ -44,10 +52,22 @@ export function App() {
   }, [resolvedTheme])
 
   useEffect(() => {
-    api.getSettings().then((s) => {
+    api.getSettings().then(async (s) => {
       setSettings(s)
+      // Opened with files beats reopening last time's folder.
+      const opened = await api.getOpened().catch(() => ({ folder: null, files: [], ignored: [] }))
+      if (opened.files.length) {
+        applyFiles(opened.folder ?? 'Selected files', opened.files)
+        return
+      }
       setFolderPath(s.last_folder ?? '')
-      if (s.last_folder) loadFolder(s.last_folder)
+      if (s.last_folder) await loadFolder(s.last_folder)
+      // "Open with" can be pointed at any file type. Say so, rather than opening
+      // on the last folder as though nothing had been asked for. After the load,
+      // which clears the banner.
+      if (opened.ignored?.length) {
+        setError(`DocSigner only opens PDFs. Ignored: ${opened.ignored.join(', ')}`)
+      }
     })
     loadIdentities()
     api.getConfig().then(setCfg)
@@ -102,11 +122,19 @@ export function App() {
     setSettings((cur) => (cur ? { ...cur, last_folder: folder } : cur))
   }
 
+  // Most recent first, five kept. Feeds the path box's dropdown.
+  function remember(folder: string) {
+    setSettings((cur) =>
+      cur ? { ...cur, recent_folders: [folder, ...(cur.recent_folders ?? []).filter((f) => f !== folder)].slice(0, 5) } : cur,
+    )
+  }
+
   async function loadFolder(path: string) {
     setError(null)
     try {
       const res = await api.getFolder(path)
       applyFiles(res.folder, res.files)
+      remember(res.folder)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setFiles([])
@@ -174,9 +202,15 @@ export function App() {
         for (const f of res.files) if (!existing.has(f.path) || prev.has(f.path)) next.add(f.path)
         return next
       })
+      // Drop a "signed" mark whose output file has since been deleted, so the
+      // original stops claiming a signed copy that is no longer there.
+      const present = new Set(res.files.map((f) => f.name))
       setResults((prev) => {
         const next: Record<string, SignResult> = {}
-        for (const f of res.files) if (prev[f.path]) next[f.path] = prev[f.path]
+        for (const f of res.files) {
+          const r = prev[f.path]
+          if (r && (!r.ok || (r.name && present.has(r.name)))) next[f.path] = r
+        }
         return next
       })
       setSelected((cur) => (cur && res.files.some((f) => f.path === cur) ? cur : (res.files[0]?.path ?? null)))
@@ -186,17 +220,36 @@ export function App() {
     }
   }
 
+  // Pasted into a ticket or a chat, so it has to read on its own: when, what was
+  // being attempted, what went wrong, and where to look next.
   async function copyReport() {
     const failed = files.filter((f) => results[f.path] && !results[f.path].ok && !results[f.path].skipped)
     const lines = [
       'DocSigner Desktop — error report',
-      `standard: ${settings?.standard}   certificate: ${signerName}${isToken ? ' (token)' : ' (key)'}`,
-      ...(error ? [`error: ${error}`] : []),
-      ...failed.map((f) => `- ${f.name}: ${results[f.path].error}`),
-      ...(cfg?.logPath ? [`log: ${cfg.logPath}`] : []),
+      `Generated:        ${stampTime()}`,
+      '',
+      `Signing standard: ${settings?.standard}`,
+      `Certificate:      ${signerName} (${isToken ? 'token' : 'key file'})`,
+      ...(error ? ['', `Error: ${sentence(error)}`] : []),
+      ...(failed.length
+        ? [
+            '',
+            `Files that could not be signed (${failed.length} of ${filesToSign.length} selected):`,
+            ...failed.map((f) => `  - ${f.name} — ${sentence(results[f.path].error)}`),
+          ]
+        : []),
+      ...(cfg?.logPath ? ['', 'Full detail is in the log file:', `  ${cfg.logPath}`] : []),
     ]
     try {
       await navigator.clipboard.writeText(lines.join('\n'))
+      setCopied(true)
+      // Confirm first, then clear: once it is on the clipboard the banner has
+      // done its job.
+      setTimeout(() => {
+        setCopied(false)
+        setError(null)
+        setWarnHidden(true)
+      }, 1500)
     } catch {
       /* clipboard blocked; the log file still holds the detail */
     }
@@ -225,6 +278,7 @@ export function App() {
     setPinOpen(false)
     setBusy(true)
     setError(null)
+    setWarnHidden(false) // a dismissed warning must not hide the next run's
     try {
       const { results: res } = await api.sign({
         files: filesToSign.map((f) => f.path),
@@ -260,6 +314,7 @@ export function App() {
     <StampPreview profile={currentProfile} signerName={signerName} reason={settings.reason} location={settings.location} boxW={boxW} boxH={boxH} />
   ) : null
 
+  const recent = settings.recent_folders ?? []
   const signedCount = Object.values(results).filter((r) => r.ok).length
   const skippedCount = Object.values(results).filter((r) => r.skipped).length
   const failedCount = Object.values(results).filter((r) => !r.ok && !r.skipped).length
@@ -303,12 +358,17 @@ export function App() {
         <button className="btn ghost sm" onClick={chooseFiles}>
           Files…
         </button>
-        <input
-          className="path-input"
+        <SuggestInput
           value={folderPath}
+          onChange={setFolderPath}
+          suggestions={recent}
           placeholder="or paste a path…"
-          onChange={(e) => setFolderPath(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && loadFolder(folderPath)}
+          inputClassName="path-input"
+          caretLabel="Recent folders"
+          onPick={loadFolder}
+          onEnter={loadFolder}
+          onClear={clearFiles}
+          clearLabel="Clear the path"
         />
         <button
           className="ic-btn"
@@ -319,24 +379,23 @@ export function App() {
         >
           <RefreshCw size={15} />
         </button>
-        <span className="count-pill">
-          {files.length} PDF{files.length === 1 ? '' : 's'}
-        </span>
       </div>
 
-      {(error || failedCount > 0) && (
+      {(error || (failedCount > 0 && !warnHidden)) && (
         <div className={`banner ${error ? 'error' : 'warn'}`}>
           <span className="banner-msg">
-            {error ?? `${failedCount} file${failedCount === 1 ? '' : 's'} could not be signed — hover a file for the reason.`}
+            {sentence(error) ?? `${failedCount} file${failedCount === 1 ? '' : 's'} could not be signed.`}
           </span>
           <button className="banner-btn" onClick={copyReport}>
-            Copy details
+            {copied ? 'Copied' : 'Copy details'}
           </button>
-          {error && (
-            <button className="banner-x" onClick={() => setError(null)} aria-label="Dismiss">
-              ×
-            </button>
-          )}
+          <button
+            className="banner-x"
+            onClick={() => (error ? setError(null) : setWarnHidden(true))}
+            aria-label="Dismiss"
+          >
+            <X size={15} />
+          </button>
         </div>
       )}
 
@@ -383,18 +442,26 @@ export function App() {
                   />
                   <FileText size={15} className="qrow-ic" />
                   <span className="qrow-main">
-                    <span className="qrow-name">{f.name}</span>
-                    <span className="qrow-sub" title={r && !r.ok ? r.error : undefined}>
-                      {r?.ok ? `→ ${r.name}` : r ? r.error : `${(f.size / 1024).toFixed(0)} KB`}
+                    <span className="qrow-name" title={f.name}>
+                      {f.name}
+                    </span>
+                    <span className="qrow-sub">
+                      {r && !r.ok ? sentence(r.error) : `${(f.size / 1024).toFixed(0)} KB`}
                     </span>
                   </span>
-                  {r?.ok ? (
-                    <CheckCircle2 size={15} className="s-ok" />
-                  ) : r?.skipped ? (
-                    <MinusCircle size={15} className="s-skip" />
-                  ) : r ? (
-                    <AlertCircle size={15} className="s-err" />
-                  ) : null}
+                  {/* The reason hangs off the status icon, which is where people
+                      point when a row has gone red. */}
+                  {r && (
+                    <span className="qrow-status" title={r.ok ? `Signed as ${r.name}` : sentence(r.error)}>
+                      {r.ok ? (
+                        <CheckCircle2 size={15} className="s-ok" />
+                      ) : r.skipped ? (
+                        <MinusCircle size={15} className="s-skip" />
+                      ) : (
+                        <AlertCircle size={15} className="s-err" />
+                      )}
+                    </span>
+                  )}
                   <button
                     className="qrow-remove"
                     onClick={(e) => {
@@ -440,13 +507,11 @@ export function App() {
           profile={currentProfile}
           onProfile={(id) => patch({ profile_id: id })}
           onEditProfiles={() => setEditorOpen(true)}
-          preview={stamp}
-          boxAspect={`${boxW} / ${boxH}`}
+          signerName={signerName}
           standard={settings.standard}
           onStandard={(v) => patch({ standard: v })}
           trustConfigured={cfg?.trustConfigured ?? false}
           tsaUrl={settings.tsa_url ?? ''}
-          tsaDefault={cfg?.tsaUrl ?? ''}
           onTsaUrl={(v) => patch({ tsa_url: v || null })}
           reason={settings.reason ?? ''}
           location={settings.location ?? ''}
@@ -467,6 +532,7 @@ export function App() {
           onDeleteFont={(slug) => api.deleteFont(slug).then((r) => setFonts(r.fonts))}
           onSelect={(id) => patch({ profile_id: id })}
           onChange={(p) => patch({ profiles: settings.profiles.map((x) => (x.id === p.id ? p : x)) })}
+          onReorder={(profiles) => patch({ profiles })}
           onAdd={() => {
             const id = `profile-${Date.now()}`
             patch({

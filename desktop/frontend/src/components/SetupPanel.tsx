@@ -1,7 +1,36 @@
 import { RefreshCw, UsbIcon } from 'lucide-react'
-import { type ReactNode } from 'react'
 import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
+import { StampPreview } from './StampPreview'
+import { SuggestInput } from './SuggestInput'
+
+// The card is a fixed shape, so the preview shows what the signature *contains*
+// rather than jumping about as the box is resized on the canvas.
+const CARD_W = 220
+const CARD_H = 60
+
+// Suggestions only — anything can be typed. Each one was checked against this
+// signer; Sectigo and Starfield refuse its requests, so they are not offered.
+const TSA_SUGGESTIONS = [
+  'http://timestamp.digicert.com',
+  'http://timestamp.identrust.com',
+  'http://timestamp.globalsign.com/tsa/r6advanced1',
+]
+
+/**
+ * The certificate's expiry as `4 June 2027`.
+ *
+ * Not the OS short-date format: Windows' "14-Aug-26" is a Control Panel setting
+ * the webview never sees, so toLocaleDateString() only ever returned the
+ * webview's own locale (8/9/2036) and looked wrong. Day-month-year with the month
+ * spelled out cannot be misread in any locale, and the month name still
+ * translates.
+ */
+function localDate(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return `${d.getDate()} ${d.toLocaleDateString(undefined, { month: 'long' })} ${d.getFullYear()}`
+}
 
 export function SetupPanel(props: {
   identities: Identity[]
@@ -14,13 +43,11 @@ export function SetupPanel(props: {
   profile: AppearanceProfile | null
   onProfile: (id: string) => void
   onEditProfiles: () => void
-  preview: ReactNode
-  boxAspect: string
+  signerName: string
   standard: string
   onStandard: (v: string) => void
   trustConfigured: boolean
   tsaUrl: string
-  tsaDefault: string
   onTsaUrl: (v: string) => void
   reason: string
   location: string
@@ -41,7 +68,7 @@ export function SetupPanel(props: {
             {props.identities.length === 0 && <option value="">No certificates found</option>}
             {props.identities.map((i) => (
               <option key={i.id} value={i.id}>
-                {i.name} · {i.kind === 'token' ? 'token' : 'key'} · to {i.notAfter}
+                {i.name} · {i.kind === 'token' ? 'Token' : 'Key'} · Valid till {localDate(i.notAfter)}
               </option>
             ))}
           </select>
@@ -74,8 +101,15 @@ export function SetupPanel(props: {
       <div className="field">
         <label>Signature</label>
         {p && (
-          <div className="sig-paper" style={{ aspectRatio: props.boxAspect }}>
-            {props.preview}
+          <div className="sig-paper" style={{ aspectRatio: `${CARD_W} / ${CARD_H}` }}>
+            <StampPreview
+              profile={p}
+              signerName={props.signerName}
+              reason={props.reason}
+              location={props.location}
+              boxW={CARD_W}
+              boxH={CARD_H}
+            />
           </div>
         )}
         <div className="profile-row">
@@ -115,14 +149,19 @@ export function SetupPanel(props: {
         {std?.needsConfig && !props.trustConfigured && <span className="hint-warn">Needs a trust directory (DOCSIGNER_TRUST_DIR).</span>}
       </div>
 
-      {std?.needsConfig && (
+      {/* Only the standards that actually use a timestamp. Blank uses the backend's
+          default. The placeholder is example.com rather than that default, so it
+          cannot be read as a value already set. */}
+      {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
-          <input
-            className="control"
+          <SuggestInput
             value={props.tsaUrl}
-            placeholder={props.tsaDefault || 'RFC 3161 TSA URL'}
-            onChange={(e) => props.onTsaUrl(e.target.value)}
+            onChange={props.onTsaUrl}
+            suggestions={TSA_SUGGESTIONS}
+            placeholder="http://timestamp.example.com"
+            caretLabel="Known timestamp servers"
+            onClear={() => props.onTsaUrl('')}
           />
         </div>
       )}
@@ -130,8 +169,13 @@ export function SetupPanel(props: {
       <div className="field">
         <label>Save as</label>
         <div className="control out-row">
-          <span className="grow">Filename suffix</span>
-          <input className="suffix-input" value={props.suffix} onChange={(e) => props.onSuffix(e.target.value)} />
+          <span className="out-label">Filename suffix</span>
+          <input
+            className="suffix-input"
+            value={props.suffix}
+            title={props.suffix}
+            onChange={(e) => props.onSuffix(e.target.value)}
+          />
         </div>
       </div>
     </aside>

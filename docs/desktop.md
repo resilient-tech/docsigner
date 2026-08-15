@@ -75,6 +75,7 @@ Backend (`backend/docsigner_desktop/`):
 - `config.py` — timestamp authority and trust anchors.
 - `store.py` — settings and appearance profiles, remembered between launches.
 - `picker.py` — the native file and folder dialogs.
+- `startup.py` — PDFs the app was launched with: "Open With", or a command line.
 - `models.py` — request and response shapes; placement is fractional (0..1).
 - `__main__.py` — opens the native window (or `--server` for headless).
 
@@ -85,6 +86,8 @@ Frontend (`frontend/src/`):
 - `components/ProfileEditor.tsx` — the appearance profiles.
 - `components/StampPreview.tsx` — live preview of the stamp.
 - `components/PinDialog.tsx` — the PIN prompt.
+- `components/SuggestInput.tsx` — a text box with suggestions; the path and
+  timestamp fields both use it.
 - `App.tsx`, `api.ts`, `types.ts` — the shell, the fetch layer, the shapes.
 
 ---

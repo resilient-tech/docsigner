@@ -36,6 +36,7 @@ TRUST = os.path.join(REPO, "trust")
 # run_desktop.py starts through the package instead.
 entry = os.path.join(BACKEND, "run_desktop.py")
 ICON = os.path.join(SPECPATH, "DocSigner.icns")
+WIN_ICON = os.path.join(SPECPATH, "DocSigner.ico")
 
 # One version for the whole repo, and host/Cargo.toml is where it lives: the
 # release workflow already refuses to publish when the tag disagrees with it.
@@ -191,7 +192,44 @@ pyz = PYZ(a.pure)
 # which is ERROR_NOACCESS: the loader failing to map a damaged image. PyInstaller's
 # own docs advise against --strip on Windows. Symbols there live in separate .pdb
 # files anyway, so stripping buys nothing.
-STRIP = sys.platform != "win32"
+IS_WIN = sys.platform == "win32"
+STRIP = not IS_WIN
+
+
+def windows_version_resource():
+    """Name, version and copyright for Explorer, Task Manager and the Details tab.
+
+    The host gets the same through winresource in its build.rs; PyInstaller wants
+    a file, so write one from the version already read above.
+    """
+    parts = tuple((tuple(int(n) for n in VERSION.split(".")) + (0, 0, 0, 0))[:4])
+    out = os.path.join(globals().get("workpath") or os.path.join(BACKEND, "build"))
+    os.makedirs(out, exist_ok=True)
+    path = os.path.join(out, "version_info.txt")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(
+            "VSVersionInfo(\n"
+            f"  ffi=FixedFileInfo(filevers={parts}, prodvers={parts}, mask=0x3f,\n"
+            "                    flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0,\n"
+            "                    date=(0, 0)),\n"
+            "  kids=[\n"
+            "    StringFileInfo([StringTable('040904B0', [\n"
+            "      StringStruct('CompanyName', 'Resilient Software Services LLP'),\n"
+            "      StringStruct('FileDescription', 'DocSigner Desktop'),\n"
+            f"      StringStruct('FileVersion', '{VERSION}'),\n"
+            "      StringStruct('InternalName', 'DocSigner Desktop'),\n"
+            "      StringStruct('LegalCopyright',\n"
+            "                   'Copyright 2026 Resilient Software Services LLP'),\n"
+            "      StringStruct('OriginalFilename', 'docsigner-desktop.exe'),\n"
+            "      StringStruct('ProductName', 'DocSigner Desktop'),\n"
+            f"      StringStruct('ProductVersion', '{VERSION}'),\n"
+            "    ])]),\n"
+            "    VarFileInfo([VarStruct('Translation', [1033, 1200])]),\n"
+            "  ],\n"
+            ")\n"
+        )
+    return path
+
 
 exe = EXE(
     pyz,
@@ -202,6 +240,9 @@ exe = EXE(
     strip=STRIP,
     upx=False,
     console=False,  # GUI app; pywebview owns the window
+    # Windows only: macOS takes its icon from BUNDLE below, Linux has none.
+    icon=WIN_ICON if IS_WIN and os.path.isfile(WIN_ICON) else None,
+    version=windows_version_resource() if IS_WIN else None,
 )
 
 # strip: symbols only, and build-macos.sh signs after this, so the signature is

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Upload, X } from 'lucide-react'
+import { GripVertical, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { AppearanceProfile, FontOption } from '../types'
 import { StampPreview } from './StampPreview'
 
@@ -17,6 +17,7 @@ export function ProfileEditor({
   fonts,
   onSelect,
   onChange,
+  onReorder,
   onAdd,
   onDelete,
   onUploadFont,
@@ -29,6 +30,7 @@ export function ProfileEditor({
   fonts: FontOption[]
   onSelect: (id: string) => void
   onChange: (p: AppearanceProfile) => void
+  onReorder: (profiles: AppearanceProfile[]) => void
   onAdd: () => void
   onDelete: (id: string) => void
   onUploadFont: (filename: string, data: string) => Promise<string>
@@ -39,6 +41,18 @@ export function ProfileEditor({
   const set = (patch: Partial<AppearanceProfile>) => onChange({ ...profile, ...patch })
   const [fontError, setFontError] = useState<string | null>(null)
   const selectedFont = fonts.find((f) => f.slug === profile.font)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+
+  function endDrag() {
+    if (dragFrom !== null && dragOver !== null && dragFrom !== dragOver) {
+      const next = [...profiles]
+      next.splice(dragOver, 0, ...next.splice(dragFrom, 1))
+      onReorder(next)
+    }
+    setDragFrom(null)
+    setDragOver(null)
+  }
 
   function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -82,9 +96,30 @@ export function ProfileEditor({
         </div>
         <div className="modal-body">
           <div className="prof-list">
-            {profiles.map((p) => (
-              <button key={p.id} className={`prof ${p.id === selectedId ? 'active' : ''}`} onClick={() => onSelect(p.id)}>
-                {p.name}
+            {profiles.map((p, i) => (
+              <button
+                key={p.id}
+                className={[
+                  'prof',
+                  p.id === selectedId ? 'active' : '',
+                  dragFrom === i ? 'dragging' : '',
+                  dragOver === i && dragFrom !== null && dragFrom !== i ? (i > dragFrom ? 'drop-below' : 'drop-above') : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => onSelect(p.id)}
+                draggable
+                onDragStart={() => setDragFrom(i)}
+                onDragEnter={() => setDragOver(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnd={endDrag}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  endDrag()
+                }}
+              >
+                <GripVertical size={13} className="prof-grip" aria-hidden />
+                <span className="prof-name">{p.name}</span>
               </button>
             ))}
             <button className="btn ghost sm" onClick={onAdd}>
@@ -94,8 +129,9 @@ export function ProfileEditor({
 
           <div className="prof-editor">
             <div className="preview-label">Live preview</div>
-            <div className="sig-paper" style={{ aspectRatio: '220 / 60' }}>
-              <StampPreview profile={profile} signerName={signerName} reason="Approved for filing" location="Ahmedabad" boxW={220} boxH={60} />
+            {/* Drawn at twice the old size: the detail lines were too small to read. */}
+            <div className="sig-paper" style={{ aspectRatio: '440 / 120' }}>
+              <StampPreview profile={profile} signerName={signerName} reason="Approved for filing" location="Ahmedabad" boxW={440} boxH={120} />
             </div>
 
             <div className="editor-fields">
@@ -122,13 +158,22 @@ export function ProfileEditor({
                         </option>
                       ))}
                     </select>
-                    <label className="btn ghost sm">
-                      <Upload size={13} /> Add your own
-                      <input type="file" accept=".ttf,.otf,font/ttf,font/otf" onChange={onPickFont} hidden />
+                    {/* Extensions only. The font/* MIME types made Windows fall
+                        back to showing every file. */}
+                    <label className="btn ghost sm" title="A handwriting font file — not a picture of your signature">
+                      <Upload size={13} /> Add your font
+                      <input type="file" accept=".ttf,.otf" onChange={onPickFont} hidden />
                     </label>
+                    {/* A native <select> cannot carry a button per option, so the
+                        delete sits outside it — labelled, so it is clear what it
+                        deletes. */}
                     {selectedFont?.custom && (
-                      <button className="btn ghost sm danger" onClick={() => removeFont(selectedFont.slug)}>
-                        Remove
+                      <button
+                        className="btn ghost sm danger"
+                        onClick={() => removeFont(selectedFont.slug)}
+                        title={`Delete "${selectedFont.label}" — removes the font itself, not just this profile's choice`}
+                      >
+                        <Trash2 size={13} /> Delete
                       </button>
                     )}
                   </div>
@@ -138,12 +183,18 @@ export function ProfileEditor({
               {profile.style === 'image' && (
                 <label className="ef">
                   <span>Image</span>
+                  {/* A styled label over a hidden input, matching the font row. A
+                      bare file input drew its own button and kept saying "No file
+                      chosen" even with an image loaded. */}
                   <div className="img-row">
                     {profile.image && <img src={profile.image} alt="signature" className="img-thumb" />}
-                    <input type="file" accept="image/png,image/jpeg" onChange={onPickImage} />
+                    <label className="btn ghost sm" title="A picture of your signature (PNG or JPEG)">
+                      <Upload size={13} /> Choose image
+                      <input type="file" accept=".png,.jpg,.jpeg" onChange={onPickImage} hidden />
+                    </label>
                     {profile.image && (
-                      <button className="btn ghost sm" onClick={() => set({ image: null })}>
-                        Remove
+                      <button className="btn ghost sm danger" onClick={() => set({ image: null })} title="Remove this image from the profile">
+                        <Trash2 size={13} /> Delete
                       </button>
                     )}
                   </div>
