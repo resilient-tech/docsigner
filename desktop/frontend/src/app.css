@@ -862,11 +862,11 @@ input[type='checkbox'] {
   border-radius: var(--radius-card);
   background: var(--paper);
 }
-/* Two by two: four single-line toggles in one column left a tall thin gap beside
-   the preview. */
+/* Two by two. `auto` so the longest label sets the first column instead of
+   wrapping inside an even half. */
 .toggles {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: auto 1fr;
   gap: 12px 18px;
   margin-top: 8px;
 }
