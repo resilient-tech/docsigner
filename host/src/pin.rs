@@ -167,6 +167,7 @@ fn pinentry(text: &str) -> Option<String> {
 /// None covers all three of: no such tool, it broke, the user said no. The
 /// caller treats them the same.
 fn run_dialog(command: &mut Command) -> Option<String> {
+    crate::procs::no_console(command);
     let child = command
         .stdin(std::process::Stdio::null())
         // Piped, not inherited. Our stdout is the browser's channel in host
