@@ -2,11 +2,20 @@ import { RefreshCw, UsbIcon } from 'lucide-react'
 import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
 import { StampPreview } from './StampPreview'
+import { SuggestInput } from './SuggestInput'
 
 // The card is a fixed shape, so the preview shows what the signature *contains*
 // rather than jumping about as the box is resized on the canvas.
 const CARD_W = 220
 const CARD_H = 60
+
+// Suggestions only — anything can be typed. Each one was checked against this
+// signer; Sectigo and Starfield refuse its requests, so they are not offered.
+const TSA_SUGGESTIONS = [
+  'http://timestamp.digicert.com',
+  'http://timestamp.identrust.com',
+  'http://timestamp.globalsign.com/tsa/r6advanced1',
+]
 
 /**
  * The certificate's expiry as `4 June 2027`.
@@ -146,11 +155,13 @@ export function SetupPanel(props: {
       {std?.needsTsa && (
         <div className="field">
           <label>Timestamp authority</label>
-          <input
-            className="control"
+          <SuggestInput
             value={props.tsaUrl}
+            onChange={props.onTsaUrl}
+            suggestions={TSA_SUGGESTIONS}
             placeholder="http://timestamp.example.com"
-            onChange={(e) => props.onTsaUrl(e.target.value)}
+            caretLabel="Known timestamp servers"
+            onClear={() => props.onTsaUrl('')}
           />
         </div>
       )}
