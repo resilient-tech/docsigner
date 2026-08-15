@@ -747,7 +747,7 @@ input[type='checkbox'] {
   overflow: hidden;
 }
 .prof-list {
-  width: 210px;
+  width: 240px;
   flex: none;
   border-right: var(--hairline);
   padding: 12px;
@@ -757,12 +757,16 @@ input[type='checkbox'] {
   overflow-y: auto;
 }
 .prof {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   text-align: left;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   color: var(--dim);
   font-size: var(--text-body);
   font-weight: var(--fw-medium);
+  position: relative;
 }
 .prof:hover {
   background: var(--surface);
@@ -771,6 +775,42 @@ input[type='checkbox'] {
 .prof.active {
   background: var(--surface);
   color: var(--green-ink);
+}
+/* Wraps rather than truncates: a name can outgrow any fixed width. */
+.prof-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.prof-grip {
+  flex: none;
+  color: var(--faint);
+  opacity: 0;
+  cursor: grab;
+}
+.prof:hover .prof-grip,
+.prof.dragging .prof-grip {
+  opacity: 1;
+}
+.prof.dragging {
+  opacity: 0.4;
+}
+/* Where it will land. */
+.prof.drop-above::before,
+.prof.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--action);
+}
+.prof.drop-above::before {
+  top: -2px;
+}
+.prof.drop-below::after {
+  bottom: -2px;
 }
 .prof-editor {
   flex: 1;

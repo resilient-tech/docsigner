@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Upload, X } from 'lucide-react'
+import { GripVertical, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { AppearanceProfile, FontOption } from '../types'
 import { StampPreview } from './StampPreview'
 
@@ -17,6 +17,7 @@ export function ProfileEditor({
   fonts,
   onSelect,
   onChange,
+  onReorder,
   onAdd,
   onDelete,
   onUploadFont,
@@ -29,6 +30,7 @@ export function ProfileEditor({
   fonts: FontOption[]
   onSelect: (id: string) => void
   onChange: (p: AppearanceProfile) => void
+  onReorder: (profiles: AppearanceProfile[]) => void
   onAdd: () => void
   onDelete: (id: string) => void
   onUploadFont: (filename: string, data: string) => Promise<string>
@@ -39,6 +41,18 @@ export function ProfileEditor({
   const set = (patch: Partial<AppearanceProfile>) => onChange({ ...profile, ...patch })
   const [fontError, setFontError] = useState<string | null>(null)
   const selectedFont = fonts.find((f) => f.slug === profile.font)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+
+  function endDrag() {
+    if (dragFrom !== null && dragOver !== null && dragFrom !== dragOver) {
+      const next = [...profiles]
+      next.splice(dragOver, 0, ...next.splice(dragFrom, 1))
+      onReorder(next)
+    }
+    setDragFrom(null)
+    setDragOver(null)
+  }
 
   function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -82,9 +96,30 @@ export function ProfileEditor({
         </div>
         <div className="modal-body">
           <div className="prof-list">
-            {profiles.map((p) => (
-              <button key={p.id} className={`prof ${p.id === selectedId ? 'active' : ''}`} onClick={() => onSelect(p.id)}>
-                {p.name}
+            {profiles.map((p, i) => (
+              <button
+                key={p.id}
+                className={[
+                  'prof',
+                  p.id === selectedId ? 'active' : '',
+                  dragFrom === i ? 'dragging' : '',
+                  dragOver === i && dragFrom !== null && dragFrom !== i ? (i > dragFrom ? 'drop-below' : 'drop-above') : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => onSelect(p.id)}
+                draggable
+                onDragStart={() => setDragFrom(i)}
+                onDragEnter={() => setDragOver(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnd={endDrag}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  endDrag()
+                }}
+              >
+                <GripVertical size={13} className="prof-grip" aria-hidden />
+                <span className="prof-name">{p.name}</span>
               </button>
             ))}
             <button className="btn ghost sm" onClick={onAdd}>

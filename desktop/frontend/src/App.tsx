@@ -597,6 +597,7 @@ export function App() {
           onDeleteFont={(slug) => api.deleteFont(slug).then((r) => setFonts(r.fonts))}
           onSelect={(id) => patch({ profile_id: id })}
           onChange={(p) => patch({ profiles: settings.profiles.map((x) => (x.id === p.id ? p : x)) })}
+          onReorder={(profiles) => patch({ profiles })}
           onAdd={() => {
             const id = `profile-${Date.now()}`
             patch({
