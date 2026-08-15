@@ -6,7 +6,7 @@ import { PlacementCanvas } from './components/PlacementCanvas'
 import { SetupPanel } from './components/SetupPanel'
 import { ProfileEditor } from './components/ProfileEditor'
 import { PinDialog } from './components/PinDialog'
-import { StampPreview, fontFaceCss } from './components/StampPreview'
+import { StampPreview, fontFaceCss, stampTime } from './components/StampPreview'
 
 const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, fh: 0.1 }
 
@@ -229,14 +229,25 @@ export function App() {
     }
   }
 
+  // Pasted into a ticket or a chat, so it has to read on its own: when, what was
+  // being attempted, what went wrong, and where to look next.
   async function copyReport() {
     const failed = files.filter((f) => results[f.path] && !results[f.path].ok && !results[f.path].skipped)
     const lines = [
       'DocSigner Desktop — error report',
-      `standard: ${settings?.standard}   certificate: ${signerName}${isToken ? ' (token)' : ' (key)'}`,
-      ...(error ? [`error: ${error}`] : []),
-      ...failed.map((f) => `- ${f.name}: ${results[f.path].error}`),
-      ...(cfg?.logPath ? [`log: ${cfg.logPath}`] : []),
+      `Generated:        ${stampTime()}`,
+      '',
+      `Signing standard: ${settings?.standard}`,
+      `Certificate:      ${signerName} (${isToken ? 'token' : 'key file'})`,
+      ...(error ? ['', `Error: ${sentence(error)}`] : []),
+      ...(failed.length
+        ? [
+            '',
+            `Files that could not be signed (${failed.length} of ${filesToSign.length} selected):`,
+            ...failed.map((f) => `  - ${f.name} — ${sentence(results[f.path].error)}`),
+          ]
+        : []),
+      ...(cfg?.logPath ? ['', 'Full detail is in the log file:', `  ${cfg.logPath}`] : []),
     ]
     try {
       await navigator.clipboard.writeText(lines.join('\n'))

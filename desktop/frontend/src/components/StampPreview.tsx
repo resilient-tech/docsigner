@@ -10,7 +10,7 @@ const DETAIL_FONT = 'poppins'
  * The date exactly as core stamps it: `%Y-%m-%d %H:%M %z`. This used to be a
  * hardcoded sample, so the preview showed a date that was never the one signed.
  */
-function stampTime(now = new Date()): string {
+export function stampTime(now = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0')
   const mins = -now.getTimezoneOffset() // JS reports west-positive; strftime east-positive
   const abs = Math.abs(mins)
