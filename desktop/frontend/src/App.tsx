@@ -252,7 +252,13 @@ export function App() {
     try {
       await navigator.clipboard.writeText(lines.join('\n'))
       setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      // Confirm first, then clear: once it is on the clipboard the banner has
+      // done its job.
+      setTimeout(() => {
+        setCopied(false)
+        setError(null)
+        setWarnHidden(true)
+      }, 1500)
     } catch {
       /* clipboard blocked; the log file still holds the detail */
     }
@@ -281,6 +287,7 @@ export function App() {
     setPinOpen(false)
     setBusy(true)
     setError(null)
+    setWarnHidden(false) // a dismissed warning must not hide the next run's
     try {
       const { results: res } = await api.sign({
         files: filesToSign.map((f) => f.path),
