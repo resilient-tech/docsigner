@@ -155,44 +155,18 @@ def test_hint_survives_a_host_that_reports_no_readers_key(monkeypatch):
     assert certs.token_hint() is None
 
 
-# ---- where a certificate came from ----------------------------------------
+# ---- what counts as a token certificate -----------------------------------
 
-OS_STORE = [{"id": "token:abc", "kind": "os-store", "thumbprint": "abc"}]
-
-
-def test_source_decides_the_kind(monkeypatch):
-    """A token driver copies its certificates into the OS store, so the host
-    reporting one says nothing about the token being present."""
-    scanned = {
-        "certificates": [
-            {"thumbprint": "aaa", "source": "pkcs11", "subject": "CN=On The Token"},
-            {"thumbprint": "bbb", "source": "os-store", "subject": "CN=Left Behind"},
-            {"thumbprint": "ccc", "subject": "CN=No Source Given"},
-        ]
-    }
+def test_the_os_stores_copies_are_ignored(monkeypatch):
+    """A driver copies the token's certificates into the OS store and leaves
+    them there, so they are still reported after the token is unplugged."""
     from docsigner_desktop import host
 
+    scanned = {"certificates": [
+        {"thumbprint": "aaa", "source": "pkcs11", "subject": "CN=On The Token"},
+        {"thumbprint": "bbb", "source": "os-store", "subject": "CN=Left Behind"},
+    ]}
     monkeypatch.setattr(host, "scan", lambda: scanned)
     found, _readers = certs._scan_token_identities()
-    assert [(i["name"], i["kind"]) for i in found] == [
-        ("On The Token", "token"),
-        ("Left Behind", "os-store"),
-        ("No Source Given", "os-store"),
-    ]
-
-
-def test_hint_explains_certificates_left_by_an_absent_token(monkeypatch):
-    """The reported bug: certificates stay listed after the token is unplugged,
-    with nothing saying why signing then fails."""
-    _stub_scan(monkeypatch, [(OS_STORE, NO_READERS)])
-    hint = certs.token_hint()
-    assert hint is not None
-    assert "No token is connected" in hint["message"]
-    assert "certificate store" in hint["action"]
-
-
-def test_no_hint_when_the_token_is_really_there(monkeypatch):
-    """Both kinds present is the normal plugged-in case: the driver's copy sits
-    beside the real one, and there is nothing to warn about."""
-    _stub_scan(monkeypatch, [(TOKEN + OS_STORE, CLAIMED)])
-    assert certs.token_hint() is None
+    assert [i["name"] for i in found] == ["On The Token"]
+    assert found[0]["kind"] == "token"
