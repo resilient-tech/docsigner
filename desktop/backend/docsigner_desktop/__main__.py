@@ -73,6 +73,17 @@ def main() -> None:
             "pywebview is not installed. Run `pip install -r requirements.txt`, "
             "or use `--server` for headless UI development."
         )
+    # Load Pillow before the window does. WebKitGTK brings the system freetype
+    # and harfbuzz into the process, and Pillow's _imagingft carries its own
+    # copies inside the wheel — auditwheel renames those files but not the
+    # symbols in them. Whichever loads first owns FT_* for the whole process, so
+    # a Pillow imported after the window binds to the system freetype and draws
+    # every glyph blank: signed PDFs came out with an empty signature stamp.
+    # _composed_stamp imports Pillow lazily, on the server thread, so without
+    # this it always lost the race. Linux only in effect; Windows and macOS bind
+    # per module, which is why the stamp was fine there.
+    from PIL import Image, ImageDraw, ImageFont  # noqa: F401
+
     port = _free_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
     _wait_until_serving(port)
