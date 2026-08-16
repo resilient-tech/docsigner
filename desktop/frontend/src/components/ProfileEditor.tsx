@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { GripVertical, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { AppearanceProfile, FontOption } from '../types'
 import { StampPreview } from './StampPreview'
@@ -43,11 +43,49 @@ export function ProfileEditor({
   const selectedFont = fonts.find((f) => f.slug === profile.font)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  // Live drag state. A ref, not state, because pointermove fires far faster
+  // than React can re-render and the handler needs the current value.
+  const drag = useRef<{ from: number; y: number; moved: boolean } | null>(null)
+  // Set on the pointerup that ended a real drag, so the click it also fires
+  // does not then select the row the user was only dragging.
+  const dragged = useRef(false)
+
+  /** Which row the pointer is over, by measuring the rows themselves. */
+  function rowAt(clientY: number): number {
+    const rows = listRef.current?.querySelectorAll('.prof') ?? []
+    for (let i = 0; i < rows.length; i++) {
+      if (clientY < rows[i].getBoundingClientRect().bottom) return i
+    }
+    return Math.max(0, rows.length - 1)
+  }
+
+  // Pointer events rather than HTML5 drag-and-drop. WebKitGTK — the Linux
+  // window — never starts an in-page drag, so `draggable` + onDragStart simply
+  // did nothing there while working on Windows and macOS. PlacementCanvas
+  // already moves its box this way, and it behaves the same on all three.
+  function startDrag(i: number, e: React.PointerEvent<HTMLButtonElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { from: i, y: e.clientY, moved: false }
+  }
+
+  function moveDrag(e: React.PointerEvent<HTMLButtonElement>) {
+    const d = drag.current
+    if (!d) return
+    // A few pixels of slack, so a click with a shaky hand still selects.
+    if (!d.moved && Math.abs(e.clientY - d.y) < 4) return
+    d.moved = true
+    setDragFrom(d.from)
+    setDragOver(rowAt(e.clientY))
+  }
 
   function endDrag() {
-    if (dragFrom !== null && dragOver !== null && dragFrom !== dragOver) {
+    const d = drag.current
+    drag.current = null
+    dragged.current = !!d?.moved
+    if (d?.moved && dragOver !== null && dragOver !== d.from) {
       const next = [...profiles]
-      next.splice(dragOver, 0, ...next.splice(dragFrom, 1))
+      next.splice(dragOver, 0, ...next.splice(d.from, 1))
       onReorder(next)
     }
     setDragFrom(null)
@@ -95,7 +133,7 @@ export function ProfileEditor({
           </button>
         </div>
         <div className="modal-body">
-          <div className="prof-list">
+          <div className="prof-list" ref={listRef}>
             {profiles.map((p, i) => (
               <button
                 key={p.id}
@@ -107,16 +145,17 @@ export function ProfileEditor({
                 ]
                   .filter(Boolean)
                   .join(' ')}
-                onClick={() => onSelect(p.id)}
-                draggable
-                onDragStart={() => setDragFrom(i)}
-                onDragEnter={() => setDragOver(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDragEnd={endDrag}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  endDrag()
+                onClick={() => {
+                  if (dragged.current) {
+                    dragged.current = false
+                    return
+                  }
+                  onSelect(p.id)
                 }}
+                onPointerDown={(e) => startDrag(i, e)}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
               >
                 <GripVertical size={13} className="prof-grip" aria-hidden />
                 <span className="prof-name">{p.name}</span>
