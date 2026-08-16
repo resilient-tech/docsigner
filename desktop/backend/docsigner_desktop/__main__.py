@@ -11,6 +11,7 @@ import socket
 import sys
 import threading
 import time
+from pathlib import Path
 
 import uvicorn
 
@@ -43,6 +44,22 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
     raise RuntimeError("the backend did not start in time")
 
 
+def _icon() -> str | None:
+    """The window icon, for the one OS that needs it handed over at runtime.
+
+    Windows embeds the .ico in the .exe and macOS takes the .icns from the app
+    bundle, so pywebview ignores this on both. GTK has neither, and with no icon
+    the Linux taskbar shows a generic placeholder.
+    """
+    root = (
+        Path(sys._MEIPASS)
+        if getattr(sys, "frozen", False)
+        else Path(__file__).resolve().parents[2] / "packaging"
+    )
+    icon = root / "DocSigner.png"
+    return str(icon) if icon.is_file() else None
+
+
 def main() -> None:
     # The signing host is its own binary now, shipped beside us. host.py finds it.
     startup.remember(sys.argv[1:])
@@ -56,6 +73,17 @@ def main() -> None:
             "pywebview is not installed. Run `pip install -r requirements.txt`, "
             "or use `--server` for headless UI development."
         )
+    # Load Pillow before the window does. WebKitGTK brings the system freetype
+    # and harfbuzz into the process, and Pillow's _imagingft carries its own
+    # copies inside the wheel — auditwheel renames those files but not the
+    # symbols in them. Whichever loads first owns FT_* for the whole process, so
+    # a Pillow imported after the window binds to the system freetype and draws
+    # every glyph blank: signed PDFs came out with an empty signature stamp.
+    # _composed_stamp imports Pillow lazily, on the server thread, so without
+    # this it always lost the race. Linux only in effect; Windows and macOS bind
+    # per module, which is why the stamp was fine there.
+    from PIL import Image, ImageDraw, ImageFont  # noqa: F401
+
     port = _free_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
     _wait_until_serving(port)
@@ -65,7 +93,7 @@ def main() -> None:
     webview.create_window(
         "DocSigner Desktop", f"http://{HOST}:{port}", width=1200, height=820, maximized=True
     )
-    webview.start()
+    webview.start(icon=_icon())
 
 
 if __name__ == "__main__":
