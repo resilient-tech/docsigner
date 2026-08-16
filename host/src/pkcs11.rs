@@ -84,12 +84,43 @@ struct ModuleScan {
     tokens: usize,
 }
 
+/// Open a driver so its own libraries win over ours. Linux only.
+///
+/// glibc resolves a dlopen'd object's symbols against the process-wide scope
+/// first. This binary links libpcsclite for reader detection, so a driver that
+/// carries its *own* forked copy binds to ours instead. WatchData's ProxKey is
+/// exactly that: it ships libpcsclite_wd talking to its own pcscd_wd daemon,
+/// gets handed stock libpcsclite looking for a pcscd that is not running, and
+/// answers C_Initialize with CKR_DEVICE_ERROR. Every certificate list comes back
+/// empty. RTLD_DEEPBIND puts the driver's own dependencies first.
+///
+/// Only a pre-open: the dlopen inside `Pkcs11::new` finds this same object
+/// already relocated, and dropping the guard leaves cryptoki holding the last
+/// reference, so the unload-per-scan below still happens.
+///
+/// Windows binds imports per module and macOS uses two-level namespaces, so
+/// neither has the clash.
+#[cfg(target_os = "linux")]
+fn preload(path: &Path) -> Option<libloading::os::unix::Library> {
+    use libloading::os::unix::{Library, RTLD_LOCAL, RTLD_NOW};
+    // Not in libloading's re-exports. Stable in glibc's bits/dlfcn.h.
+    const RTLD_DEEPBIND: std::os::raw::c_int = 0x8;
+    // RTLD_NOW so every relocation is resolved here, under DEEPBIND.
+    unsafe { Library::open(Some(path), RTLD_NOW | RTLD_LOCAL | RTLD_DEEPBIND) }.ok()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn preload(_path: &Path) -> Option<()> {
+    None
+}
+
 /// Load a driver and start it up.
 ///
 /// Fresh every scan, on purpose. A ProxKey only looks for the token at startup,
 /// so a reused handle keeps saying "no token" forever after a replug or a sleep.
 /// Dropping this shuts the driver down, so the next scan starts clean.
 fn load_module(path: &Path) -> std::result::Result<Pkcs11, P11Error> {
+    let _deepbind = preload(path);
     let context = Pkcs11::new(path)?;
     context.initialize(CInitializeArgs::OsThreads)?;
     Ok(context)
@@ -704,5 +735,18 @@ mod tests {
         let provider = |_: &str| Ok("0000".to_string());
         let error = sign_hashes("deadbeef", &[], DigestAlg::Sha256, &provider).unwrap_err();
         assert_eq!(error.code, Code::Internal);
+    }
+
+    /// Guards the dlopen flags. A wrong one makes dlopen fail outright, `preload`
+    /// return None, and every Linux driver quietly go back to binding our
+    /// libpcsclite instead of its own — the CKR_DEVICE_ERROR this fixed.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn deepbind_preload_opens_a_real_library() {
+        assert!(
+            preload(Path::new("libpcsclite.so.1")).is_some(),
+            "the flags must be a mode dlopen accepts"
+        );
+        assert!(preload(Path::new("/nonexistent/driver.so")).is_none());
     }
 }

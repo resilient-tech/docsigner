@@ -406,6 +406,7 @@ dependencies = [
  "cryptoki",
  "der",
  "dirs",
+ "libloading",
  "log",
  "native-tls",
  "notify-rust",
