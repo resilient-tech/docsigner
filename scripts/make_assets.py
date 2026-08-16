@@ -5,6 +5,7 @@
 Writes:
     desktop/packaging/DocSigner.icns    macOS app bundle icon (macOS only)
     desktop/packaging/DocSigner.ico     embedded in the Windows desktop .exe
+    desktop/packaging/DocSigner.png     GTK window and taskbar icon on Linux
     desktop/frontend/public/icon.svg    desktop window favicon (copy)
     extension/icons/icon{16,48,128}.png browser extension icons
     host/packaging/icon.ico             embedded in the Windows host .exe
@@ -43,6 +44,12 @@ EXTENSION_ICONS = REPO / "extension" / "icons"
 # One .ico per Windows binary, each beside the packaging that embeds it.
 HOST_ICO = REPO / "host" / "packaging" / "icon.ico"
 DESKTOP_ICO = REPO / "desktop" / "packaging" / "DocSigner.ico"
+# Linux has nothing to embed an icon in, so GTK is handed this file at runtime.
+# PNG, not the SVG: gdk-pixbuf decodes PNG itself, while SVG needs the librsvg
+# loader to be found through the bundle's loaders.cache.
+LINUX_PNG = REPO / "desktop" / "packaging" / "DocSigner.png"
+# What GNOME, KDE and Cinnamon ask for at the largest size they draw.
+LINUX_PNG_SIZE = 256
 
 # Sizes Windows Explorer picks between, smallest first.
 ICO_SIZES = (16, 32, 48, 64, 128, 256)
@@ -202,6 +209,8 @@ def main() -> None:
         write_icns(browser, work)
         write_extension_icons(browser, svg)
         write_ico(browser, svg, work)
+        render(browser, svg, LINUX_PNG_SIZE, LINUX_PNG)
+        print("wrote", LINUX_PNG.relative_to(REPO))
 
     FRONTEND_ICON.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(SOURCE, FRONTEND_ICON)

@@ -43,11 +43,11 @@ ships, so the test tooling lives in the repo's dev list instead:
 
 ### Environment
 
-| Variable | Effect |
-|---|---|
-| `DOCSIGNER_HOST_BIN` | point at a different signing host |
-| `DOCSIGNER_TSA_URL` | default timestamp authority (the app's own setting wins) |
-| `DOCSIGNER_TRUST_DIR` | trust anchors for B-LT and the CCA profiles |
+| Variable              | Effect                                                   |
+| --------------------- | -------------------------------------------------------- |
+| `DOCSIGNER_HOST_BIN`  | point at a different signing host                        |
+| `DOCSIGNER_TSA_URL`   | default timestamp authority (the app's own setting wins) |
+| `DOCSIGNER_TRUST_DIR` | trust anchors for B-LT and the CCA profiles              |
 
 The host binary has to speak the same CLI (`list`, `sign`, `version`) and print
 the same JSON. That's how the Rust host is exercised against the real app:
@@ -153,11 +153,11 @@ window is pyobjc. Untested for the same reason as the Windows build.
   SmartScreen still warn on a *downloaded* copy. Two ways past that, and only one
   of them costs money:
 
-  | Path | Cost | What the user sees |
-  |---|---|---|
-  | Homebrew cask, `--no-quarantine` | free | nothing, it just opens |
-  | Apple Developer ID + notarization | $99/year | nothing, it just opens |
-  | Direct `.dmg` download, ad-hoc signed | free | one warning to clear |
+  | Path                                  | Cost     | What the user sees     |
+  | ------------------------------------- | -------- | ---------------------- |
+  | Homebrew cask, `--no-quarantine`      | free     | nothing, it just opens |
+  | Apple Developer ID + notarization     | $99/year | nothing, it just opens |
+  | Direct `.dmg` download, ad-hoc signed | free     | one warning to clear   |
 
   For the direct download the recipient clears the warning once. On recent macOS
   the right-click → Open trick is often gone; use System Settings → Privacy &
@@ -169,10 +169,27 @@ window is pyobjc. Untested for the same reason as the Windows build.
 - **Token driver.** The DSC vendor's PKCS#11 middleware must be installed on the
   user's machine, the same as for the Frappe flow or the browser extension. It is
   hardware middleware and cannot ride inside the app.
-- **App icon.** `packaging/DocSigner.icns`, generated from the one logo source
-  `assets/icon.svg` by `scripts/make_assets.py` along with the extension and host
-  icons. macOS caches icons hard, so a rebuilt app can still show the old one in
-  Finder or the Dock: `killall Dock Finder`, or move the app once, to refresh.
+- **App icon.** One per OS, all generated from the one logo source
+  `assets/icon.svg` by `scripts/make_assets.py`, along with the extension and
+  host icons:
+
+  | OS      | File                       | How it gets there                                                 |
+  | ------- | -------------------------- | ----------------------------------------------------------------- |
+  | macOS   | `packaging/DocSigner.icns` | `BUNDLE()` puts it in the `.app`                                  |
+  | Windows | `packaging/DocSigner.ico`  | embedded in the `.exe` by `EXE()`                                 |
+  | Linux   | `packaging/DocSigner.png`  | bundled as data; `__main__.py` hands it to `webview.start(icon=)` |
+
+  Linux is the odd one: GTK has nothing to embed an icon in and wants a file at
+  runtime, so without that last row the taskbar shows a generic placeholder. It
+  is a PNG rather than the SVG because gdk-pixbuf decodes PNG itself, while SVG
+  needs the librsvg loader found through the bundle's `loaders.cache`.
+
+  This covers the running window only. A launcher entry in the applications menu
+  needs a `.desktop` file, and the portable tarball has no install step to place
+  one.
+
+  macOS caches icons hard, so a rebuilt app can still show the old one in Finder
+  or the Dock: `killall Dock Finder`, or move the app once, to refresh.
 
 Verify a build by opening it and signing one PDF with the actual token. That pops
 the token PIN, which only the token holder can enter.

@@ -38,6 +38,11 @@ TRUST = os.path.join(REPO, "trust")
 entry = os.path.join(BACKEND, "run_desktop.py")
 ICON = os.path.join(SPECPATH, "DocSigner.icns")
 WIN_ICON = os.path.join(SPECPATH, "DocSigner.ico")
+# Linux has nowhere to embed an icon: Windows puts the .ico in the .exe and
+# macOS takes the .icns from BUNDLE, but GTK wants a file at runtime. Bundled
+# below and handed to webview.start() by __main__.py; without it the panel falls
+# back to a generic icon.
+LINUX_ICON = os.path.join(SPECPATH, "DocSigner.png")
 
 # One version for the whole repo, and host/Cargo.toml is where it lives: the
 # release workflow already refuses to publish when the tag disagrees with it.
@@ -86,6 +91,9 @@ if os.path.isdir(TRUST):
 # dependencies' own notices ride along inside their collected packages, which
 # collect_all() below already picks up.
 datas += [(os.path.join(REPO, name), ".") for name in ("LICENSE", "NOTICE")]
+
+if sys.platform.startswith("linux") and os.path.isfile(LINUX_ICON):
+    datas += [(LINUX_ICON, ".")]
 
 # "." puts it at the bundle root, where _MEIPASS points.
 binaries = [(HOST_BINARY, ".")]
