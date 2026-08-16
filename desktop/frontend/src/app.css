@@ -702,10 +702,43 @@ input.control::placeholder {
   color: var(--action-ink);
   background: var(--action-soft);
 }
+/* Drawn here rather than left to the platform. `accent-color` does nothing in
+   WebKitGTK, which is the Linux window, so Linux fell through to the GTK theme's
+   own checkbox: the desktop's accent colour instead of ours, and its own size
+   rather than the 15px below. Windows and macOS honoured both, so the three
+   looked like different apps. appearance:none takes the native widget out of it
+   and the same box is drawn everywhere. Same pairing as .btn.primary. */
 input[type='checkbox'] {
-  accent-color: var(--green-ink);
+  appearance: none;
+  -webkit-appearance: none;
   width: 15px;
   height: 15px;
+  flex: none;
+  margin: 0;
+  border: var(--hairline);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+}
+input[type='checkbox']:checked {
+  background: var(--green);
+  border-color: var(--green);
+}
+/* The tick is a rotated corner, so there is no SVG or icon font to load. */
+input[type='checkbox']:checked::after {
+  content: '';
+  width: 3px;
+  height: 7px;
+  margin-top: -2px;
+  border: solid var(--on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+input[type='checkbox']:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* ---- profile editor modal ---- */
