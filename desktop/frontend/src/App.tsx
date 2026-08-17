@@ -509,6 +509,9 @@ export function App() {
               onChange={(p) => patch({ placement: p })}
               onPage={(index) => patch({ placement: { ...placement, page: index } })}
               preview={stamp}
+              included={included.has(selected)}
+              onInclude={() => toggleInclude(selected)}
+              appliesTo={filesToSign.length}
             />
           ) : (
             <div className="stage-empty">

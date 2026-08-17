@@ -157,6 +157,12 @@
   color: var(--amber-ink);
   border-bottom-color: color-mix(in srgb, var(--amber) 32%, transparent);
 }
+/* Same row as a banner, but it is telling you how the app works, not that
+   something is wrong. */
+.banner.quiet {
+  color: var(--dim);
+  border-bottom: var(--hairline);
+}
 .banner-btn {
   flex: none;
   font-size: var(--text-sm);
@@ -431,6 +437,16 @@
   background: var(--action-soft);
   cursor: move;
   touch-action: none;
+}
+/* The file on screen is not one that will be signed. The box still drags — it
+   sets the position for the files that are — it just should not look like it is
+   about to stamp this page. */
+.sig-box.idle {
+  border-color: var(--faint);
+  background: transparent;
+}
+.sig-box.idle .sig-preview {
+  opacity: 0.4;
 }
 .sig-preview {
   position: absolute;
