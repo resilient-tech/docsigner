@@ -7,6 +7,7 @@
 Window mode serves the built UI, so run `pnpm build` first.
 """
 
+import logging
 import socket
 import sys
 import threading
@@ -17,6 +18,8 @@ import uvicorn
 
 from . import startup
 from .app import app
+
+log = logging.getLogger(__name__)
 
 HOST = "127.0.0.1"
 DEV_PORT = 8000
@@ -45,19 +48,43 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
 
 
 def _icon() -> str | None:
-    """The window icon, for the one OS that needs it handed over at runtime.
+    """The window icon, handed over at runtime.
 
-    Windows embeds the .ico in the .exe and macOS takes the .icns from the app
-    bundle, so pywebview ignores this on both. GTK has neither, and with no icon
-    the Linux taskbar shows a generic placeholder.
+    Each toolkit takes only what it can read: WinForms an .ico, GTK and Cocoa the
+    .png. A .png is not ignored by WinForms — it throws `Argument 'picture' must be
+    a picture that can be used as a Icon` and the app never opens.
+
+    None is a fine answer. A frozen Windows build carries no .ico beside it, since
+    the spec embeds that in the .exe, and WinForms then lifts the icon out of the
+    executable — the same image. From source, without this, it lifts python.exe's.
     """
     root = (
         Path(sys._MEIPASS)
         if getattr(sys, "frozen", False)
         else Path(__file__).resolve().parents[2] / "packaging"
     )
-    icon = root / "DocSigner.png"
+    icon = root / ("DocSigner.ico" if sys.platform == "win32" else "DocSigner.png")
     return str(icon) if icon.is_file() else None
+
+
+def _claim_taskbar_identity() -> None:
+    """Windows groups the taskbar button by process identity, not by window.
+
+    With none set it falls back to the executable, so from source the button shows
+    python.exe's icon while the title bar is already correct. Matches the macOS
+    bundle identifier in the spec. Cosmetic, so a failure here is never worth
+    stopping a launch for.
+    """
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            ctypes.c_wchar_p("tech.resilient.docsigner")
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.debug("could not set the taskbar identity: %s", exc)
 
 
 def main() -> None:
@@ -84,6 +111,7 @@ def main() -> None:
     # per module, which is why the stamp was fine there.
     from PIL import Image, ImageDraw, ImageFont  # noqa: F401
 
+    _claim_taskbar_identity()
     port = _free_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
     _wait_until_serving(port)

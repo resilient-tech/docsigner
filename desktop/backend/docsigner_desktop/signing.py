@@ -85,14 +85,40 @@ def _err(exc: Exception) -> str:
     return getattr(exc, "message", None) or str(exc)
 
 
+def outcome(results: list[dict]) -> str:
+    """One line for the popup: what actually came out of the run.
+
+    Counted from the written files, not from the signatures the token produced.
+    The host used to announce the latter, which is why a run whose timestamp or
+    revocation data failed still said it had signed. Wording kept in step with
+    notify::signed_message in the host, which says the same thing to a browser.
+    """
+    signed = sum(1 for r in results if r.get("ok"))
+    total = len(results)
+    documents = "document" if total == 1 else "documents"
+    if signed == total:
+        return f"Signed {total} {documents}."
+    if signed:
+        return f"Signed {signed} of {total} documents."
+    return f"Could not sign {total} {documents}."
+
+
 def sign_files(req: SignRequest) -> list[dict]:
     identity = certs.find_identity(store.KEYS_DIR, req.identity_id)
     if identity is None:
         return [{"path": p, "ok": False, "error": "signing identity not found"} for p in req.files]
     ts, vc = config.context_for(req.standard, req.tsa_url)
     if identity["kind"] == "token":
-        return _sign_token(req, identity, ts, vc)
-    return _sign_p12(req, identity, ts, vc)
+        results = _sign_token(req, identity, ts, vc)
+    else:
+        results = _sign_p12(req, identity, ts, vc)
+    # Here, not in either branch: the popup is about the run, whichever key signed
+    # it, and this is the first point where the answer is known. Imported locally,
+    # like every other reference to the host in this package.
+    from . import host
+
+    host.notify(outcome(results))
+    return results
 
 
 def _sign_p12(req: SignRequest, identity: dict, ts, vc) -> list[dict]:

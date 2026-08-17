@@ -51,8 +51,12 @@ LINUX_PNG = REPO / "desktop" / "packaging" / "DocSigner.png"
 # What GNOME, KDE and Cinnamon ask for at the largest size they draw.
 LINUX_PNG_SIZE = 256
 
-# Sizes Windows Explorer picks between, smallest first.
-ICO_SIZES = (16, 32, 48, 64, 128, 256)
+# Sizes Windows picks between, smallest first. 20, 24 and 40 are there for the
+# scaled displays most laptops ship with: the title bar asks for SM_CXSMICON,
+# which is 16 px at 100% but 20 at 125% and 24 at 150%, and Explorer's large icon
+# asks for SM_CXICON — 40 at 125%. A size Windows wants and cannot find is
+# stretched from the nearest one it can, which is what made the title bar blurry.
+ICO_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 # The .icns sizes macOS asks for, each also at @2x.
 ICNS_SIZES = (16, 32, 128, 256, 512)
 EXTENSION_SIZES = (16, 48, 128)
@@ -62,6 +66,12 @@ CHROMIUM_CANDIDATES = (
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
     "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
     "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    # Windows installs into Program Files and puts nothing on PATH, so the
+    # names below never find it and the paths have to be spelled out.
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
     "google-chrome",
     "chromium",
     "chromium-browser",

@@ -4,6 +4,7 @@
 //!     docsigner-host version
 //!     docsigner-host list
 //!     docsigner-host sign --thumbprint ab12cd… --hash <b64> --alg sha256
+//!     docsigner-host notify "Signed 3 documents."
 //!
 //! Set `DOCSIGNER_PIN` to skip the PIN dialog.
 //!
@@ -24,6 +25,7 @@ USAGE:
     docsigner-host version             show host and protocol version
     docsigner-host list                list certificates on all connected tokens
     docsigner-host sign --thumbprint <hex> --hash <b64> [--hash <b64>…] [--alg sha256]
+    docsigner-host notify <message>    show <message> as a DocSigner popup
 
 ENVIRONMENT:
     DOCSIGNER_PIN               skip the PIN dialog
@@ -33,6 +35,22 @@ ENVIRONMENT:
 ";
 
 pub fn run(args: &[String]) -> ExitCode {
+    // Deliberately not a protocol command. The popup belongs to whichever local
+    // app spawned us — the desktop app, which knows whether a signed file was
+    // actually written; on the protocol it would let any web page raise popups.
+    if args[0] == "notify" {
+        match args.get(1) {
+            Some(message) => {
+                crate::notify::notify("DocSigner", message);
+                return ExitCode::SUCCESS;
+            }
+            None => {
+                eprintln!("notify needs a message\n\n{USAGE}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+
     let message = match build_request(args) {
         Ok(message) => message,
         Err(problem) => {

@@ -26,9 +26,37 @@ def _resolve(index: int, n: int) -> int:
     return n - 1 if index < 0 else max(0, min(index, n - 1))
 
 
+def _open(path: str):
+    """Open a PDF, or say plainly why it could not be opened.
+
+    pdfium answers in its own terms — "Failed to load document (PDFium: Incorrect
+    password error)", "(PDFium: Data format error)" — and none of those are
+    sentences to put in front of anyone. There are only three answers worth
+    giving: it is locked, it is not readable as a PDF, or it is not there.
+
+    pdfium's wording stays on the raised error as its cause, for the log.
+
+    Both readers below come through here, so a preview and a signing run give the
+    same answer about the same file.
+    """
+    pdfium = _pdfium()
+    try:
+        return pdfium.PdfDocument(path)
+    except FileNotFoundError as exc:
+        raise SignerError("DOCUMENT_INVALID", "This file is no longer there.") from exc
+    except pdfium.PdfiumError as exc:
+        locked = "password" in str(exc).lower()
+        raise SignerError(
+            "DOCUMENT_INVALID",
+            "This PDF is password-protected. DocSigner cannot open it yet."
+            if locked
+            else "This file is damaged, or it is not a PDF.",
+        ) from exc
+
+
 def page_size(path: str, index: int) -> tuple[float, float, int]:
     """(width_pt, height_pt, page_count) for one page; index -1 = last page."""
-    pdf = _pdfium().PdfDocument(path)
+    pdf = _open(path)
     try:
         n = len(pdf)
         w, h = pdf[_resolve(index, n)].get_size()
@@ -42,8 +70,7 @@ def render_page(path: str, index: int, width_px: int = 1000) -> dict:
 
     Form widgets are painted in too, so signatures already on the page show up.
     """
-    pdfium = _pdfium()
-    pdf = pdfium.PdfDocument(path)
+    pdf = _open(path)
     try:
         try:
             pdf.init_forms()

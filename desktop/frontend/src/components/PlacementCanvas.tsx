@@ -22,12 +22,20 @@ export function PlacementCanvas({
   onChange,
   onPage,
   preview,
+  included,
+  onInclude,
+  appliesTo,
 }: {
   render: RenderResult
   placement: Placement
   onChange: (p: Placement) => void
   onPage: (index: number) => void
   preview: ReactNode
+  /** Whether the file on screen is one of the ones that will be signed. */
+  included: boolean
+  onInclude: () => void
+  /** How many files this one position will be used for. */
+  appliesTo: number
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
@@ -143,12 +151,39 @@ export function PlacementCanvas({
         </div>
       </div>
 
+      {/* Which file you are looking at, which files get signed, and where the
+          signature goes are three separate things, and the position is shared by
+          the whole batch. The screen said none of that, so dragging a box on an
+          unticked file looked like it was doing something here and was quietly
+          doing it to a different file. */}
+      {!included ? (
+        <div className="banner warn">
+          <span className="banner-msg">
+            This file will not be signed.
+            {appliesTo > 0 &&
+              ` The position you set here applies to the ${
+                appliesTo === 1 ? 'selected file' : `${appliesTo} selected files`
+              }.`}
+          </span>
+          <button className="banner-btn" onClick={onInclude}>
+            Include this file
+          </button>
+        </div>
+      ) : (
+        // Only worth saying with a batch: for one file it is where you put it.
+        appliesTo > 1 && (
+          <div className="banner quiet">
+            <span className="banner-msg">This position applies to all {appliesTo} selected files.</span>
+          </div>
+        )
+      )}
+
       <div className="canvas-scroll" ref={scrollRef}>
         <div className="page-area" ref={areaRef} style={{ width: Math.round(BASE_W * zoom) }}>
           <img src={render.image} className="page-img" draggable={false} alt="PDF page" />
           <div
             ref={boxRef}
-            className="sig-box"
+            className={`sig-box${included ? '' : ' idle'}`}
             style={{ left: pct(placement.fx), top: pct(placement.fy), width: pct(placement.fw), height: pct(placement.fh) }}
             onPointerDown={(e) => begin('move', e)}
             onPointerMove={move}

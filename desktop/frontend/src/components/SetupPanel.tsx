@@ -1,6 +1,7 @@
-import { RefreshCw, UsbIcon } from 'lucide-react'
+import { UsbIcon } from 'lucide-react'
 import type { AppearanceProfile, Identity, TokenHint } from '../types'
 import { STANDARDS } from '../types'
+import { RefreshButton } from './RefreshButton'
 import { StampPreview } from './StampPreview'
 import { SuggestInput } from './SuggestInput'
 
@@ -36,7 +37,7 @@ export function SetupPanel(props: {
   identities: Identity[]
   identityId: string | null
   onIdentity: (id: string) => void
-  onRefreshIdentities: () => void
+  onRefreshIdentities: () => Promise<unknown>
   tokenHint: TokenHint | null
   profiles: AppearanceProfile[]
   profileId: string | null
@@ -72,9 +73,11 @@ export function SetupPanel(props: {
               </option>
             ))}
           </select>
-          <button className="ic-btn" onClick={props.onRefreshIdentities} title="Refresh certificates from token" aria-label="Refresh certificates">
-            <RefreshCw size={15} />
-          </button>
+          <RefreshButton
+            onRefresh={props.onRefreshIdentities}
+            title="Refresh certificates from token"
+            label="Refresh certificates"
+          />
         </div>
         {/*
           The single most common reason signing does not work on a fresh

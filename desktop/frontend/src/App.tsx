@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, RefreshCw, Sun, Moon, Signature } from 'lucide-react'
+import { FolderOpen, FileText, CheckCircle2, AlertCircle, MinusCircle, X, Sun, Moon, Signature } from 'lucide-react'
 import * as api from './api'
 import type { AppConfig, FontOption, Identity, PdfFile, Placement, RenderResult, Settings, SignResult, TokenHint } from './types'
 import { PlacementCanvas } from './components/PlacementCanvas'
 import { SetupPanel } from './components/SetupPanel'
 import { ProfileEditor } from './components/ProfileEditor'
 import { PinDialog } from './components/PinDialog'
+import { RefreshButton } from './components/RefreshButton'
 import { StampPreview, fontFaceCss, stampTime } from './components/StampPreview'
 import { SuggestInput } from './components/SuggestInput'
 
@@ -27,6 +28,7 @@ export function App() {
   const [included, setIncluded] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
   const [render, setRender] = useState<RenderResult | null>(null)
+  const [renderError, setRenderError] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, SignResult>>({})
   const [editorOpen, setEditorOpen] = useState(false)
   const [pinOpen, setPinOpen] = useState(false)
@@ -96,13 +98,24 @@ export function App() {
   useEffect(() => {
     if (!selected) {
       setRender(null)
+      setRenderError(null)
       return
     }
     let live = true
     api
       .getPage(selected, pageForRender)
-      .then((r) => live && setRender(r))
-      .catch((e) => live && setError(String(e.message ?? e)))
+      .then((r) => {
+        if (!live) return
+        setRender(r)
+        setRenderError(null)
+      })
+      .catch((e) => {
+        if (!live) return
+        // Drop the page as well. The last file's preview left standing beside an
+        // error reads as though this file had opened, which is worse than blank.
+        setRender(null)
+        setRenderError(String(e.message ?? e))
+      })
     return () => {
       live = false
     }
@@ -183,11 +196,15 @@ export function App() {
     setFolderPath('') // full reset to the empty state, not a half-cleared toolbar
   }
 
+  // Returns the promise: the refresh button spins until it settles.
   function loadIdentities() {
-    api.getIdentities().then((r) => {
-      setIdentities(r.identities)
-      setTokenHint(r.tokenHint)
-    })
+    return api
+      .getIdentities()
+      .then((r) => {
+        setIdentities(r.identities)
+        setTokenHint(r.tokenHint)
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
   }
 
   async function refreshFolder() {
@@ -370,15 +387,12 @@ export function App() {
           onClear={clearFiles}
           clearLabel="Clear the path"
         />
-        <button
-          className="ic-btn"
-          onClick={refreshFolder}
+        <RefreshButton
+          onRefresh={refreshFolder}
           disabled={!folderPath}
           title="Rescan the folder"
-          aria-label="Refresh files"
-        >
-          <RefreshCw size={15} />
-        </button>
+          label="Refresh files"
+        />
       </div>
 
       {(error || (failedCount > 0 && !warnHidden)) && (
@@ -480,13 +494,24 @@ export function App() {
         </section>
 
         <section className="stage">
-          {render && selected ? (
+          {/* The message belongs here rather than in the banner at the top: it is
+              about the selected file, so it should go when another is picked. */}
+          {renderError ? (
+            <div className="stage-empty failed">
+              <AlertCircle size={32} className="s-err" />
+              <p>{sentence(renderError)}</p>
+              <p className="stage-sub">Signing it will fail for the same reason.</p>
+            </div>
+          ) : render && selected ? (
             <PlacementCanvas
               render={render}
               placement={placement}
               onChange={(p) => patch({ placement: p })}
               onPage={(index) => patch({ placement: { ...placement, page: index } })}
               preview={stamp}
+              included={included.has(selected)}
+              onInclude={() => toggleInclude(selected)}
+              appliesTo={filesToSign.length}
             />
           ) : (
             <div className="stage-empty">

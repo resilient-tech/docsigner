@@ -157,6 +157,12 @@
   color: var(--amber-ink);
   border-bottom-color: color-mix(in srgb, var(--amber) 32%, transparent);
 }
+/* Same row as a banner, but it is telling you how the app works, not that
+   something is wrong. */
+.banner.quiet {
+  color: var(--dim);
+  border-bottom: var(--hairline);
+}
 .banner-btn {
   flex: none;
   font-size: var(--text-sm);
@@ -340,6 +346,19 @@
   gap: 12px;
   color: var(--faint);
 }
+/* A page that would not open says so where the page would have been. Narrow and
+   centred: a sentence run across the whole stage is hard to read. */
+.stage-empty p {
+  max-width: 42ch;
+  margin: 0;
+  text-align: center;
+}
+.stage-empty.failed p:first-of-type {
+  color: var(--text);
+}
+.stage-sub {
+  font-size: 12px;
+}
 .canvas {
   flex: 1;
   min-width: 0;
@@ -418,6 +437,16 @@
   background: var(--action-soft);
   cursor: move;
   touch-action: none;
+}
+/* The file on screen is not one that will be signed. The box still drags — it
+   sets the position for the files that are — it just should not look like it is
+   about to stamp this page. */
+.sig-box.idle {
+  border-color: var(--faint);
+  background: transparent;
+}
+.sig-box.idle .sig-preview {
+  opacity: 0.4;
 }
 .sig-preview {
   position: absolute;
@@ -669,12 +698,39 @@ input.control::placeholder {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* Busy is not "unavailable". The button is disabled while it works, but dimming
+   it to 0.4 would hide the very spin it is showing. */
+.ic-btn[aria-busy='true'] {
+  opacity: 1;
+  color: var(--text);
+  cursor: progress;
+}
 .ic-btn.danger {
   color: var(--red-ink);
 }
 .ic-btn.danger:hover:not(:disabled) {
   background: var(--red-soft);
   color: var(--red-ink);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spinning {
+  /* Named, because an SVG's own origin is its top-left in some engines. */
+  transform-origin: center;
+  animation: spin 0.7s linear infinite;
+}
+/* Motion turned off still needs an answer to "did my click land?", so with no
+   spin to look at, the dim carries the state instead. */
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation: none;
+  }
+  .ic-btn[aria-busy='true'] {
+    opacity: 0.45;
+  }
 }
 /* The status tick/cross carries the reason as its tooltip, so give it a target
    worth pointing at rather than a bare 15px glyph. */
