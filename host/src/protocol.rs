@@ -191,9 +191,16 @@ fn sign_hash(params: &Value) -> Result<Value> {
     let signatures =
         sign_with_fallback(thumbprint, &digests, alg, pin.as_deref(), origin.as_deref())?;
 
+    // The thumbprint lives here now rather than in the popup, which is read by
+    // whoever is signing, not by whoever is debugging.
+    log::info!(
+        "signHash -> {} signature(s) with {thumbprint} for {}",
+        signatures.len(),
+        origin.as_deref().unwrap_or("the desktop app")
+    );
     notify::notify(
         "DocSigner",
-        &notify::signed_message(signatures.len(), thumbprint, origin.as_deref()),
+        &notify::signed_message(signatures.len(), origin.as_deref()),
     );
     Ok(json!({
         "signatures": signatures.iter().map(|s| certs::base64_encode(s)).collect::<Vec<_>>()

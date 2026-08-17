@@ -338,7 +338,7 @@ Result: `{ "signatures": ["<b64>", "..."] }`
 
 Signature values are CMS-ready: PKCS#1 v1.5 block for RSA (host wraps digest in DigestInfo, mechanism `CKM_RSA_PKCS`), DER-encoded `ECDSA-Sig-Value` for EC (host converts the raw r||s from `CKM_ECDSA`).
 
-On each successful signHash the host shows a best-effort desktop notification (macOS/Linux) naming the certificate, so a signing attempt is visible even when the PIN cache means no dialog appeared. It never blocks or fails the call. Set `DOCSIGNER_NO_NOTIFY` to disable it.
+On each successful signHash the host shows a best-effort desktop notification on all three platforms — how many documents were signed, and for which origin when a site asked — so a signing attempt is visible even when the PIN cache means no dialog appeared. It never blocks or fails the call. Set `DOCSIGNER_NO_NOTIFY` to disable it. The thumbprint goes to the log instead: it is a debugging detail, not something to show whoever is signing. On Windows the popup is credited to a name registered under `HKCU\Software\Classes\AppUserModelId`, without which Windows credits it to PowerShell.
 
 ---
 

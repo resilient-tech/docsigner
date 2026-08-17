@@ -55,6 +55,9 @@ windows = { version = "0.58", features = [
     "Win32_Security_Cryptography",
     "Win32_Security_Credentials",
     "Win32_System_Memory",
+    # Only to register the name Windows credits our notifications to; notify.rs
+    # says why. A feature on a crate already here, not a new crate.
+    "Win32_System_Registry",
 ] }
 
 [target.'cfg(windows)'.build-dependencies]
