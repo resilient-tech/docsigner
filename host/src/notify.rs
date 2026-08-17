@@ -15,20 +15,25 @@ const APP_ID: &str = "tech.resilient.docsigner";
 const POWERSHELL_APP_ID: &str =
     "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe";
 
-pub fn notify(title: &str, body: &str) {
+/// Announce something, as `app`, in the words of `message`.
+///
+/// Two arguments because the platforms differ in where the name goes: Windows
+/// puts it in a header of its own, the others have no header and need it inside
+/// the popup or nothing identifies the sender.
+pub fn notify(app: &str, message: &str) {
     if std::env::var_os(ENV_DISABLE).is_some() {
         return;
     }
-    if let Err(e) = show(title, body) {
+    if let Err(e) = show(app, message) {
         log::debug!("notification suppressed: {e}");
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
+fn show(app: &str, message: &str) -> Result<(), notify_rust::error::Error> {
     notify_rust::Notification::new()
-        .summary(title)
-        .body(body)
+        .summary(app)
+        .body(message)
         .show()
         .map(|_| ())
 }
@@ -42,15 +47,26 @@ fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
 /// that in place the popup is ours; without it we still fall back to PowerShell,
 /// because a popup under the wrong name beats a signature nobody is told about.
 #[cfg(target_os = "windows")]
-fn show(title: &str, body: &str) -> Result<(), notify_rust::error::Error> {
+fn show(app: &str, message: &str) -> Result<(), notify_rust::error::Error> {
     let mut notification = notify_rust::Notification::new();
-    notification.summary(title).body(body);
-    if let Err(e) = register_identity() {
-        log::debug!("could not register the popup identity: {e}");
-    } else if notification.app_id(APP_ID).show().is_ok() {
-        return Ok(());
+    match register_identity() {
+        // The header says who we are now, so the message goes where the name used
+        // to, rather than the popup saying "DocSigner" twice.
+        Ok(()) => {
+            if notification.summary(message).app_id(APP_ID).show().is_ok() {
+                return Ok(());
+            }
+        }
+        Err(e) => log::debug!("could not register the popup identity: {e}"),
     }
-    notification.app_id(POWERSHELL_APP_ID).show().map(|_| ())
+    // Credited to PowerShell instead: nothing in that header is ours, so the name
+    // goes back inside. The wrong name beats a signature nobody is told about.
+    notification
+        .summary(app)
+        .body(message)
+        .app_id(POWERSHELL_APP_ID)
+        .show()
+        .map(|_| ())
 }
 
 /// Tell Windows our name, so it has one to show. Writes a single string under
