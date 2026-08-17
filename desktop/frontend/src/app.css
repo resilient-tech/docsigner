@@ -669,12 +669,39 @@ input.control::placeholder {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* Busy is not "unavailable". The button is disabled while it works, but dimming
+   it to 0.4 would hide the very spin it is showing. */
+.ic-btn[aria-busy='true'] {
+  opacity: 1;
+  color: var(--text);
+  cursor: progress;
+}
 .ic-btn.danger {
   color: var(--red-ink);
 }
 .ic-btn.danger:hover:not(:disabled) {
   background: var(--red-soft);
   color: var(--red-ink);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spinning {
+  /* Named, because an SVG's own origin is its top-left in some engines. */
+  transform-origin: center;
+  animation: spin 0.7s linear infinite;
+}
+/* Motion turned off still needs an answer to "did my click land?", so with no
+   spin to look at, the dim carries the state instead. */
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation: none;
+  }
+  .ic-btn[aria-busy='true'] {
+    opacity: 0.45;
+  }
 }
 /* The status tick/cross carries the reason as its tooltip, so give it a target
    worth pointing at rather than a bare 15px glyph. */

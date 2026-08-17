@@ -88,6 +88,8 @@ Frontend (`frontend/src/`):
 - `components/PinDialog.tsx` — the PIN prompt.
 - `components/SuggestInput.tsx` — a text box with suggestions; the path and
   timestamp fields both use it.
+- `components/RefreshButton.tsx` — spins while its work runs; files and
+  certificates both use it.
 - `App.tsx`, `api.ts`, `types.ts` — the shell, the fetch layer, the shapes.
 
 ---
