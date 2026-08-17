@@ -161,10 +161,12 @@ export function PlacementCanvas({
           <span className="banner-msg">
             This file will not be signed.
             {appliesTo > 0 &&
-              ` Dragging here sets the position for the ${appliesTo} file${appliesTo === 1 ? '' : 's'} that will be.`}
+              ` The position you set here applies to the ${
+                appliesTo === 1 ? 'selected file' : `${appliesTo} selected files`
+              }.`}
           </span>
           <button className="banner-btn" onClick={onInclude}>
-            Include
+            Include this file
           </button>
         </div>
       ) : (
