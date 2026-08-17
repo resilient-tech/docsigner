@@ -1,13 +1,12 @@
 """Which platforms get a window icon handed over at runtime.
 
-GTK needs a file, and Cocoa uses one as the dock image. Windows must not get one:
+GTK needs a file, and Cocoa uses one as the dock image. Windows needs the .ico:
 WinForms throws `Argument 'picture' must be a picture that can be used as a Icon`
-on a .png and the window never opens. Handed nothing it takes the icon out of the
-executable, which is the .ico already embedded there.
+on a .png and the window never opens.
 
-These tests keep that gate from widening back. It broke running from source on
-Windows once, and a first fix then excluded macOS too, which needlessly cost it the
-dock image.
+These tests keep each platform on the file it can read. Windows was handed the .png
+once and would not start; the fix after that excluded macOS too, which needlessly
+cost it the dock image.
 
 Skipped where the desktop backend's own dependencies are not installed, which is
 how the python CI job runs.
@@ -22,10 +21,11 @@ entry = pytest.importorskip(
 )
 
 
-def test_windows_gets_no_icon(monkeypatch):
-    """A .png here is fatal, and the .exe already carries the real one."""
+def test_windows_gets_the_ico(monkeypatch):
+    """Never the .png: WinForms throws on it rather than ignoring it."""
     monkeypatch.setattr(sys, "platform", "win32")
-    assert entry._icon() is None
+    icon = entry._icon()
+    assert icon and icon.endswith("DocSigner.ico")
 
 
 @pytest.mark.parametrize("platform", ["linux", "darwin"])

@@ -45,24 +45,22 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
 
 
 def _icon() -> str | None:
-    """The window icon, for the one OS that needs it handed over at runtime.
+    """The window icon, handed over at runtime.
 
-    GTK needs one: with no icon the Linux taskbar shows a generic placeholder.
-    Cocoa takes it too, as the dock image.
+    Each toolkit takes only what it can read: WinForms an .ico, GTK and Cocoa the
+    .png. A .png is not ignored by WinForms — it throws `Argument 'picture' must be
+    a picture that can be used as a Icon` and the app never opens.
 
-    Not Windows. WinForms does not ignore an icon it cannot use — a .png makes it
-    throw `Argument 'picture' must be a picture that can be used as a Icon` and the
-    app never opens. Given nothing it pulls the icon out of the executable instead,
-    which is the .ico already embedded there, so this is also the better answer.
+    None is a fine answer. A frozen Windows build carries no .ico beside it, since
+    the spec embeds that in the .exe, and WinForms then lifts the icon out of the
+    executable — the same image. From source, without this, it lifts python.exe's.
     """
-    if sys.platform == "win32":
-        return None
     root = (
         Path(sys._MEIPASS)
         if getattr(sys, "frozen", False)
         else Path(__file__).resolve().parents[2] / "packaging"
     )
-    icon = root / "DocSigner.png"
+    icon = root / ("DocSigner.ico" if sys.platform == "win32" else "DocSigner.png")
     return str(icon) if icon.is_file() else None
 
 
