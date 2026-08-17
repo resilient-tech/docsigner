@@ -257,10 +257,15 @@ mod tests {
     /// Without a piped stdout the child inherits ours, which in host mode is
     /// the browser's channel: the PIN would be written there and `run_dialog`
     /// would read nothing and call it a cancellation.
+    ///
+    /// It talks to rustc because anything that can run this test has rustc, and
+    /// the printf it used before needs an `sh` on PATH — true of the CI runners
+    /// and of neither macOS nor Windows as a developer actually finds them.
     #[test]
     fn the_answer_is_captured_not_printed() {
-        let mut echo = Command::new("sh");
-        echo.arg("-c").arg("printf 1234");
-        assert_eq!(run_dialog(&mut echo).as_deref(), Some("1234"));
+        let mut version = Command::new("rustc");
+        version.arg("--version");
+        let captured = run_dialog(&mut version).expect("rustc printed nothing");
+        assert!(captured.starts_with("rustc "), "got {captured:?}");
     }
 }
