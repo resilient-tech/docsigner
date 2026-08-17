@@ -1,5 +1,6 @@
 """The routes the window talks to. In a real build it also serves the UI."""
 
+import logging
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from .models import FontUpload, Settings, SignRequest
 
 app = FastAPI(title="DocSigner Desktop")
 config.setup_logging()
+log = logging.getLogger(__name__)
 fonts.load()  # the user's uploaded faces, before the first stamp is drawn
 
 
@@ -80,6 +82,10 @@ def folder(path: str) -> dict:
 def page(path: str, index: int = -1, width: int = 1000) -> dict:
     try:
         return docsigner_core.render_page(str(Path(path).expanduser()), index, width)
+    except docsigner_core.SignerError as exc:
+        # The window gets the plain sentence; the log keeps what pdfium said.
+        log.warning("could not open %s: %r", path, exc.__cause__ or exc)
+        raise HTTPException(400, exc.message)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"Could not render this page: {exc}")
 

@@ -340,6 +340,19 @@
   gap: 12px;
   color: var(--faint);
 }
+/* A page that would not open says so where the page would have been. Narrow and
+   centred: a sentence run across the whole stage is hard to read. */
+.stage-empty p {
+  max-width: 42ch;
+  margin: 0;
+  text-align: center;
+}
+.stage-empty.failed p:first-of-type {
+  color: var(--text);
+}
+.stage-sub {
+  font-size: 12px;
+}
 .canvas {
   flex: 1;
   min-width: 0;

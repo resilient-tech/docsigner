@@ -28,6 +28,7 @@ export function App() {
   const [included, setIncluded] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
   const [render, setRender] = useState<RenderResult | null>(null)
+  const [renderError, setRenderError] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, SignResult>>({})
   const [editorOpen, setEditorOpen] = useState(false)
   const [pinOpen, setPinOpen] = useState(false)
@@ -97,13 +98,24 @@ export function App() {
   useEffect(() => {
     if (!selected) {
       setRender(null)
+      setRenderError(null)
       return
     }
     let live = true
     api
       .getPage(selected, pageForRender)
-      .then((r) => live && setRender(r))
-      .catch((e) => live && setError(String(e.message ?? e)))
+      .then((r) => {
+        if (!live) return
+        setRender(r)
+        setRenderError(null)
+      })
+      .catch((e) => {
+        if (!live) return
+        // Drop the page as well. The last file's preview left standing beside an
+        // error reads as though this file had opened, which is worse than blank.
+        setRender(null)
+        setRenderError(String(e.message ?? e))
+      })
     return () => {
       live = false
     }
@@ -482,7 +494,15 @@ export function App() {
         </section>
 
         <section className="stage">
-          {render && selected ? (
+          {/* The message belongs here rather than in the banner at the top: it is
+              about the selected file, so it should go when another is picked. */}
+          {renderError ? (
+            <div className="stage-empty failed">
+              <AlertCircle size={32} className="s-err" />
+              <p>{sentence(renderError)}</p>
+              <p className="stage-sub">Signing it will fail for the same reason.</p>
+            </div>
+          ) : render && selected ? (
             <PlacementCanvas
               render={render}
               placement={placement}
