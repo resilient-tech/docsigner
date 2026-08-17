@@ -47,17 +47,15 @@ def _wait_until_serving(port: int, timeout: float = 15.0) -> None:
 def _icon() -> str | None:
     """The window icon, for the one OS that needs it handed over at runtime.
 
-    Windows embeds the .ico in the .exe and macOS takes the .icns from the app
-    bundle. GTK has neither, and with no icon the Linux taskbar shows a generic
-    placeholder.
+    GTK needs one: with no icon the Linux taskbar shows a generic placeholder.
+    Cocoa takes it too, as the dock image.
 
-    Linux only, and not merely as a tidy-up: WinForms does not ignore an icon it
-    cannot use, it throws `Argument 'picture' must be a picture that can be used
-    as a Icon` and the app never opens. A packaged Windows build escaped that
-    because the spec only bundles the .png on Linux, so running from source was
-    the only place it bit. The spec's check and this one have to agree.
+    Not Windows. WinForms does not ignore an icon it cannot use — a .png makes it
+    throw `Argument 'picture' must be a picture that can be used as a Icon` and the
+    app never opens. Given nothing it pulls the icon out of the executable instead,
+    which is the .ico already embedded there, so this is also the better answer.
     """
-    if not sys.platform.startswith("linux"):
+    if sys.platform == "win32":
         return None
     root = (
         Path(sys._MEIPASS)
