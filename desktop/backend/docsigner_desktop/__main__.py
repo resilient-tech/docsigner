@@ -48,9 +48,17 @@ def _icon() -> str | None:
     """The window icon, for the one OS that needs it handed over at runtime.
 
     Windows embeds the .ico in the .exe and macOS takes the .icns from the app
-    bundle, so pywebview ignores this on both. GTK has neither, and with no icon
-    the Linux taskbar shows a generic placeholder.
+    bundle. GTK has neither, and with no icon the Linux taskbar shows a generic
+    placeholder.
+
+    Linux only, and not merely as a tidy-up: WinForms does not ignore an icon it
+    cannot use, it throws `Argument 'picture' must be a picture that can be used
+    as a Icon` and the app never opens. A packaged Windows build escaped that
+    because the spec only bundles the .png on Linux, so running from source was
+    the only place it bit. The spec's check and this one have to agree.
     """
+    if not sys.platform.startswith("linux"):
+        return None
     root = (
         Path(sys._MEIPASS)
         if getattr(sys, "frozen", False)
