@@ -7,11 +7,14 @@ the token, the PIN dialog), so this is a thin wrapper over `list` and `sign`.
 
 import base64
 import json
+import logging
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 ENV_HOST_BIN = "DOCSIGNER_HOST_BIN"
 
@@ -103,6 +106,31 @@ def sign_hashes(thumbprint: str, digests: list[bytes], algorithm: str = "sha256"
     args = ["sign", "--thumbprint", thumbprint, "--alg", algorithm]
     for d in digests:
         args += ["--hash", base64.b64encode(d).decode("ascii")]
-    env = {**os.environ, "DOCSIGNER_PIN": pin} if pin else None
+    # The host announces a signature the moment the token produces one, which here
+    # is only halfway: the timestamp and the revocation data still have to be
+    # fetched and embedded, and that is what usually fails. We announce the
+    # outcome ourselves once we know it — see notify() below.
+    env = {**os.environ, "DOCSIGNER_NO_NOTIFY": "1"}
+    if pin:
+        env["DOCSIGNER_PIN"] = pin
     result = _run(args, timeout=300, env=env)
     return [base64.b64decode(s) for s in result.get("signatures", [])]
+
+
+def notify(message: str) -> None:
+    """Show a desktop popup, through the host. Best effort, never raises.
+
+    The host owns this on all three platforms, and on Windows it also owns the
+    registered name Windows credits the popup to. Reaching for a Python
+    notification library would mean a second implementation of both.
+
+    No DOCSIGNER_NO_NOTIFY here: if the user has set it themselves it is inherited
+    and the host stays quiet, which is what they asked for.
+    """
+    try:
+        subprocess.run(
+            [host_binary(), "notify", message],
+            capture_output=True, text=True, timeout=15, **_NO_CONSOLE,
+        )
+    except Exception as exc:  # noqa: BLE001 - a popup is never worth failing a run
+        log.debug("could not show the popup: %s", exc)

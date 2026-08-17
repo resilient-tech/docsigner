@@ -27,9 +27,10 @@ use protocol::State;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Every verb `cli::build_request` accepts. Kept in step with it by the test at
+/// Every verb `cli` answers to — those `build_request` maps onto a protocol
+/// command, plus the ones `cli::run` handles itself. Kept in step by the test at
 /// the bottom of this file.
-const CLI_COMMANDS: [&str; 10] = [
+const CLI_COMMANDS: [&str; 11] = [
     "version",
     "--version",
     "-V",
@@ -37,6 +38,11 @@ const CLI_COMMANDS: [&str; 10] = [
     "checkUpdate",
     "check-update",
     "sign",
+    // Handled inside cli::run rather than by build_request: a popup is not a
+    // protocol command. It still has to be listed here, or a caller with a piped
+    // stdin — which is every caller that is not a terminal — gets the native
+    // messaging loop and silent success instead.
+    "notify",
     "help",
     "--help",
     "-h",
@@ -128,6 +134,16 @@ mod tests {
                 "{arg} came from a browser and must be served, not parsed"
             );
         }
+    }
+
+    /// The desktop app spawns us with a pipe on stdin, not a terminal, so a verb
+    /// missing from CLI_COMMANDS is not a usage error — it is served as native
+    /// messaging, reads EOF, and exits 0 having done nothing. `notify` shipped
+    /// that way for exactly one build.
+    #[test]
+    fn a_command_a_piped_caller_uses_is_still_a_command() {
+        assert!(wants_cli(Some("notify"), false));
+        assert!(wants_cli(Some("sign"), false));
     }
 
     #[test]

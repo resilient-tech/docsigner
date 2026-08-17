@@ -102,6 +102,17 @@ docsigner-host sign \
 - point at a driver the built-in list misses: `export DOCSIGNER_PKCS11_MODULES=/path/to/pkcs11.so`.
 - set `DOCSIGNER_NO_NOTIFY` to silence the popup.
 
+Show a popup, for a local app that knows how its own run finished:
+
+```bash
+docsigner-host notify "Signed 3 documents."
+```
+
+Not a protocol command — over the protocol it would let a web page raise popups.
+The desktop app uses it: it silences the host's own popup with
+`DOCSIGNER_NO_NOTIFY` while signing hashes, then says what came out of the run
+once the timestamps and revocation data are in and the files are written.
+
 **Adding a token backend?** Copy the shape of `src/os_store/`: expose
 `list_der()` and `sign(thumbprint, digests, alg)`, build entries with
 `certs::cert_info(...)`, and `protocol.rs` will merge yours in.
