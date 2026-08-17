@@ -7,6 +7,7 @@
 Window mode serves the built UI, so run `pnpm build` first.
 """
 
+import logging
 import socket
 import sys
 import threading
@@ -17,6 +18,8 @@ import uvicorn
 
 from . import startup
 from .app import app
+
+log = logging.getLogger(__name__)
 
 HOST = "127.0.0.1"
 DEV_PORT = 8000
@@ -64,6 +67,26 @@ def _icon() -> str | None:
     return str(icon) if icon.is_file() else None
 
 
+def _claim_taskbar_identity() -> None:
+    """Windows groups the taskbar button by process identity, not by window.
+
+    With none set it falls back to the executable, so from source the button shows
+    python.exe's icon while the title bar is already correct. Matches the macOS
+    bundle identifier in the spec. Cosmetic, so a failure here is never worth
+    stopping a launch for.
+    """
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            ctypes.c_wchar_p("tech.resilient.docsigner")
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.debug("could not set the taskbar identity: %s", exc)
+
+
 def main() -> None:
     # The signing host is its own binary now, shipped beside us. host.py finds it.
     startup.remember(sys.argv[1:])
@@ -88,6 +111,7 @@ def main() -> None:
     # per module, which is why the stamp was fine there.
     from PIL import Image, ImageDraw, ImageFont  # noqa: F401
 
+    _claim_taskbar_identity()
     port = _free_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
     _wait_until_serving(port)
