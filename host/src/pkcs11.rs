@@ -131,7 +131,7 @@ fn load_module(path: &Path) -> std::result::Result<Pkcs11, P11Error> {
 /// A ProxKey shows several slots and errors on the empty ones. Asking for them
 /// all at once dies on the first empty slot and hides a real token sitting in
 /// the next one. So walk them individually.
-fn tokens_on(context: &Pkcs11, path: &Path) -> Vec<(Slot, String)> {
+fn tokens_on(context: &Pkcs11, path: &Path) -> Vec<(Slot, String, bool)> {
     let slots = match context.get_all_slots() {
         Ok(slots) => slots,
         Err(e) => {
@@ -142,7 +142,11 @@ fn tokens_on(context: &Pkcs11, path: &Path) -> Vec<(Slot, String)> {
     let mut found = Vec::new();
     for slot in slots {
         match context.get_token_info(slot) {
-            Ok(info) => found.push((slot, info.label().trim().to_string())),
+            Ok(info) => found.push((
+                slot,
+                info.label().trim().to_string(),
+                info.protected_authentication_path(),
+            )),
             Err(e) => {
                 log::warn!("skipping slot {slot} on {}: {e}", path.display());
             }
@@ -193,7 +197,7 @@ fn scan_module(path: &Path) -> ModuleScan {
     let tokens = tokens_on(&context, path);
     let mut certificates = Vec::new();
 
-    for (slot, label) in &tokens {
+    for (slot, label, protected) in &tokens {
         let session = match context.open_ro_session(*slot) {
             Ok(session) => session,
             Err(e) => {
@@ -206,7 +210,10 @@ fn scan_module(path: &Path) -> ModuleScan {
         };
         for (_handle, der) in certs_on_session(&session) {
             match certs::cert_info(&der, label, &module_name, Source::Pkcs11) {
-                Ok(info) => certificates.push(info),
+                Ok(mut info) => {
+                    info.protected_auth_path = *protected;
+                    certificates.push(info);
+                }
                 Err(e) => log::warn!(
                     "skipping unparseable certificate on {}: {e}",
                     path.display()
@@ -366,7 +373,7 @@ fn find_certificate(thumbprint: &str) -> Result<Located> {
             }
         };
         loaded += 1;
-        for (slot, label) in tokens_on(&context, &path) {
+        for (slot, label, _protected) in tokens_on(&context, &path) {
             tokens += 1;
             let session = match context.open_ro_session(slot) {
                 Ok(session) => session,
@@ -502,9 +509,37 @@ pub fn sign_hashes(
 
 /// Open a session and log in.
 ///
+/// Does this token collect the PIN itself?
+///
+/// A pinpad reader is the classic case, and a driver with its own dialog is the
+/// same thing: WatchData's ProxKey on Linux sets this. PKCS#11 is explicit that
+/// C_Login then takes no PIN and the application must not ask for one. Ignoring
+/// it is what made the desktop app prompt and the driver prompt again — two
+/// dialogs for one signature, with the PIN travelling through our process for
+/// nothing.
+fn protected_auth_path(located: &Located) -> bool {
+    located
+        .context
+        .get_token_info(located.slot)
+        .map(|info| info.protected_authentication_path())
+        .unwrap_or(false)
+}
+
+/// Log in and let the token ask for the PIN. No prompt, no cache: we never see
+/// it, which is the point of the flag.
+fn login_protected(located: &Located) -> std::result::Result<Session, P11Error> {
+    let session = located.context.open_ro_session(located.slot)?;
+    session.login(UserType::User, None)?;
+    Ok(session)
+}
+
 /// A remembered PIN that has since been changed earns exactly one fresh
 /// prompt. Never a blind retry, which would eat an attempt.
 fn login(located: &Located, pin_provider: PinProvider<'_>) -> Result<Session> {
+    if protected_auth_path(located) {
+        return login_protected(located)
+            .map_err(|e| map_login_error(&located.context, located.slot, &e));
+    }
     let cached = cached_pin(&located.label);
     let pin = match &cached {
         Some(pin) => pin.clone(),

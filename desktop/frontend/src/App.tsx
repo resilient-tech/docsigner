@@ -283,10 +283,15 @@ export function App() {
 
   const filesToSign = files.filter((f) => included.has(f.path))
 
-  const isToken = identities.find((i) => i.id === settings?.identity_id)?.kind === 'token'
+  const identity = identities.find((i) => i.id === settings?.identity_id)
+  const isToken = identity?.kind === 'token'
+  // Some tokens collect the PIN themselves — a pinpad reader, or a driver with
+  // its own dialog. Asking here as well is two prompts for one signature, and
+  // PKCS#11 says not to, so let the token do it.
+  const tokenAsksForPin = isToken && identity?.protectedAuthPath === true
 
   function onSign() {
-    if (isToken) setPinOpen(true)
+    if (isToken && !tokenAsksForPin) setPinOpen(true)
     else void doSign()
   }
 

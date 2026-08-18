@@ -48,6 +48,9 @@ export interface Identity {
   issuer: string
   notAfter: string
   selfSigned: boolean
+  /** The token collects the PIN itself (pinpad, or a driver with its own
+      dialog). We must not ask for one — see PinDialog. */
+  protectedAuthPath?: boolean
 }
 
 /**

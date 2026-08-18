@@ -136,6 +136,9 @@ def _scan_token_identities() -> tuple[list[dict], list[dict]]:
             "issuer": _cn_str(c.get("issuer", "")),
             "notAfter": (c.get("validTo") or "")[:10],
             "selfSigned": False,
+            # The token asks for the PIN itself, so the app must not. Absent on
+            # an older host, which means "no" and the app prompts as before.
+            "protectedAuthPath": bool(c.get("protectedAuthPath")),
         })
     return out, result.get("readers", [])
 
