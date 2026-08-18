@@ -24,21 +24,24 @@ export const links = {
   issues: `${REPO}/issues`,
   releases: `${REPO}/releases`,
   releaseLatest: `${REPO}/releases/latest`,
-  license: `${REPO}/blob/master/LICENSE`,
-  notice: `${REPO}/blob/master/NOTICE`,
+  license: `${REPO}/blob/HEAD/LICENSE`,
+  notice: `${REPO}/blob/HEAD/NOTICE`,
   security: `${REPO}/security/policy`,
-  contracts: `${REPO}/blob/master/CONTRACTS.md`,
+  contracts: `${REPO}/blob/HEAD/CONTRACTS.md`,
 
-  /* Docs stay in the repo. No port, nothing to keep in sync. */
-  docs: `${REPO}/blob/master/docs/README.md`,
-  docsArchitecture: `${REPO}/blob/master/docs/architecture.md`,
-  docsCore: `${REPO}/blob/master/docs/core.md`,
-  docsServer: `${REPO}/blob/master/docs/server.md`,
-  docsHost: `${REPO}/blob/master/docs/host.md`,
-  docsDesktop: `${REPO}/blob/master/docs/desktop.md`,
-  docsExtension: `${REPO}/blob/master/extension/README.md`,
-  docsJs: `${REPO}/blob/master/js/README.md`,
-  roadmap: `${REPO}/blob/master/docs/roadmap.md`,
+  /* Docs stay in the repo. No port, nothing to keep in sync.
+     `HEAD` resolves to the default branch, so these survive a branch rename
+     the way a named branch does not. core/tests/test_docs.py checks each
+     path is still a file in the repo. */
+  docs: `${REPO}/blob/HEAD/docs/README.md`,
+  docsArchitecture: `${REPO}/blob/HEAD/docs/architecture.md`,
+  docsCore: `${REPO}/blob/HEAD/docs/core.md`,
+  docsServer: `${REPO}/blob/HEAD/docs/server.md`,
+  docsHost: `${REPO}/blob/HEAD/docs/host.md`,
+  docsDesktop: `${REPO}/blob/HEAD/docs/desktop.md`,
+  docsExtension: `${REPO}/blob/HEAD/extension/README.md`,
+  docsJs: `${REPO}/blob/HEAD/js/README.md`,
+  roadmap: `${REPO}/blob/HEAD/docs/roadmap.md`,
 
   /* The feed every release publishes. Also what the host's checkUpdate reads,
      so the site and the product agree by construction. */
