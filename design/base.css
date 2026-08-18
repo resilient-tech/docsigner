@@ -130,6 +130,23 @@ a:hover {
   flex: none;
 }
 
+/* The glyph, sized here so no surface has to know the number. A proportion
+   rather than a pixel count, so it stays put if the tile ever resizes, and the
+   same proportion assets/icon.svg draws the mark at: its inked box spans just
+   over half the tile. Percentages beat the width/height attributes that Lucide
+   emits, and so does stroke-width, which keeps one weight across React,
+   astro-icon and hand-written SVG.
+
+   Never nest assets/icon.svg in here. That file is the whole logo, tile
+   included, and putting it inside this tile shrinks the glyph to a third of the
+   size it should be. */
+.brand-mark > svg,
+.brand-mark > img {
+  width: 61%;
+  height: 61%;
+  stroke-width: 2.25;
+}
+
 /* Numbers in a column -- page indicators, file counts, sizes, dates -- never
    reflow when they change. app.css sets this in four places. */
 time,

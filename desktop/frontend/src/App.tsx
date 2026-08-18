@@ -381,7 +381,8 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">
-            <Signature size={17} strokeWidth={2.25} />
+            {/* base.css sizes it and sets the stroke weight. */}
+            <Signature />
           </span>
           DocSigner
         </div>
