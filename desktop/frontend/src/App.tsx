@@ -12,6 +12,13 @@ import { SuggestInput } from './components/SuggestInput'
 
 const DEFAULT_PLACEMENT: Placement = { page: -1, fx: 0.68, fy: 0.86, fw: 0.29, fh: 0.1 }
 
+// Whole-window scale. The layout is in px, so growing the font alone would leave
+// the panels and buttons behind — only a zoom takes everything with it.
+const ZOOM_MIN = 0.8
+const ZOOM_MAX = 2
+const ZOOM_STEP = 0.1
+const clampZoom = (z: number) => Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) * 10) / 10
+
 /** Backend messages start lowercase ("no token is present"). Shown to a person,
  *  they should start like a sentence. */
 const sentence = (s?: string | null): string | undefined =>
@@ -52,6 +59,30 @@ export function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme)
   }, [resolvedTheme])
+
+  // On the root element: every engine treats a zoom there as the whole page, and
+  // the height:100% chain still fills the window because the containing block is
+  // divided by the same factor. A transform would not reflow.
+  const zoom = settings?.zoom ?? 1
+  useEffect(() => {
+    document.documentElement.style.zoom = String(zoom)
+  }, [zoom])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Cmd on macOS, Ctrl on Windows and Linux. Nothing is OS-gated: whichever
+      // the person pressed is the one they meant.
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      // '=' is the unshifted key on most layouts; '+' comes from Shift and the
+      // numpad. Both mean zoom in, as they do in a browser or an editor.
+      const step = ['+', '='].includes(e.key) ? ZOOM_STEP : ['-', '_'].includes(e.key) ? -ZOOM_STEP : e.key === '0' ? 0 : null
+      if (step === null) return
+      e.preventDefault()
+      setSettings((s) => (s ? { ...s, zoom: step === 0 ? 1 : clampZoom((s.zoom ?? 1) + step) } : s))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     api.getSettings().then(async (s) => {
@@ -283,10 +314,15 @@ export function App() {
 
   const filesToSign = files.filter((f) => included.has(f.path))
 
-  const isToken = identities.find((i) => i.id === settings?.identity_id)?.kind === 'token'
+  const identity = identities.find((i) => i.id === settings?.identity_id)
+  const isToken = identity?.kind === 'token'
+  // Some tokens collect the PIN themselves — a pinpad reader, or a driver with
+  // its own dialog. Asking here as well is two prompts for one signature, and
+  // PKCS#11 says not to, so let the token do it.
+  const tokenAsksForPin = isToken && identity?.protectedAuthPath === true
 
   function onSign() {
-    if (isToken) setPinOpen(true)
+    if (isToken && !tokenAsksForPin) setPinOpen(true)
     else void doSign()
   }
 

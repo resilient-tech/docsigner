@@ -166,6 +166,11 @@ pub struct CertInfo {
     #[serde(rename = "moduleName")]
     pub module_name: String,
     pub source: Source,
+    /// The token collects the PIN itself — a pinpad reader, or a driver with its
+    /// own dialog. Callers must not ask for one. Set by the PKCS#11 scan; the OS
+    /// stores have their own prompt and leave it false.
+    #[serde(rename = "protectedAuthPath")]
+    pub protected_auth_path: bool,
 }
 
 /// The short fingerprint every command uses to name a certificate.
@@ -198,6 +203,7 @@ pub fn cert_info(
         key_type: key_type(&cert)?,
         key_usage: key_usage(&cert),
         token_label: token_label.to_string(),
+        protected_auth_path: false,
         module_name: module_name.to_string(),
         source,
     })

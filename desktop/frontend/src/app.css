@@ -1007,15 +1007,46 @@ input[type='checkbox']:disabled {
   color: var(--faint);
   margin-bottom: 14px;
 }
+.pin-input-wrap {
+  position: relative;
+  width: 100%;
+}
 .pin-field {
   width: 100%;
   height: 38px;
+  /* Padded both sides, not just the right: the text is centred, so padding only
+     where the eye sits would push it off-centre. */
+  padding: 0 34px;
   text-align: center;
   letter-spacing: 4px;
   font-size: var(--text-lede);
   background: var(--surface);
   border: var(--hairline);
   border-radius: var(--radius-sm);
+  color: var(--text);
+}
+/* Edge draws its own reveal eye on a password field, so Windows showed two once
+   we added ours. WebKitGTK draws none, which is why Linux had no way to check a
+   typo at all. Ours is the one that behaves the same on all three. */
+.pin-field::-ms-reveal,
+.pin-field::-ms-clear {
+  display: none;
+}
+.pin-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  color: var(--faint);
+}
+.pin-eye:hover {
+  background: var(--hover);
   color: var(--text);
 }
 /* Nothing here: base.css gives every focusable the one --focus-ring, whose

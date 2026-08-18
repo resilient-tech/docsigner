@@ -29,6 +29,7 @@ export interface Settings {
   location: string | null
   placement: Placement | null
   theme: 'system' | 'light' | 'dark'
+  zoom: number
   tsa_url: string | null
   profiles: AppearanceProfile[]
 }
@@ -48,6 +49,9 @@ export interface Identity {
   issuer: string
   notAfter: string
   selfSigned: boolean
+  /** The token collects the PIN itself (pinpad, or a driver with its own
+      dialog). We must not ask for one — see PinDialog. */
+  protectedAuthPath?: boolean
 }
 
 /**
