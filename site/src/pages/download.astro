@@ -54,13 +54,6 @@ const products = [
     for: 'Sign without a person present',
     body: 'For invoices on submit and statements on a schedule. The key sits on the server and one HTTP call returns a signed file.',
   },
-  {
-    id: 'erpnext',
-    icon: 'lucide:receipt',
-    name: 'ERPNext app',
-    for: 'Sign print formats from the desk',
-    body: 'Bulk-sign with one PIN, auto-sign on submit, QR-verifiable copies. It embeds the signing engine, so there is no separate server to run.',
-  },
 ];
 ---
 
@@ -70,8 +63,8 @@ const products = [
 >
   <Hero
     kicker={release.published ? `Version ${release.version}` : 'Download'}
-    title="Four ways to sign"
-    lede="Pick the one that matches the job. Most people need exactly one."
+    title="Three ways to sign"
+    lede="Pick the one that matches the job."
   >
     {
       !release.published && (
@@ -266,22 +259,24 @@ const products = [
     </div>
   </Section>
 
-  <!-- --------------------------------------------------------- erpnext -->
   <Section
-    id="erpnext"
     ground="deep"
-    label="ERPNext app"
-    title="Signing from the desk"
-    lede="Print formats signed on submit, bulk runs on one PIN, and copies anyone can verify from a QR."
+    label="Built on it"
+    title="Or build your own"
+    lede="The signing engine is a Python package, so anything that can import it can sign."
   >
     <div class="stack">
-      <div class="install">
-        <p class="sub">On your bench.</p>
-        <code>bench get-app docsigner_integration</code>
-      </div>
+      <p class="sub">
+        Our own ERPNext app does exactly that: print formats signed on submit,
+        bulk runs on one PIN, copies anyone can verify from a QR. It is a separate
+        project, not part of DocSigner, and it is the example worth copying.
+      </p>
       <div class="links-row">
         <Button href={links.roadmap} variant="default" size="md" trailing="lucide:external-link">
-          What it does, and what is left
+          How the ERPNext app works
+        </Button>
+        <Button href={links.docsCore} variant="ghost" size="md" trailing="lucide:external-link">
+          The signing engine
         </Button>
       </div>
     </div>

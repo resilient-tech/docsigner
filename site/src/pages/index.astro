@@ -43,29 +43,29 @@ import Surfaces from '../components/Surfaces.astro';
   <Section
     ground="deep"
     label="What it looks like"
-    title="The same signature, three places"
+    title="Two places it happens"
   >
     <Surfaces />
   </Section>
 
-  <Section label="Why it exists" title="Nothing open source did this">
+  <Section label="Why it exists" title="Nothing else would do it">
     <div class="why">
       <p>
-        Plenty of open-source tools will sign a PDF with a key in a file. We could
-        not find one that signs with a certificate on a USB token, in bulk, from a
-        browser, on all three operating systems. That gap is the reason for this.
+        Every tool that signs with a token is commercial, or Windows-only, or
+        both. The open-source ones stop at keys in a file, which is not where a
+        DSC lives.
       </p>
-      <p>
-        And a signature that never becomes paper is one fewer page printed,
-        couriered and scanned back in. A small thing, but it adds up.
-      </p>
+      <p>Every signature made this way is one less page printed and posted.</p>
+      <Button href="/why" variant="default" size="md" trailing="lucide:arrow-right">
+        The longer story
+      </Button>
     </div>
   </Section>
 
   <Section ground="deep" centre>
     <div class="end">
       <h2>Sign something</h2>
-      <p class="lede">Four ways in. Most people need exactly one.</p>
+      <p class="lede">It takes one PIN and about a minute to set up.</p>
       <Button href="/download" variant="primary" size="lg">Download</Button>
     </div>
   </Section>
@@ -112,8 +112,9 @@ import Surfaces from '../components/Surfaces.astro';
   .why {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: var(--s-4);
-    max-width: var(--measure);
+    max-width: 58ch;
     color: var(--dim);
   }
 

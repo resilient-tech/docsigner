@@ -1,0 +1,202 @@
+---
+import Layout from '../components/Layout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import Button from '../components/Button.astro';
+import { links } from '../config';
+
+/*
+ * The one page on the site written in the first person.
+ *
+ * Everywhere else explains the product; this explains the people. Different
+ * job, so a different voice: past tense, "we wondered", the things that went
+ * wrong left in. The bench-week details are lifted from docs/roadmap.md's
+ * "What live testing taught us" -- they are the texture that makes it read as
+ * something that actually happened, because it did.
+ *
+ * Nothing invented. Every specific here traces to the repo.
+ */
+---
+
+<Layout
+  title="Why"
+  description="Why DocSigner exists: no open-source tool would sign with a DSC token, and the first week on a real bench taught us why that is harder than it looks."
+>
+  <Hero kicker="Why" title="Why we built this" lede="Short version: nothing else would do it." />
+
+  <Section ground="deep">
+    <div class="prose">
+      <p>
+        I am a chartered accountant who ended up writing software. Most days that
+        means Frappe and ERPNext, and a lot of what I build ends in the same
+        place: a document nobody will accept until it has been signed.
+      </p>
+      <p>
+        In India that means a DSC on a USB token. Almost everyone doing this work
+        has one in a drawer. What none of us had was a decent way to use it.
+      </p>
+      <p>
+        So we went looking. Every tool that handled tokens properly was
+        commercial, or Windows-only, or both. The open-source ones signed happily
+        with a key in a file, which is not where a DSC lives. That left paying,
+        rebooting into Windows, or printing the page and signing it by hand.
+      </p>
+      <p class="pull">We wondered how hard it could really be.</p>
+      <p>
+        Harder than it looks. Though almost none of the hard part turned out to be
+        cryptography.
+      </p>
+    </div>
+  </Section>
+
+  <Section label="The first week" title="What a real token taught us">
+    <div class="prose">
+      <p>
+        It worked against test keys long before it worked against hardware. Then
+        we plugged in a real Capricorn token, and the list of things we had wrong
+        got long quickly.
+      </p>
+    </div>
+
+    <ol class="lessons">
+      <li>
+        <h3>An empty list has to explain itself</h3>
+        <p>
+          Ours said “plug in your token” no matter what was actually wrong. It
+          reports the readers it can see now, so a missing token and a token with
+          no driver read differently. That one cost an afternoon of guessing.
+        </p>
+      </li>
+      <li>
+        <h3>Token drivers wedge</h3>
+        <p>
+          The ePass and ProxKey families let exactly one process talk to the token
+          at a time, and some only list certificates at the moment they are
+          initialised. So the helper re-initialises on every scan, gives each
+          driver twenty seconds, and names the program you need to close.
+        </p>
+      </li>
+      <li>
+        <h3>Ten handwriting fonts was nine too many</h3>
+        <p>
+          We shipped ten. Nobody wants to audition ten fonts to sign an invoice.
+          There are five now, one per personality.
+        </p>
+      </li>
+    </ol>
+
+    <p class="after">
+      None of that is in a specification. You find it by plugging the thing in,
+      which is the only reason it is worth writing down.
+    </p>
+  </Section>
+
+  <Section ground="deep" label="One more reason" title="The paper">
+    <div class="prose">
+      <p>
+        Every signature made this way is one less page printed and posted. Next to
+        everything above that is a small thing, and it is still one of the
+        reasons we kept going.
+      </p>
+    </div>
+  </Section>
+
+  <Section centre>
+    <div class="end">
+      <h2>All of it is Apache-2.0</h2>
+      <p class="lede">
+        Including the parts that touch your token. Read it before you run it.
+      </p>
+      <div class="row">
+        <Button href="/download" variant="primary" size="lg">Download</Button>
+        <Button href={links.repo} variant="default" size="lg" trailing="lucide:external-link">
+          Read the source
+        </Button>
+      </div>
+    </div>
+  </Section>
+</Layout>
+
+<style>
+  .prose {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    max-width: 60ch;
+    color: var(--dim);
+  }
+
+  /* One line gets to be the turn in the story. */
+  .pull {
+    font-size: var(--display-3);
+    font-weight: var(--fw-semibold);
+    color: var(--text);
+    letter-spacing: var(--tracking-display);
+    margin-block: var(--s-2);
+  }
+
+  .lessons {
+    list-style: none;
+    padding: 0;
+    counter-reset: l;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
+    max-width: 62ch;
+    margin-top: var(--s-8);
+  }
+
+  .lessons li {
+    counter-increment: l;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: var(--s-3);
+  }
+
+  .lessons li::before {
+    content: counter(l);
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--pill);
+    background: var(--green-soft);
+    color: var(--green-ink);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lessons h3 {
+    font-size: var(--text-body);
+    letter-spacing: 0;
+    margin-bottom: var(--s-1);
+  }
+
+  .lessons p {
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
+  .after {
+    margin-top: var(--s-8);
+    padding-left: var(--s-4);
+    border-left: var(--accent-bar) solid var(--green);
+    color: var(--text);
+    max-width: 60ch;
+  }
+
+  .end {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-4);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    justify-content: center;
+  }
+</style>

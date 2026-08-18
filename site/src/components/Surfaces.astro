@@ -2,710 +2,521 @@
 import { Icon } from 'astro-icon/components';
 
 /*
- * The same signature, in the three places it gets made. Ported from
- * design/prototypes/hero-body.html.
+ * Two surfaces, both signable. Press the button and the thing actually happens.
  *
- * Tabs are radio inputs, so switching costs no JavaScript.
+ * The point of each is a claim the product makes and prose cannot: the desktop
+ * app asks for ONE PIN and then signs the whole batch, and an integration can
+ * put a signature on a document at the moment it is submitted. Watching that is
+ * shorter than reading it.
  *
- * Nothing is scaled. The prototype rendered each surface at its natural width
- * and then transformed it to fit, which put the desktop app at 0.42 on a phone
- * with the file list around 5px. The web surface reflows; the two that cannot
- * (a three-pane window, a wide invoice) scroll sideways inside their own frame
- * at full size. Swiping a window is honest, squinting at one is not.
+ * Accuracy, checked against the source rather than the old prototype:
+ *   - "Sign 4 PDFs" -- App.tsx:404 renders `Sign ${filesToSign.length} PDF(s)`,
+ *     and there are four rows, so the old "Sign 12 PDFs" was wrong.
+ *   - The queue head is a checkbox plus `${included.size} of ${files.length}`
+ *     (App.tsx:456) and the summary joins with " · " (App.tsx:465).
+ *   - A row's subtitle is its size in KB (App.tsx:499), not the output name.
+ *   - Every row has a checkbox; the old mock had none.
+ *   - SetupPanel has five fields, including Timestamp authority.
+ *   - There is no count pill anywhere in the app. The old mock invented one.
+ *   - PIN copy is PinDialog's own: "Enter token PIN" / "One PIN signs every
+ *     file."
+ *   - The stamp reads "Signed by <name>" over a timestamp, which is
+ *     appearance.py's DEFAULT_TEXT; the QR variant says "Digitally signed by".
  *
- * Strings are the real ones. The certificate line follows demo/demo.js:167,
- * "CN (signing, <token label>, valid until <date>)"; ePass2003 is a reader name
- * host/src/pcsc_readers.rs recognises; CCA-LTA is a profile the server accepts.
+ * The ERP tab is an EXAMPLE INTEGRATION, not part of DocSigner.
+ * docsigner_integration is its own repository, and the caption says so.
  */
 
+const files = [
+  { name: 'invoice_2026_0412.pdf', size: '12,698 KB', outcome: 'signed' },
+  { name: 'invoice_2026_0413.pdf', size: '431 KB', outcome: 'signed' },
+  { name: 'credit_note_0088.pdf', size: '96 KB', outcome: 'signed' },
+  { name: 'annexure_c.pdf', size: '1,204 KB', outcome: 'skipped' },
+];
+
 const tabs = [
-  { id: 'web', label: 'On your own site', caption: 'demo/, the page a developer wires up' },
-  { id: 'app', label: 'In the desktop app', caption: 'desktop/, batch-signing a folder' },
-  { id: 'erp', label: 'In ERPNext', caption: 'docsigner_integration, signing on submit' },
+  { id: 'app', label: 'The desktop app' },
+  { id: 'erp', label: 'Your own system' },
 ];
 ---
 
 <div class="surfaces">
-  {
-    tabs.map((t, i) => (
-      <input type="radio" name="surface" id={`s-${t.id}`} checked={i === 0} />
-    ))
-  }
+  {tabs.map((t, i) => (
+    <input type="radio" name="surface" id={`s-${t.id}`} checked={i === 0} />
+  ))}
 
   <div class="tablist" role="group" aria-label="Where signing happens">
     {tabs.map((t) => <label for={`s-${t.id}`}>{t.label}</label>)}
   </div>
 
   <div class="panels">
-    <!-- ------------------------------------------------ 1. the web page -->
+    <!-- ============================================= the desktop app -->
     <figure class="panel">
-      <div class="frame">
+      <div class="frame" data-app>
         <div class="bar">
           <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="url">
-            <Icon name="lucide:lock" aria-hidden="true" />
-            accounts.yourcompany.in/invoices/4412
-          </span>
+          <span class="win">DocSigner</span>
         </div>
-        <div class="body">
-          <div class="web">
-            <div class="card">
-              <p class="card-head label"><span class="step">1</span> Document</p>
-              <div class="field">
-                <span class="flabel">What to sign</span>
-                <span class="control">PDF (PAdES / CCA signature inside the file)</span>
-              </div>
-              <span class="control file">invoice_2026_0412.pdf</span>
-            </div>
-            <div class="card">
-              <p class="card-head label">
-                <span class="step">2</span> Certificate <span class="state">1 found</span>
-              </p>
-              <div class="field">
-                <span class="flabel">Signer</span>
-                <span class="control">Smit Vora (signing, ePass2003, valid until 2027-04-11)</span>
-              </div>
-            </div>
-            <div class="card">
-              <p class="card-head label"><span class="step">3</span> Signature</p>
-              <div class="field">
-                <span class="flabel">Profile</span>
-                <span class="control">CCA-LTA (India: CCA-LTV plus RFC 3161 timestamp)</span>
-              </div>
-            </div>
-            <span class="cta">Sign</span>
-          </div>
-        </div>
-      </div>
-      <figcaption class="cap">{tabs[0].caption}</figcaption>
-    </figure>
 
-    <!-- --------------------------------------------- 2. the desktop app -->
-    <figure class="panel">
-      <div class="frame">
-        <div class="bar">
-          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="url plain">DocSigner</span>
-        </div>
-        <div class="body wide">
+        <div class="scroller">
           <div class="app">
             <header class="topbar">
               <span class="brand">
-                <span class="brand-mark" aria-hidden="true">
-                  <Icon name="lucide:signature" />
-                </span>
+                <span class="brand-mark" aria-hidden="true"><Icon name="lucide:signature" /></span>
                 DocSigner
               </span>
               <span class="spacer"></span>
-              <span class="cta sm">Sign 12 PDFs</span>
+              <span class="ic" aria-hidden="true"><Icon name="lucide:sun" /></span>
+              <button type="button" class="btn primary" data-sign-app>
+                <span data-sign-label>Sign 4 PDFs</span>
+              </button>
             </header>
 
             <div class="toolbar">
-              <span class="chip">Choose folder</span>
+              <span class="btn ghost"><Icon name="lucide:folder-open" aria-hidden="true" /> Choose folder</span>
               <span class="path">~/Invoices/2026-04</span>
-              <span class="count">12 PDFs</span>
+              <span class="ic" aria-hidden="true"><Icon name="lucide:refresh-cw" /></span>
             </div>
 
             <div class="work">
               <section class="queue">
-                <p class="qhead label">12 of 12 <span class="qsum">3 signed</span></p>
-                <div class="qrow sel">
-                  <Icon name="lucide:file-text" aria-hidden="true" />
-                  <span class="qmain">
-                    <span class="qname">invoice_2026_0412.pdf</span>
-                    <span class="qsub">12,698 KB</span>
-                  </span>
+                <div class="qhead">
+                  <span class="qall"><span class="box on" aria-hidden="true"></span> 4 of 4</span>
+                  <span class="qsum" data-summary hidden>3 signed · 1 skipped</span>
                 </div>
-                <div class="qrow">
-                  <Icon name="lucide:file-text" aria-hidden="true" />
-                  <span class="qmain">
-                    <span class="qname">invoice_2026_0413.pdf</span>
-                    <span class="qsub">invoice_2026_0413_signed.pdf</span>
-                  </span>
-                  <Icon name="lucide:check" class="ok" aria-hidden="true" />
-                </div>
-                <div class="qrow">
-                  <Icon name="lucide:file-text" aria-hidden="true" />
-                  <span class="qmain">
-                    <span class="qname">credit_note_0088.pdf</span>
-                    <span class="qsub">credit_note_0088_signed.pdf</span>
-                  </span>
-                  <Icon name="lucide:check" class="ok" aria-hidden="true" />
-                </div>
-                <div class="qrow">
-                  <Icon name="lucide:file-text" aria-hidden="true" />
-                  <span class="qmain">
-                    <span class="qname">annexure_c.pdf</span>
-                    <span class="qsub">already signed</span>
-                  </span>
-                  <Icon name="lucide:minus" class="skip" aria-hidden="true" />
-                </div>
+                {files.map((f, i) => (
+                  <div class={`qrow${i === 0 ? ' sel' : ''}`} data-row={i} data-outcome={f.outcome}>
+                    <span class="box on" aria-hidden="true"></span>
+                    <Icon name="lucide:file-text" class="fic" aria-hidden="true" />
+                    <span class="qmain">
+                      <span class="qname">{f.name}</span>
+                      <span class="qsub">{f.size}</span>
+                    </span>
+                    <span class="qstatus" aria-hidden="true">
+                      <Icon name="lucide:circle-check" class="ok" />
+                      <Icon name="lucide:circle-minus" class="skip" />
+                    </span>
+                  </div>
+                ))}
               </section>
 
               <section class="stage">
                 <div class="ctools">
-                  <span class="page-ind">1 / 4</span>
+                  <span class="pager"><Icon name="lucide:chevron-left" aria-hidden="true" /> 1 / 4 <Icon name="lucide:chevron-right" aria-hidden="true" /></span>
                   <span class="zoom">100%</span>
                 </div>
                 <div class="cscroll">
                   <div class="sheet paper">
-                    <span class="rule w1"></span><span class="rule"></span>
-                    <span class="rule"></span><span class="rule w2"></span>
-                    <span class="rule"></span><span class="rule w3"></span>
-                    <span class="sigbox">Signed by Smit Vora</span>
+                    <span class="r h"></span>
+                    <span class="r"></span><span class="r w2"></span><span class="r"></span>
+                    <span class="r w3"></span><span class="r"></span><span class="r w2"></span>
+                    <span class="stampbox" data-stamp>
+                      <b>Signed by Smit Vora</b>
+                      <em>2026-04-11 14:32 +05:30</em>
+                    </span>
                   </div>
                 </div>
               </section>
 
               <aside class="setup">
-                <div class="field">
-                  <span class="flabel">Certificate</span>
-                  <span class="control">Smit Vora (signing, ePass2003, valid until 2027-04-11)</span>
-                </div>
-                <div class="field">
-                  <span class="flabel">Standard</span>
-                  <span class="control">CCA-LTA</span>
-                </div>
-                <div class="field">
-                  <span class="flabel">Save as</span>
-                  <span class="control">Filename suffix <b>_signed</b></span>
-                </div>
+                <div class="f"><span class="fl">Certificate</span><span class="c">Smit Vora (signing, ePass2003, valid until 2027-04-11)</span></div>
+                <div class="f"><span class="fl">Signature</span><span class="c stamp-mini paper">Signed by Smit Vora</span></div>
+                <div class="f"><span class="fl">Standard</span><span class="c">CCA-LTA</span></div>
+                <div class="f"><span class="fl">Timestamp authority</span><span class="c">DigiCert</span></div>
+                <div class="f"><span class="fl">Save as</span><span class="c">Filename suffix <b>_signed</b></span></div>
               </aside>
             </div>
           </div>
-        </div>
-      </div>
-      <figcaption class="cap">{tabs[1].caption}</figcaption>
-    </figure>
 
-    <!-- ------------------------------------------------- 3. in ERPNext -->
-    <figure class="panel">
-      <div class="frame">
-        <div class="bar">
-          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="url">
-            <Icon name="lucide:lock" aria-hidden="true" />
-            erp.yourcompany.in/app/sales-invoice/ACC-SINV-2026-0412
-          </span>
-        </div>
-        <div class="body wide">
-          <div class="erp">
-            <div class="erp-bar">
-              <span class="erp-title">ACC-SINV-2026-0412</span>
-              <span class="tag">Submitted</span>
-              <span class="spacer"></span>
-              <span class="chip">Print</span>
-              <span class="cta sm">Sign</span>
-            </div>
-            <div class="erp-body">
-              <div class="sheet paper tall">
-                <span class="rule w1"></span><span class="rule"></span>
-                <span class="rule w2"></span><span class="rule"></span>
-                <span class="rule"></span><span class="rule w3"></span>
-                <span class="rule"></span><span class="rule w2"></span>
-                <span class="sigbox wide-box">
-                  Digitally signed by SMIT VORA
-                  <span class="qr" aria-hidden="true"></span>
-                </span>
+          <!-- PinDialog, with its own copy. One PIN, whole batch. -->
+          <div class="pinwrap" data-pin hidden>
+            <div class="pin">
+              <p class="pin-t">Enter token PIN</p>
+              <p class="pin-s">One PIN signs every file.</p>
+              <span class="pin-in">••••••</span>
+              <div class="pin-btns">
+                <span class="btn ghost">Cancel</span>
+                <button type="button" class="btn primary" data-pin-ok>Sign</button>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <figcaption class="cap">{tabs[2].caption}</figcaption>
+      <figcaption class="cap">
+        The desktop app, signing a folder. Press the button.
+      </figcaption>
+    </figure>
+
+    <!-- ================================== an integration you'd build -->
+    <figure class="panel">
+      <div class="frame" data-erp>
+        <div class="bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="url">
+            <Icon name="lucide:lock" aria-hidden="true" />
+            erp.resilient.tech/app/sales-invoice/ACC-SINV-2026-0412
+          </span>
+        </div>
+
+        <div class="scroller">
+          <div class="erp">
+            <div class="erp-bar">
+              <span class="erp-id">ACC-SINV-2026-0412</span>
+              <span class="tag" data-tag>Submitted</span>
+              <span class="spacer"></span>
+              <span class="btn ghost">Print</span>
+              <button type="button" class="btn primary" data-sign-erp>
+                <span data-erp-label>Sign</span>
+              </button>
+            </div>
+
+            <div class="erp-body">
+              <div class="invoice paper">
+                <header class="inv-head">
+                  <div>
+                    <p class="co">Resilient Software Services LLP</p>
+                    <p class="co-sub">4th Floor, Prahladnagar · Ahmedabad 380015 · Gujarat</p>
+                    <p class="co-sub">GSTIN 24AAWFR1234K1ZP</p>
+                  </div>
+                  <p class="inv-kind">Tax Invoice</p>
+                </header>
+
+                <div class="inv-meta">
+                  <span><i>Invoice no.</i> ACC-SINV-2026-0412</span>
+                  <span><i>Date</i> 11 Apr 2026</span>
+                  <span><i>Place of supply</i> Maharashtra</span>
+                </div>
+
+                <table class="inv-tbl">
+                  <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+                  <tbody>
+                    <tr><td>ERPNext implementation, Q1</td><td class="num">4,20,000.00</td></tr>
+                    <tr><td>India Compliance, annual</td><td class="num">72,000.00</td></tr>
+                  </tbody>
+                  <tfoot>
+                    <tr><td>IGST 18%</td><td class="num">88,560.00</td></tr>
+                    <tr class="tot"><td>Total</td><td class="num">5,80,560.00</td></tr>
+                  </tfoot>
+                </table>
+
+                <div class="inv-foot">
+                  <p class="terms">Payable within 30 days. Interest at 18% p.a. thereafter.</p>
+                  <span class="stampbox wide" data-stamp>
+                    <span class="st-txt">
+                      <b>Digitally signed by SMIT VORA</b>
+                      <em>2026-04-11 14:32 +05:30</em>
+                    </span>
+                    <span class="qr" aria-hidden="true"></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap">
+        An integration built on DocSigner, signing an invoice as it is submitted.
+        <a href="https://github.com/resilient-tech/docsigner/blob/master/docs/roadmap.md" rel="noopener">docsigner_integration</a>
+        is a separate project; this is what one looks like.
+      </figcaption>
     </figure>
   </div>
 </div>
 
-<style>
-  .surfaces {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-5);
+<script>
+  /* Both surfaces are small state machines. Adding `signing` walks the rows via
+     transition delays in CSS, so the JS sets one class and waits. */
+  const app = document.querySelector<HTMLElement>('[data-app]');
+  const erp = document.querySelector<HTMLElement>('[data-erp]');
+
+  if (app) {
+    const pin = app.querySelector<HTMLElement>('[data-pin]');
+    const label = app.querySelector<HTMLElement>('[data-sign-label]');
+    const summary = app.querySelector<HTMLElement>('[data-summary]');
+
+    const reset = () => {
+      app.classList.remove('signing', 'done');
+      if (pin) pin.hidden = true;
+      if (summary) summary.hidden = true;
+      if (label) label.textContent = 'Sign 4 PDFs';
+    };
+
+    app.querySelector('[data-sign-app]')?.addEventListener('click', () => {
+      if (app.classList.contains('done')) return reset();
+      if (pin) pin.hidden = false;
+    });
+
+    app.querySelector('[data-pin-ok]')?.addEventListener('click', () => {
+      if (pin) pin.hidden = true;
+      app.classList.add('signing');
+      if (label) label.textContent = 'Signing…';
+      /* 4 rows at 260ms plus the stamp settling. */
+      setTimeout(() => {
+        app.classList.add('done');
+        if (summary) summary.hidden = false;
+        if (label) label.textContent = 'Sign again';
+      }, 1500);
+    });
   }
 
-  input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
+  if (erp) {
+    const label = erp.querySelector<HTMLElement>('[data-erp-label]');
+    const tag = erp.querySelector<HTMLElement>('[data-tag]');
+
+    erp.querySelector('[data-sign-erp]')?.addEventListener('click', () => {
+      const done = erp.classList.toggle('done');
+      if (label) label.textContent = done ? 'Sign again' : 'Sign';
+      if (tag) tag.textContent = done ? 'Signed' : 'Submitted';
+      tag?.classList.toggle('good', done);
+    });
   }
+</script>
+
+<style>
+  .surfaces { display: flex; flex-direction: column; gap: var(--s-5); }
+
+  input { position: absolute; opacity: 0; pointer-events: none; }
 
   .tablist {
-    display: flex;
-    gap: var(--s-1);
-    flex-wrap: wrap;
-    align-self: flex-start;
-    background: var(--surface);
-    border: var(--hairline);
-    border-radius: var(--radius-sm);
-    padding: var(--s-1);
+    display: flex; gap: var(--s-1); flex-wrap: wrap; align-self: flex-start;
+    background: var(--surface); border: var(--hairline);
+    border-radius: var(--radius-sm); padding: var(--s-1);
   }
-
   label {
-    font-size: var(--text-sm);
-    font-weight: var(--fw-medium);
-    color: var(--dim);
-    padding: var(--s-2) var(--s-4);
-    border-radius: var(--radius-card);
-    cursor: pointer;
-    transition:
-      color var(--dur-fast) var(--ease),
-      background var(--dur-fast) var(--ease);
+    font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--dim);
+    padding: var(--s-2) var(--s-4); border-radius: var(--radius-card); cursor: pointer;
+    transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   }
+  label:hover { color: var(--text); }
 
-  label:hover {
-    color: var(--text);
-  }
-
-  .panel {
-    display: none;
-    margin: 0;
-    flex-direction: column;
-    gap: var(--s-3);
-  }
+  .panel { display: none; margin: 0; flex-direction: column; gap: var(--s-3); }
 
   input:nth-of-type(1):checked ~ .tablist label:nth-of-type(1),
-  input:nth-of-type(2):checked ~ .tablist label:nth-of-type(2),
-  input:nth-of-type(3):checked ~ .tablist label:nth-of-type(3) {
-    background: var(--green-soft);
-    color: var(--green-ink);
+  input:nth-of-type(2):checked ~ .tablist label:nth-of-type(2) {
+    background: var(--green-soft); color: var(--green-ink);
   }
-
   input:nth-of-type(1):focus-visible ~ .tablist label:nth-of-type(1),
-  input:nth-of-type(2):focus-visible ~ .tablist label:nth-of-type(2),
-  input:nth-of-type(3):focus-visible ~ .tablist label:nth-of-type(3) {
-    box-shadow: var(--focus-ring);
-  }
-
+  input:nth-of-type(2):focus-visible ~ .tablist label:nth-of-type(2) { box-shadow: var(--focus-ring); }
   input:nth-of-type(1):checked ~ .panels .panel:nth-of-type(1),
-  input:nth-of-type(2):checked ~ .panels .panel:nth-of-type(2),
-  input:nth-of-type(3):checked ~ .panels .panel:nth-of-type(3) {
-    display: flex;
-  }
+  input:nth-of-type(2):checked ~ .panels .panel:nth-of-type(2) { display: flex; }
 
-  /* ---- the frame ---- */
+  /* ---- frame ---- */
   .frame {
-    border: var(--hairline);
-    border-radius: var(--radius);
-    background: var(--bg);
-    overflow: hidden;
-    box-shadow: var(--shadow-lift);
+    position: relative; border: var(--hairline); border-radius: var(--radius);
+    background: var(--bg); overflow: hidden; box-shadow: var(--shadow-lift);
   }
-
   .bar {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    height: 34px;
-    padding-inline: var(--s-3);
-    background: var(--surface);
+    display: flex; align-items: center; gap: var(--s-3); height: 34px;
+    padding-inline: var(--s-3); background: var(--surface);
     border-bottom: var(--hairline);
   }
-
-  .dots {
-    display: flex;
-    gap: 6px;
-    flex: none;
-  }
-
-  .dots i {
-    width: 9px;
-    height: 9px;
-    border-radius: var(--pill);
-    background: var(--border-strong);
-  }
-
+  .dots { display: flex; gap: 6px; flex: none; }
+  .dots i { width: 9px; height: 9px; border-radius: var(--pill); background: var(--border-strong); }
+  .win { font-size: var(--text-sm); color: var(--faint); }
   .url {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: var(--text-xs);
-    color: var(--faint);
-    background: var(--well);
-    border-radius: var(--pill);
-    padding: 3px var(--s-3);
-    overflow: hidden;
-    white-space: nowrap;
-    min-width: 0;
+    display: inline-flex; align-items: center; gap: 6px; min-width: 0;
+    font-family: var(--mono); font-size: var(--text-xs); color: var(--faint);
+    background: var(--well); border-radius: var(--pill); padding: 3px var(--s-3);
+    overflow: hidden; white-space: nowrap;
   }
+  .url :global(svg) { width: var(--icon-xs); height: var(--icon-xs); color: var(--green-ink); }
 
-  .url.plain {
-    background: none;
-    font-family: var(--font);
+  /* Neither of these can reflow, so they scroll sideways at full size rather
+     than shrinking to unreadable. */
+  .scroller { overflow-x: auto; overscroll-behavior-x: contain; position: relative; }
+  .cap { font-size: var(--text-sm); color: var(--faint); }
+  .cap a { color: var(--action-ink); }
+
+  /* ---- shared controls ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+    flex: none; height: var(--control-h-sm); padding-inline: var(--s-4);
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    font-size: var(--text-sm); font-weight: var(--fw-semibold); white-space: nowrap;
+    transition: background var(--dur-fast) var(--ease);
   }
+  .btn.primary { background: var(--green); color: var(--on-accent); cursor: pointer; }
+  .btn.primary:hover { background: var(--green-hover); }
+  .btn.ghost { border: var(--hairline); color: var(--dim); }
+  .btn :global(svg) { width: var(--icon-xs); height: var(--icon-xs); }
+  .ic { color: var(--faint); display: grid; place-items: center; width: 26px; height: 26px; }
+  .spacer { flex: 1; }
 
-  .url :global(svg) {
-    width: var(--icon-xs);
-    height: var(--icon-xs);
-    color: var(--green-ink);
+  .fl {
+    font-size: var(--text-xs); font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--faint);
   }
-
-  .body {
-    background: var(--bg-deep);
+  .c {
+    display: block; padding: var(--s-2) var(--s-3); border-radius: var(--radius-sm);
+    background: var(--well); border: var(--hairline); font-size: var(--text-xs);
+    color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  .f { display: flex; flex-direction: column; gap: var(--s-1); }
 
-  /* The two surfaces that cannot reflow scroll sideways at full size instead of
-     shrinking to fit. */
-  .body.wide {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
+  /* A checkbox, drawn. Every queue row has one. */
+  .box {
+    flex: none; width: 13px; height: 13px; border-radius: 3px;
+    border: 1px solid var(--border-strong);
   }
+  .box.on { background: var(--green); border-color: var(--green); }
 
-  .cap {
-    font-size: var(--text-sm);
-    color: var(--faint);
+  /* ---- desktop app ---- */
+  .app { min-width: 880px; }
+  .topbar, .toolbar, .erp-bar {
+    display: flex; align-items: center; gap: var(--s-3);
+    padding: var(--s-2) var(--s-4); border-bottom: var(--hairline);
   }
-
-  /* ---- shared bits ---- */
-  .cta {
-    display: grid;
-    place-items: center;
-    height: var(--control-h-lg);
-    border-radius: var(--radius-sm);
-    background: var(--green);
-    color: var(--on-accent);
-    font-weight: var(--fw-semibold);
-    font-size: var(--text-sm);
-  }
-
-  .cta.sm {
-    height: var(--control-h-sm);
-    padding-inline: var(--s-4);
-    flex: none;
-  }
-
-  .chip {
-    flex: none;
-    display: inline-grid;
-    place-items: center;
-    height: var(--control-h-sm);
-    padding-inline: var(--s-3);
-    border: var(--hairline);
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
-    color: var(--dim);
-  }
-
-  .flabel {
-    font-size: var(--text-xs);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--faint);
-  }
-
-  .control {
-    display: block;
-    padding: var(--s-2) var(--s-3);
-    border-radius: var(--radius-sm);
-    background: var(--well);
-    border: var(--hairline);
-    font-size: var(--text-sm);
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .control.file {
-    border-style: dashed;
-    border-color: var(--border-strong);
-    color: var(--dim);
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-1);
-  }
-
-  .spacer {
-    flex: 1;
-  }
-
-  /* ---- 1. web ---- */
-  .web {
-    max-width: 520px;
-    margin-inline: auto;
-    padding: var(--s-6) var(--s-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-4);
-  }
-
-  .card {
-    background: var(--surface);
-    border: var(--hairline);
-    border-radius: var(--radius);
-    padding: var(--s-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-3);
-  }
-
-  .card-head {
-    display: flex;
-    align-items: baseline;
-    gap: var(--s-2);
-  }
-
-  .step {
-    color: var(--action-ink);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .state {
-    margin-left: auto;
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--dim);
-  }
-
-  /* ---- 2. desktop app ---- */
-  .app {
-    /* Its real proportions. Narrower than this and it stops being the app. */
-    min-width: 860px;
-    background: var(--bg);
-  }
-
-  .topbar,
-  .toolbar,
-  .erp-bar {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-    padding: var(--s-2) var(--s-4);
-    border-bottom: var(--hairline);
-  }
-
-  .topbar .brand {
-    font-size: var(--text-body);
-  }
-
+  .topbar .brand { font-size: var(--text-body); }
+  .topbar :global(.brand-mark) { width: var(--icon-lg); height: var(--icon-lg); }
   .path {
-    flex: 1;
-    min-width: 0;
-    padding: var(--s-2) var(--s-3);
-    background: var(--surface);
-    border: var(--hairline);
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
-    color: var(--dim);
-    font-family: var(--mono);
+    flex: 1; min-width: 0; padding: var(--s-2) var(--s-3);
+    background: var(--surface); border: var(--hairline); border-radius: var(--radius-sm);
+    font-size: var(--text-sm); color: var(--dim); font-family: var(--mono);
   }
+  .work { display: grid; grid-template-columns: 268px minmax(0, 1fr) 236px; min-height: 392px; }
 
-  .count {
-    flex: none;
-    background: var(--action-soft);
-    color: var(--action-ink);
-    border-radius: var(--pill);
-    padding: 2px var(--s-3);
-    font-size: var(--text-sm);
-    font-weight: var(--fw-semibold);
-  }
-
-  .work {
-    display: grid;
-    grid-template-columns: 250px minmax(0, 1fr) 230px;
-    min-height: 380px;
-  }
-
-  .queue {
-    border-right: var(--hairline);
-    padding: var(--s-3);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
+  .queue { border-right: var(--hairline); padding: var(--s-3); display: flex; flex-direction: column; gap: 2px; }
   .qhead {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: var(--s-2);
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: var(--s-2); font-size: var(--text-sm); color: var(--dim);
   }
-
-  .qsum {
-    text-transform: none;
-    letter-spacing: 0;
-    color: var(--dim);
-  }
+  .qall { display: inline-flex; align-items: center; gap: var(--s-2); }
+  .qsum { color: var(--green-ink); font-weight: var(--fw-semibold); }
 
   .qrow {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
-    padding: var(--s-2);
-    border-radius: var(--radius-card);
-    color: var(--faint);
+    display: flex; align-items: center; gap: var(--s-2);
+    padding: var(--s-2); border-radius: var(--radius-card); color: var(--faint);
+  }
+  .qrow.sel { background: var(--surface); box-shadow: inset 2px 0 0 var(--action); }
+  .fic { color: var(--faint); }
+  .qmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .qname { font-size: var(--text-sm); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qsub { font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+
+  /* Status icons appear one row at a time once signing starts. */
+  .qstatus { flex: none; display: grid; place-items: center; width: 16px; height: 16px; }
+  .qstatus :global(svg) {
+    grid-area: 1 / 1; opacity: 0; transform: scale(.6);
+    transition: opacity .18s var(--ease), transform .18s var(--ease);
+  }
+  .qstatus :global(.ok) { color: var(--green-ink); }
+  .qstatus :global(.skip) { color: var(--amber-ink); }
+
+  .signing [data-row='0'] .qstatus :global(svg) { transition-delay: .1s; }
+  .signing [data-row='1'] .qstatus :global(svg) { transition-delay: .36s; }
+  .signing [data-row='2'] .qstatus :global(svg) { transition-delay: .62s; }
+  .signing [data-row='3'] .qstatus :global(svg) { transition-delay: .88s; }
+
+  .signing [data-outcome='signed'] .qstatus :global(.ok),
+  .signing [data-outcome='skipped'] .qstatus :global(.skip) {
+    opacity: 1; transform: none;
   }
 
-  .qrow.sel {
-    background: var(--surface);
-    box-shadow: inset 2px 0 0 var(--action);
-  }
-
-  .qmain {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .qname {
-    font-size: var(--text-sm);
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .qsub {
-    font-size: var(--text-xs);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ok {
-    color: var(--green-ink);
-  }
-
-  .skip {
-    color: var(--amber-ink);
-  }
-
-  .stage {
-    background: var(--bg-deep);
-    display: flex;
-    flex-direction: column;
-  }
-
+  .stage { background: var(--bg-deep); display: flex; flex-direction: column; }
   .ctools {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--s-2) var(--s-4);
-    border-bottom: var(--hairline);
-    font-size: var(--text-sm);
-    color: var(--dim);
-    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--s-2) var(--s-4); border-bottom: var(--hairline);
+    font-size: var(--text-sm); color: var(--dim); font-variant-numeric: tabular-nums;
   }
+  .pager { display: inline-flex; align-items: center; gap: var(--s-2); }
+  .cscroll { flex: 1; display: grid; place-items: start center; padding: var(--s-5); }
+  .setup { border-left: var(--hairline); padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
 
-  .cscroll {
-    flex: 1;
-    display: grid;
-    place-items: start center;
-    padding: var(--s-5);
+  /* ---- the page, and the stamp that lands on it ---- */
+  .sheet { width: 250px; padding: var(--s-4); display: flex; flex-direction: column; gap: 7px; }
+  .invoice { width: 460px; padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
+  .r { height: 3px; border-radius: 2px; background: var(--paper-line); }
+  .r.h { width: 46%; height: 5px; background: var(--paper-ink); opacity: .5; margin-bottom: var(--s-2); }
+  .r.w2 { width: 78%; }
+  .r.w3 { width: 58%; }
+
+  /* Off the type ladder on purpose: this is text inside a picture of a printed
+     page, drawn at the page's scale. Nobody reads it, they recognise it. */
+  .stampbox {
+    margin-top: var(--s-3); border: 1px solid var(--paper-line); border-radius: 2px;
+    padding: 5px 7px; color: var(--paper-ink); font-size: 8px; line-height: 1.45;
+    display: flex; flex-direction: column;
+    opacity: 0; transform: translateY(-3px);
+    transition: opacity .4s var(--ease) .95s, transform .4s var(--ease) .95s;
   }
+  .stampbox b { font-weight: 600; }
+  .stampbox em { font-style: normal; opacity: .65; }
+  .signing .stampbox, .done .stampbox { opacity: 1; transform: none; }
 
-  .setup {
-    border-left: var(--hairline);
-    padding: var(--s-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-4);
-  }
-
-  .setup .control {
-    font-size: var(--text-xs);
-  }
-
-  /* ---- the rendered page, in both app and erp ---- */
-  .sheet {
-    width: 260px;
-    padding: var(--s-4);
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    position: relative;
-  }
-
-  .sheet.tall {
-    width: 420px;
-    gap: 9px;
-  }
-
-  .rule {
-    height: 3px;
-    border-radius: 2px;
-    background: var(--paper-line);
-  }
-
-  .rule.w1 {
-    width: 45%;
-    height: 5px;
-    background: var(--paper-ink);
-    opacity: 0.55;
-    margin-bottom: var(--s-2);
-  }
-
-  .rule.w2 {
-    width: 78%;
-  }
-
-  .rule.w3 {
-    width: 60%;
-  }
-
-  /* Off the type ladder on purpose. This is text inside a picture of a printed
-     page, drawn at the page's scale: a real stamp is a few millimetres tall, and
-     setting it at --text-xs would make it taller than the paragraph rules beside
-     it. Nobody reads it, they recognise it. */
-  .sigbox {
-    margin-top: var(--s-4);
-    border: 1px solid var(--paper-line);
-    border-radius: 2px;
-    padding: var(--s-2);
-    font-size: 8px;
-    color: var(--paper-ink);
-    letter-spacing: 0.02em;
-  }
-
-  .sigbox.wide-box {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s-3);
-  }
-
-  /* The QR panel appearance.py draws when qr_url is set: square, full height. */
+  .stampbox.wide { flex-direction: row; align-items: center; gap: var(--s-3); transition-delay: 0s; }
+  .st-txt { display: flex; flex-direction: column; }
   .qr {
-    flex: none;
-    width: 30px;
-    height: 30px;
-    background:
-      repeating-conic-gradient(var(--paper-ink) 0 25%, transparent 0 50%) 0 0 /
-      6px 6px;
-    opacity: 0.75;
+    flex: none; width: 34px; height: 34px; opacity: .8;
+    background: repeating-conic-gradient(var(--paper-ink) 0 25%, transparent 0 50%) 0 0 / 6px 6px;
   }
 
-  /* ---- 3. erp ---- */
-  .erp {
-    min-width: 720px;
-    background: var(--bg);
+  .stamp-mini {
+    background: var(--paper); color: var(--paper-ink); border-color: var(--paper-line);
+    font-size: 9px; text-align: center; padding: var(--s-3) var(--s-2);
   }
 
-  .erp-title {
-    font-weight: var(--fw-semibold);
-    font-size: var(--text-sm);
+  /* ---- the PIN dialog ---- */
+  .pinwrap {
+    position: absolute; inset: 34px 0 0; z-index: var(--z-overlay);
+    background: var(--scrim); display: grid; place-items: center; padding: var(--s-4);
   }
+  /* An author `display` beats the UA rule that [hidden] relies on, so the
+     dialog was open on load. Say it explicitly. */
+  .pinwrap[hidden] { display: none; }
+  .pin {
+    background: var(--bg); border: var(--hairline); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lift); padding: var(--s-6);
+    display: flex; flex-direction: column; gap: var(--s-2); width: 280px;
+  }
+  .pin-t { font-weight: var(--fw-semibold); }
+  .pin-s { font-size: var(--text-sm); color: var(--dim); }
+  .pin-in {
+    margin-top: var(--s-2); padding: var(--s-2) var(--s-3);
+    background: var(--well); border: var(--hairline); border-radius: var(--radius-sm);
+    font-family: var(--mono); letter-spacing: .2em; color: var(--text);
+  }
+  .pin-btns { display: flex; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); }
 
+  /* ---- the ERP invoice ---- */
+  .erp { min-width: 700px; }
+  .erp-id { font-weight: var(--fw-semibold); font-size: var(--text-sm); }
   .tag {
-    flex: none;
-    background: var(--green-soft);
-    color: var(--green-ink);
-    border-radius: var(--pill);
-    padding: 2px var(--s-2);
-    font-size: var(--text-xs);
-    font-weight: var(--fw-semibold);
+    flex: none; border-radius: var(--pill); padding: 2px var(--s-3);
+    font-size: var(--text-xs); font-weight: var(--fw-semibold);
+    background: var(--action-soft); color: var(--action-ink);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
+  .tag.good { background: var(--green-soft); color: var(--green-ink); }
+  .erp-body { background: var(--bg-deep); display: grid; place-items: start center; padding: var(--s-6); min-height: 392px; }
 
-  .erp-body {
-    background: var(--bg-deep);
-    display: grid;
-    place-items: start center;
-    padding: var(--s-6);
-    min-height: 380px;
+  .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); }
+  .co { font-size: 11px; font-weight: 600; letter-spacing: .01em; }
+  .co-sub { font-size: 8px; opacity: .7; }
+  .inv-kind {
+    font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    border: 1px solid var(--paper-line); border-radius: 2px; padding: 3px 7px; white-space: nowrap;
+  }
+  .inv-meta {
+    display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4);
+    border-block: 1px solid var(--paper-line); padding-block: 5px; font-size: 8px;
+  }
+  .inv-meta i { font-style: normal; opacity: .6; margin-right: 4px; }
+
+  .inv-tbl { width: 100%; border-collapse: collapse; font-size: 8px; }
+  .inv-tbl th {
+    text-align: left; font-size: 7px; letter-spacing: .1em; text-transform: uppercase;
+    opacity: .6; padding-bottom: 4px; border-bottom: 1px solid var(--paper-line);
+  }
+  .inv-tbl td { padding-block: 4px; border-bottom: 1px solid color-mix(in srgb, var(--paper-line) 55%, transparent); }
+  .inv-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .inv-tbl tfoot td { opacity: .75; }
+  .inv-tbl tfoot .tot td { font-weight: 600; opacity: 1; border-bottom: 0; }
+
+  .inv-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin-top: var(--s-2); }
+  .terms { font-size: 7px; opacity: .6; max-width: 22ch; }
+  .inv-foot .stampbox { margin-top: 0; min-width: 168px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .qstatus :global(svg), .stampbox { transition-duration: .01ms !important; }
   }
 </style>
