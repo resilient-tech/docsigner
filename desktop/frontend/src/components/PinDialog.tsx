@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 
-/** In-app token PIN prompt. Optional: enter the PIN here (it goes to the local
-    backend and on to the host, never off the machine), or leave it blank and
-    the host shows its own system PIN dialog. Shown only for token identities.
+/** In-app token PIN prompt. The PIN goes to the local backend and on to the
+    host, never off the machine. Shown only for token identities.
+
+    A PIN is required here. Leaving it blank used to hand the job to the host's
+    own PIN window — two boxes for one signature, and no way to guess that an
+    empty field was what summoned the second one.
 
     Not shown at all for a token that collects the PIN itself — a pinpad reader,
     or a driver with its own dialog. App.tsx skips it on `protectedAuthPath`. */
@@ -25,6 +28,7 @@ export function PinDialog({
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault()
+          if (!pin) return // Enter with an empty field would submit past the button
           onSubmit(pin)
         }}
       >
@@ -43,7 +47,7 @@ export function PinDialog({
             autoFocus
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN (optional)"
+            placeholder="PIN"
           />
           <button
             type="button"
@@ -60,7 +64,7 @@ export function PinDialog({
           <button type="button" className="btn ghost" onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" className="btn primary">
+          <button type="submit" className="btn primary" disabled={!pin}>
             Sign
           </button>
         </div>
