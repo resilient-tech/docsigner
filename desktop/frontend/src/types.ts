@@ -29,6 +29,7 @@ export interface Settings {
   location: string | null
   placement: Placement | null
   theme: 'system' | 'light' | 'dark'
+  zoom: number
   tsa_url: string | null
   profiles: AppearanceProfile[]
 }

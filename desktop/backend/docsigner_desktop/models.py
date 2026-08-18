@@ -65,5 +65,8 @@ class Settings(BaseModel):
     placement: Optional[Placement] = None
     # "system" follows the OS on first run; the toggle pins "light"/"dark".
     theme: Literal["system", "light", "dark"] = "system"
+    # Whole-window scale, Ctrl/Cmd with + and -. Rides Settings so it survives a
+    # relaunch, and is clamped in the UI rather than here.
+    zoom: float = 1.0
     tsa_url: Optional[str] = None
     profiles: list[AppearanceProfile] = Field(default_factory=list)
