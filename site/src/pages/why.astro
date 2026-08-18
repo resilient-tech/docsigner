@@ -27,24 +27,28 @@ import { links } from '../config';
   <Section ground="deep">
     <div class="prose">
       <p>
-        I am a chartered accountant who ended up writing software. Most days that
-        means Frappe and ERPNext, and a lot of what I build ends in the same
-        place: a document nobody will accept until it has been signed.
+        We are commerce graduates. Accountants, mostly, who liked software more
+        than we expected to and taught ourselves to build it. These days that
+        means Frappe and ERPNext, and compliance work for people who file the
+        same returns we used to file.
       </p>
       <p>
-        In India that means a DSC on a USB token. Almost everyone doing this work
-        has one in a drawer. What none of us had was a decent way to use it.
+        Which is how we kept arriving at the same wall. Almost everything we
+        built ended at a document nobody would accept until it had been signed,
+        and in India that means a DSC on a USB token. Everyone doing this work
+        has one in a drawer. None of us had a decent way to use it.
       </p>
       <p>
-        So we went looking. Every tool that handled tokens properly was
-        commercial, or Windows-only, or both. The open-source ones signed happily
-        with a key in a file, which is not where a DSC lives. That left paying,
-        rebooting into Windows, or printing the page and signing it by hand.
+        So we went looking properly. Every tool that handled tokens was
+        commercial, or Windows-only, or both. The open-source ones signed
+        happily with a key in a file, which is not where a DSC lives. That left
+        paying, rebooting into Windows, or printing the page and signing it by
+        hand.
       </p>
       <p class="pull">We wondered how hard it could really be.</p>
       <p>
-        Harder than it looks. Though almost none of the hard part turned out to be
-        cryptography.
+        Harder than it looks. Though almost none of the hard part turned out to
+        be cryptography.
       </p>
     </div>
   </Section>
@@ -62,9 +66,12 @@ import { links } from '../config';
       <li>
         <h3>An empty list has to explain itself</h3>
         <p>
-          Ours said “plug in your token” no matter what was actually wrong. It
-          reports the readers it can see now, so a missing token and a token with
-          no driver read differently. That one cost an afternoon of guessing.
+          Ours said “plug in your token” no matter what was actually wrong. That
+          cost an afternoon of guessing.
+        </p>
+        <p class="fix">
+          It reports the readers it can see now, so “no token” and “token with no
+          driver” read differently.
         </p>
       </li>
       <li>
@@ -72,16 +79,17 @@ import { links } from '../config';
         <p>
           The ePass and ProxKey families let exactly one process talk to the token
           at a time, and some only list certificates at the moment they are
-          initialised. So the helper re-initialises on every scan, gives each
-          driver twenty seconds, and names the program you need to close.
+          initialised.
+        </p>
+        <p class="fix">
+          So it re-initialises on every scan, gives each driver twenty seconds,
+          and names the program you need to close.
         </p>
       </li>
       <li>
         <h3>Ten handwriting fonts was nine too many</h3>
-        <p>
-          We shipped ten. Nobody wants to audition ten fonts to sign an invoice.
-          There are five now, one per personality.
-        </p>
+        <p>Nobody wants to audition ten fonts to sign an invoice.</p>
+        <p class="fix">Five now, one per personality.</p>
       </li>
     </ol>
 
@@ -176,6 +184,14 @@ import { links } from '../config';
   .lessons p {
     font-size: var(--text-sm);
     color: var(--dim);
+  }
+
+  /* What we did about it, marked so the list scans as problem then fix. */
+  .fix {
+    margin-top: var(--s-2);
+    padding-left: var(--s-3);
+    border-left: 2px solid var(--green);
+    color: var(--text);
   }
 
   .after {

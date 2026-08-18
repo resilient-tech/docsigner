@@ -5,10 +5,12 @@ import { links, REPO_PUBLIC, ready } from '../config';
 
 /* The reader's questions, in the order they ask them: how does this work, which
    parts do I need, what does the signature claim, give me it. */
+/* Why first. Someone who does not yet care what this is has no reason to read
+   how it works, and the gap it fills is the most interesting thing about it. */
 const nav = [
+  { href: '/why', label: 'Why' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/standards', label: 'Standards' },
-  { href: '/why', label: 'Why' },
   { href: '/download', label: 'Download' },
 ].filter((l) => ready(l.href));
 

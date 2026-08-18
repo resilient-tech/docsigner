@@ -13,28 +13,21 @@ import { Icon } from 'astro-icon/components';
 </button>
 
 <script>
+  import { isPaper, toggleTheme } from '../lib/theme';
+
   const btn = document.querySelector<HTMLButtonElement>('.toggle');
   const label = btn?.querySelector('.sr-only');
 
   const sync = () => {
-    const paper = document.documentElement.dataset.theme === 'paper';
-    const next = paper ? 'dark' : 'paper';
+    const next = isPaper() ? 'dark' : 'paper';
     if (label) label.textContent = `Switch to ${next} theme`;
     btn?.setAttribute('title', `Switch to ${next} theme`);
   };
 
-  btn?.addEventListener('click', () => {
-    const paper = document.documentElement.dataset.theme === 'paper';
-    if (paper) delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = 'paper';
-    try {
-      localStorage.setItem('theme', paper ? 'dark' : 'paper');
-    } catch {
-      /* Nothing to do. The choice holds for this page either way. */
-    }
-    sync();
-  });
-
+  btn?.addEventListener('click', toggleTheme);
+  /* Anything can change the theme now, including the app prototype's own
+     button, so listen rather than assuming this toggle was the cause. */
+  document.addEventListener('themechange', sync);
   sync();
 </script>
 
