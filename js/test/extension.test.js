@@ -38,6 +38,16 @@ test("background.js allows every command the contract defines", () => {
   }
 });
 
+// The page cannot learn the host is missing from anywhere else, so this link is
+// the only thing standing between "signing failed" and someone installing it.
+test("background.js hands the page an https link for a missing host", () => {
+  const background = readFileSync(join(extDir, "background.js"), "utf8");
+  const url = /const HOST_DOWNLOAD_URL = "([^"]+)"/.exec(background);
+  assert.ok(url, "HOST_DOWNLOAD_URL should be a string literal");
+  assert.match(url[1], /^https:\/\//);
+  assert.match(background, /errorReply\(\s*"HOST_NOT_INSTALLED",[\s\S]{0,120}HOST_DOWNLOAD_URL/);
+});
+
 test("extension scripts parse", () => {
   for (const file of ["content.js", "background.js", "consent.js"]) {
     execFileSync(process.execPath, ["--check", join(extDir, file)]);

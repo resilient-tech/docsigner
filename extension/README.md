@@ -18,6 +18,10 @@ nothing at all.
 
 This extension does nothing on its own. The native host must be installed and
 registered with this extension's ID (see [`../host/README.md`](../host/README.md)).
+When it is not there, `background.js` answers `HOST_NOT_INSTALLED` with a
+`downloadUrl` (`HOST_DOWNLOAD_URL`, the published download page) so the page can
+offer the install. The extension opens no tab of its own: the page asked for the
+signature, so the page decides what the user sees next.
 
 Why the hops are shaped this way, and what each one is allowed to do:
 [`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain).

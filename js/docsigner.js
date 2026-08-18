@@ -4,19 +4,28 @@
 const REQUEST_EVENT = "org.docsigner.request";
 const RESPONSE_EVENT = "org.docsigner.response";
 
+// Where someone with no extension goes to get one. A page cannot ask the
+// extension for this link when the extension is what's missing, so the answer
+// has to be a constant here. Pass `downloadUrl` to the constructor to send
+// people to an internal mirror instead.
+export const DOWNLOAD_URL = "https://docsigner.pages.dev/download#web";
+
 /**
  * What every failed call throws. Switch on `code`; the list is in CONTRACTS.md.
+ * `downloadUrl` is set on the two "not installed" codes: show it as a link.
  */
 export class DocSignerError extends Error {
-  constructor(code, message) {
+  constructor(code, message, downloadUrl = null) {
     super(message || code);
     this.name = "DocSignerError";
     this.code = code;
+    this.downloadUrl = downloadUrl;
   }
 }
 
 export class DocSigner {
-  constructor() {
+  constructor({ downloadUrl = DOWNLOAD_URL } = {}) {
+    this.downloadUrl = downloadUrl;
     this._pending = new Map(); // requestId -> {resolve, reject, timer}
     this._onResponse = null;
   }
@@ -31,7 +40,41 @@ export class DocSigner {
       timeoutMs: timeout,
       timeoutCode: "EXTENSION_NOT_INSTALLED",
       timeoutMessage: `The DocSigner extension did not answer within ${timeout} ms. It is probably not installed.`,
+      timeoutDownloadUrl: this.downloadUrl,
     });
+  }
+
+  /**
+   * Which of the two pieces are installed, without prompting anyone: `ping` is
+   * answered by the extension and `getVersion` names no user data, so neither
+   * raises the consent popup or touches the token. Use it to gate a Sign
+   * button and to say which piece is missing.
+   *
+   * Never rejects. A missing piece is a null version.
+   * @param {{timeout?: number}} [options] how long to wait for the extension.
+   * @returns {Promise<{extension: string|null, host: string|null,
+   *   downloadUrl: string|null, error: {code: string, message: string}|null}>}
+   *   `downloadUrl` is set when something is missing; `error` explains a host
+   *   that answered with something other than a version.
+   */
+  async status({ timeout = 2000 } = {}) {
+    const state = { extension: null, host: null, downloadUrl: null, error: null };
+    try {
+      state.extension = (await this.init({ timeout })).version;
+    } catch (e) {
+      state.downloadUrl = e.downloadUrl || this.downloadUrl;
+      state.error = { code: e.code, message: e.message };
+      return state; // no extension, so nothing can answer for the host either
+    }
+    try {
+      state.host = (await this._call("getVersion", {})).version;
+    } catch (e) {
+      state.error = { code: e.code, message: e.message };
+      // A broken host is not a missing one; only offer the installer for the
+      // one code that means absent.
+      if (e.code === "HOST_NOT_INSTALLED") state.downloadUrl = e.downloadUrl || this.downloadUrl;
+    }
+    return state;
   }
 
   /**
@@ -77,14 +120,18 @@ export class DocSigner {
     return this._call("checkUpdate", {});
   }
 
-  _call(command, params, { timeoutMs, timeoutCode, timeoutMessage } = {}) {
+  _call(command, params, { timeoutMs, timeoutCode, timeoutMessage, timeoutDownloadUrl } = {}) {
     return new Promise((resolve, reject) => {
       const requestId = crypto.randomUUID();
       let timer = null;
       if (timeoutMs) {
         timer = setTimeout(() => {
           this._pending.delete(requestId);
-          reject(new DocSignerError(timeoutCode || "INTERNAL", timeoutMessage || `No response to "${command}"`));
+          reject(new DocSignerError(
+            timeoutCode || "INTERNAL",
+            timeoutMessage || `No response to "${command}"`,
+            timeoutDownloadUrl || null,
+          ));
         }, timeoutMs);
       }
       this._pending.set(requestId, { resolve, reject, timer });
@@ -105,7 +152,11 @@ export class DocSigner {
       this._pending.delete(detail.requestId);
       if (entry.timer) clearTimeout(entry.timer);
       if (detail.error) {
-        entry.reject(new DocSignerError(detail.error.code || "INTERNAL", detail.error.message));
+        entry.reject(new DocSignerError(
+          detail.error.code || "INTERNAL",
+          detail.error.message,
+          detail.error.downloadUrl || null,
+        ));
       } else {
         entry.resolve(detail.result);
       }

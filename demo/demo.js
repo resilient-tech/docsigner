@@ -2,19 +2,17 @@
 
 import { DocSigner, DocSignerError } from "../js/docsigner.js";
 
-// Point these at your published extension listing and host installers.
-const INSTALL_EXTENSION_URL = "#";
-const INSTALL_HOST_URL = "#";
-
 // A plain sentence for every error code. This is the whole list.
 const MESSAGES = {
+  // No link here: these two errors carry a downloadUrl of their own, so the
+  // page never hardcodes where to send someone.
   EXTENSION_NOT_INSTALLED: {
     text: "The DocSigner browser extension is not installed.",
-    link: INSTALL_EXTENSION_URL, linkText: "Install the extension",
+    linkText: "Install the extension",
   },
   HOST_NOT_INSTALLED: {
     text: "The DocSigner native host is not installed on this computer.",
-    link: INSTALL_HOST_URL, linkText: "Download the installer",
+    linkText: "Download the installer",
   },
   ORIGIN_DENIED: { text: "You denied this site access to your certificates. Remove the decision in the extension settings to be asked again." },
   USER_CANCELLED: { text: "Signing was cancelled at the PIN prompt." },
@@ -124,7 +122,17 @@ async function listCertificates() {
   el("list").disabled = true;
   setStatus("info", "Looking for certificates...");
   try {
-    await signer.init({ timeout: 2000 });
+    // status() answers before the consent popup and before the token is
+    // touched, so a missing extension or host is named without a prompt.
+    const state = await signer.status({ timeout: 2000 });
+    if (!state.extension || !state.host) {
+      showError(new DocSignerError(
+        state.error ? state.error.code : "INTERNAL",
+        state.error ? state.error.message : "",
+        state.downloadUrl,
+      ));
+      return;
+    }
     const listed = await signer.listCertificates();
     certificates = listed.certificates;
     renderCertificates();
@@ -396,7 +404,8 @@ function showError(e) {
   const code = e instanceof DocSignerError ? e.code : "INTERNAL";
   const known = MESSAGES[code] || MESSAGES.INTERNAL;
   const detail = known === MESSAGES.INTERNAL && e.message ? ` (${e.message})` : "";
-  setStatus("error", `${known.text}${detail}`, known.link ? { href: known.link, text: known.linkText } : null);
+  const href = e.downloadUrl || known.link || null;
+  setStatus("error", `${known.text}${detail}`, href ? { href, text: known.linkText } : null);
   console.error(e);
 }
 

@@ -30,6 +30,26 @@ token: [`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain
 
 Signing needs the extension and the native host installed (see the root README).
 
+## Check before you prompt
+
+`status()` says which of the two pieces are there. It prompts nobody — no
+consent popup, no token access — so it is the call to gate a Sign button on, and
+it never rejects:
+
+```js
+const { extension, host, downloadUrl } = await signer.status();
+if (!extension || !host) {
+  // downloadUrl is where to send them: the published download page, or the
+  // link the extension itself supplied for a missing host.
+  showLink(`Install DocSigner to sign with your token`, downloadUrl);
+}
+```
+
+Point it somewhere else with `new DocSigner({ downloadUrl: "https://intranet/…" })`
+for an internal mirror. The same URL rides on `EXTENSION_NOT_INSTALLED` and
+`HOST_NOT_INSTALLED` as `error.downloadUrl`, so a page that only catches errors
+gets it too.
+
 ## Distribute
 
 Copy the one file you need into your site. No build step is required on the

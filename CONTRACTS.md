@@ -364,6 +364,8 @@ new CustomEvent("org.docsigner.response", {
 
 Commands are the native protocol commands plus `ping` (result `{ "installed": true, "version": "..." }`, answered by the extension without touching the host). Extra error codes at this layer: `EXTENSION_NOT_INSTALLED` (ping timeout, raised by docsigner.js), `HOST_NOT_INSTALLED`, `ORIGIN_DENIED` (user rejected the consent prompt).
 
+A `HOST_NOT_INSTALLED` error carries a third field, `downloadUrl`, an `https://` page where the host can be had. Only the extension can tell the host is absent, so the link comes from it rather than from every integrating page; the extension opens nothing itself, because the page asked for the signature and the page owns what the user sees next. The mirror case — no extension at all — has nobody to ask, so docsigner.js answers from its own constant.
+
 First `listCertificates` or `signHash` from an unknown origin triggers the extension's consent prompt. The decision is remembered per origin.
 
 While that prompt is open the extension runs its own `checkUpdate` and, if a newer host exists, shows a line naming the version with a link to it. `downloadUrl` is only ever rendered as a link when the host supplies one, and the host drops any that is not `https://` — the feed is remote data and the consent page runs with extension privileges. The banner never blocks or delays the decision.
@@ -375,7 +377,13 @@ While that prompt is open the extension runs its own `checkUpdate` and, if a new
 Single ES module file, no dependencies. Load it with `<script type="module">` or a bundler.
 
 ```js
-const signer = new DocSigner();
+const signer = new DocSigner();             // or new DocSigner({ downloadUrl })
+
+// What is installed, prompting nobody: ping is answered by the extension and
+// getVersion names no user data, so no consent popup and no token access.
+// Never rejects. A missing piece is a null version; downloadUrl says where to
+// get it, and is null when the host answered but is broken rather than absent.
+const { extension, host, downloadUrl, error } = await signer.status();
 
 await signer.init({ timeout: 2000 });       // rejects: EXTENSION_NOT_INSTALLED
 // certificates: array from §2, same fields. readers: PC/SC readers from §2,
@@ -389,7 +397,7 @@ const { signatures } = await signer.signHash({
 const { updateAvailable, downloadUrl } = await signer.checkUpdate();
 ```
 
-All rejections are `DocSignerError` with `.code` from the codes above. Nothing else in the API. Server calls (start/complete) are plain `fetch` in application code; the demo shows the wiring.
+All rejections are `DocSignerError` with `.code` from the codes above and `.downloadUrl` set on `EXTENSION_NOT_INSTALLED` and `HOST_NOT_INSTALLED` (null otherwise), so a page can offer the missing install without hardcoding a link. Nothing else in the API. Server calls (start/complete) are plain `fetch` in application code; the demo shows the wiring.
 
 ---
 
@@ -409,6 +417,7 @@ All rejections are `DocSignerError` with `.code` from the codes above. Nothing e
 
 ## 7. Changelog
 
+- **2026-08-18 (b)** — additive, page bridge and docsigner.js, `protocolVersion` stays 1: a missing piece now names where to get itself. The bridge's `HOST_NOT_INSTALLED` error carries `downloadUrl`; `DocSignerError` exposes it as `.downloadUrl`, also on `EXTENSION_NOT_INSTALLED` from its own constant (override with `new DocSigner({ downloadUrl })`). New `status()` reports `{extension, host, downloadUrl, error}` and never rejects, so a page can gate a Sign button on both pieces being present without raising the consent popup or touching the token — `getVersion` was already allowlisted for exactly this and nothing exposed it. Native messaging is untouched.
 - **2026-08-18** — additive, `protocolVersion` stays 1: `listCertificates` certificates carry `protectedAuthPath`. True when the token reports `CKF_PROTECTED_AUTHENTICATION_PATH` — it collects the PIN itself, so the host calls `C_Login` with no PIN and a caller must not prompt for one. Absent or false means the previous behaviour. Only the PKCS#11 scan sets it; OS-store certificates leave it false.
 - **2026-08-11 (f)** — additive, feed only, `protocolVersion` stays 1: `latest.json` gains `downloads`, an object of component → download URL (`host-macos`, `desktop-windows`, `extension-chrome`, and so on) for the assets that release actually published. The host ignores it and still reads only `version` and `url`; it exists because the asset filenames carry the version, so this file is the one stable link a page or installer can resolve the current build from. A key is absent rather than dead when its build did not run.
 - **2026-08-11 (e)** — no wire change, `protocolVersion` stays 1: the consent prompt shows the update notice. `downloadUrl` is now dropped by the host unless it is `https://`, because the consent page turns it into a link and runs with extension privileges; the version news still shows without one. The popup is 40 px taller to fit the extra line without clipping the buttons.

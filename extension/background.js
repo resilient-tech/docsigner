@@ -4,6 +4,11 @@
 const api = globalThis.browser ?? globalThis.chrome;
 
 const HOST_NAME = "com.docsigner.host";
+// Where someone missing the host goes to get it. Only the extension can tell
+// the host is absent, so the link rides on the HOST_NOT_INSTALLED error and the
+// page renders it. We do not open a tab ourselves: the page asked for a
+// signature, so the page owns what the user sees next.
+const HOST_DOWNLOAD_URL = "https://docsigner.pages.dev/download#web";
 // checkUpdate is here and not in CONSENT_COMMANDS on purpose: like getVersion it
 // reveals nothing about the user, only which host version is installed. It does
 // make the host fetch one fixed URL, but a page cannot choose that URL, so the
@@ -124,14 +129,20 @@ async function handleRequest(message, sender) {
   } catch (e) {
     const text = String((e && e.message) || e);
     if (/native messaging host not found|no such native application|not installed/i.test(text)) {
-      return errorReply("HOST_NOT_INSTALLED", "The DocSigner native host is not installed");
+      return errorReply(
+        "HOST_NOT_INSTALLED",
+        "The DocSigner native host is not installed",
+        HOST_DOWNLOAD_URL,
+      );
     }
     return errorReply("INTERNAL", text);
   }
 }
 
-function errorReply(code, message) {
-  return { error: { code, message } };
+function errorReply(code, message, downloadUrl = null) {
+  const error = { code, message };
+  if (downloadUrl) error.downloadUrl = downloadUrl;
+  return { error };
 }
 
 function senderOrigin(sender) {

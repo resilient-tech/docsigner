@@ -51,6 +51,64 @@ test("init times out with EXTENSION_NOT_INSTALLED when nobody answers", async ()
   });
 });
 
+test("status reports both versions when everything is installed", async (t) => {
+  t.after(fakeExtension((command) => {
+    if (command === "ping") return { result: { installed: true, version: "0.2.0" } };
+    if (command === "getVersion") return { result: { version: "0.3.1", protocolVersion: 1 } };
+    return null;
+  }));
+  const signer = new DocSigner();
+  assert.deepEqual(await signer.status({ timeout: 200 }), {
+    extension: "0.2.0", host: "0.3.1", downloadUrl: null, error: null,
+  });
+});
+
+test("status offers a download when the extension is missing", async () => {
+  const signer = new DocSigner();
+  const state = await signer.status({ timeout: 30 });
+  assert.equal(state.extension, null);
+  assert.equal(state.host, null);
+  assert.equal(state.error.code, "EXTENSION_NOT_INSTALLED");
+  assert.match(state.downloadUrl, /^https:\/\//);
+});
+
+test("status offers a download when the host is missing", async (t) => {
+  t.after(fakeExtension((command) => {
+    if (command === "ping") return { result: { installed: true, version: "0.2.0" } };
+    // What background.js sends: the code plus where to get the missing piece.
+    return { error: {
+      code: "HOST_NOT_INSTALLED",
+      message: "The DocSigner native host is not installed",
+      downloadUrl: "https://example.test/download#web",
+    } };
+  }));
+  const signer = new DocSigner();
+  const state = await signer.status({ timeout: 200 });
+  assert.equal(state.extension, "0.2.0");
+  assert.equal(state.host, null);
+  assert.equal(state.downloadUrl, "https://example.test/download#web");
+  assert.equal(state.error.code, "HOST_NOT_INSTALLED");
+});
+
+test("status keeps a broken host apart from a missing one", async (t) => {
+  t.after(fakeExtension((command) =>
+    command === "ping"
+      ? { result: { installed: true, version: "0.2.0" } }
+      : { error: { code: "MODULE_ERROR", message: "driver blew up" } }
+  ));
+  const signer = new DocSigner();
+  const state = await signer.status({ timeout: 200 });
+  assert.equal(state.host, null);
+  assert.equal(state.error.code, "MODULE_ERROR");
+  assert.equal(state.downloadUrl, null); // installing it again fixes nothing
+});
+
+test("a custom downloadUrl replaces the published one", async () => {
+  const signer = new DocSigner({ downloadUrl: "https://intranet.test/docsigner" });
+  const state = await signer.status({ timeout: 30 });
+  assert.equal(state.downloadUrl, "https://intranet.test/docsigner");
+});
+
 test("listCertificates round trip returns certificates and readers", async (t) => {
   const cert = { thumbprint: "ab12", subject: "CN=Test", certificate: "aGk=" };
   t.after(fakeExtension((command) =>

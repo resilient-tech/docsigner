@@ -80,7 +80,7 @@ File attach + Signature Log + timeline comment + QR → /os_verify
 
 ## Workflows (all through `signing.py`)
 
-1. **Manual token sign** — form button → cert dialog → `start` → extension `signHash` → `complete` → File + Log + comment.
+1. **Manual token sign** — form button → `signer.status()` preflight → cert dialog → `start` → extension `signHash` → `complete` → File + Log + comment. The preflight prompts nobody and names the missing piece with the link to it (CONTRACTS §4), so a desk user without the extension or the host reads an install link instead of a failed signature.
 2. **Bulk token sign** — list checkboxes → `start_batch` (≤50) → ONE `signHash`, one PIN → `complete_batch` → summary.
 3. **Auto server sign** — `on_submit` (only doctypes with an auto-sign print format registered) → enqueue → `sign_server_side`.
 4. **Manual server sign** — same button when mode = Server Key; no extension needed.
