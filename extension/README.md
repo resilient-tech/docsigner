@@ -5,13 +5,13 @@ content script exposes the page-side API, the background service worker relays
 messages to `docsigner-host` over native messaging, and the host reads the
 token. Chrome, Edge, Brave, and Firefox.
 
-| File | What it does |
-|---|---|
-| `manifest.json` | permissions, and the version the stores key updates off |
-| `background.js` | native messaging relay |
-| `content.js` | page bridge |
-| `consent.html` / `consent.js` | per-site permission prompt |
-| `icons/` | generated from `../assets/icon.svg` by `../scripts/make_assets.py` |
+| File                          | What it does                                                       |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `manifest.json`               | permissions, and the version the stores key updates off            |
+| `background.js`               | native messaging relay                                             |
+| `content.js`                  | page bridge                                                        |
+| `consent.html` / `consent.js` | per-site permission prompt                                         |
+| `icons/`                      | generated from `../assets/icon.svg` by `../scripts/make_assets.py` |
 
 **It does nothing on its own.** The native host must be installed and registered
 with this extension's ID — see [`../host/README.md`](../host/README.md). Without
@@ -50,7 +50,7 @@ access per site.
 **Don't zip it by hand, and don't edit `version`.** Every release builds both
 zips and attaches them, with the version already bumped:
 
-```
+```bash
 docsigner-extension-<version>-chrome.zip     → Chrome Web Store
 docsigner-extension-<version>-firefox.zip    → Firefox Add-ons
 ```
