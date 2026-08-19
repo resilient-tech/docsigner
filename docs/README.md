@@ -37,6 +37,7 @@ folder: [`../extension/README.md`](../extension/README.md) and
 **Planning**
 
 - [roadmap.md](roadmap.md) — what's left to build here
+- [releasing.md](releasing.md) — how a release is cut, and which number moves
 - [release-checklist.md](release-checklist.md) — manual runs before a release merge
 - [frappe-app.md](frappe-app.md) — the Frappe integration's plan (different repo)
 - [website.md](website.md) — the site's design system and build plan

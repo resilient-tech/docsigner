@@ -25,7 +25,7 @@ token plugged in, the server running from the repo root.
 - [ ] `cargo test --manifest-path host/Cargo.toml` green
 - [ ] `cd js && node --test` green
 - [ ] `python scripts/export_openapi.py` leaves `server/openapi.json` unchanged
-- [ ] `python scripts/bump_version.py --selftest` green, then the version bumped and committed on `develop` (the merge fails otherwise: that tag already exists)
+- [ ] `python scripts/bump_version.py --selftest` green, then every changed component bumped, plus `release`, and committed on `develop` — see [releasing.md](releasing.md) (the merge fails otherwise: `prepare` catches both a tag that exists and a folder that moved without its number)
 
 ## Host, from the terminal
 

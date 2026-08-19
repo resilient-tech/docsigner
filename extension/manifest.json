@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DocSigner",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Lets web pages sign document hashes with certificates on USB tokens and smartcards, through a local native host.",
   "permissions": ["nativeMessaging", "storage"],
   "background": {

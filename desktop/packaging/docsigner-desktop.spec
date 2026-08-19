@@ -44,15 +44,13 @@ WIN_ICON = os.path.join(SPECPATH, "DocSigner.ico")
 # back to a generic icon.
 LINUX_ICON = os.path.join(SPECPATH, "DocSigner.png")
 
-# One version for the whole repo, and host/Cargo.toml is where it lives: the
-# release workflow already refuses to publish when the tag disagrees with it.
-# Hardcoding it here had it drifting to 0.1.0 while everything else said 0.2.0,
-# and a bundle reporting a version nobody can find is what support asks for
-# first. The Homebrew cask's `version` has to match this too.
-with open(os.path.join(REPO, "host", "Cargo.toml")) as fh:
-    VERSION = next(
-        line.split('"')[1] for line in fh if line.startswith("version")
-    )
+# The app is a bundle of core and host and has no version of its own, so it
+# ships as the release: REPO/VERSION, the number on the GitHub Release the .app
+# was downloaded from. Hardcoding it here had it drifting, and a bundle
+# reporting a version nobody can find is what support asks for first. The
+# Homebrew cask's `version` is the same number, for the same reason.
+with open(os.path.join(REPO, "VERSION")) as fh:
+    VERSION = fh.read().strip()
 
 # docsigner_core is installed editable (PEP 660), which PyInstaller's static
 # analysis can't follow. Point pathex at its source so it resolves as an

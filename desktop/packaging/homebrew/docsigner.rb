@@ -17,7 +17,7 @@
 # attached to the release by hand. The release workflow builds only the host
 # binary today (docs/roadmap.md D6).
 cask "docsigner" do
-  version "0.2.0"
+  version "0.1.0"
   # Printed by build-macos.sh at the end of the build.
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 

@@ -1,16 +1,23 @@
 name: Release
 
 # Merging into master is the release. Work lands on develop; when a batch of it
-# is ready, bump the version and merge, and this builds every artifact, tags the
-# commit and publishes:
+# is ready, bump what changed, bump the release number, and merge. This builds
+# every artifact, tags the commit and publishes:
 #
-#     python scripts/bump_version.py            # 0.2.0 -> 0.2.1, three files
-#     git commit -am "chore(release): v0.2.1"
+#     python scripts/bump_version.py core       # only what actually changed
+#     python scripts/bump_version.py release    # always, it numbers the release
+#     git commit -am "chore(release): v0.1.1"
 #     # merge develop into master
 #
-# The version is `host/Cargo.toml`'s, never the workflow's invention. A merge
-# that forgot the bump fails in the first job, before anything is built, because
-# the tag already exists. Nothing here ever pushes a commit.
+# Every component carries its own number, because each is published somewhere
+# different, and a number that moves for nothing means a store review or a
+# registry upload with an empty changelog. `VERSION` numbers the release that
+# carries them all; the desktop app has none of its own, being a bundle of core
+# and host, so it ships as the release.
+#
+# Two mistakes are caught in the first job, before anything is built: a merge
+# that forgot the release bump (the tag already exists), and a folder that
+# changed without its version moving. Nothing here ever pushes a commit.
 #
 # Run it with workflow_dispatch to check the builds without publishing.
 #
@@ -78,22 +85,19 @@ jobs:
       version: ${{ steps.plan.outputs.version }}
       publish: ${{ steps.plan.outputs.publish }}
     steps:
+      # Full history and tags. The version check compares every folder against
+      # the last release, and a shallow clone has neither.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - id: plan
         run: |
           set -eu
-          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          version=$(cat VERSION)
           echo "version=$version" >> "$GITHUB_OUTPUT"
-
-          # The stores key extension updates off the manifest, so a release
-          # whose manifest disagrees with everything else ships an extension
-          # claiming the wrong version. scripts/bump_version.py writes both.
-          manifest=$(python3 -c "import json;print(json.load(open('extension/manifest.json'))['version'])")
-          if [ "$manifest" != "$version" ]; then
-            echo "::error::extension/manifest.json says $manifest, host/Cargo.toml says $version. Run scripts/bump_version.py."
-            exit 1
-          fi
+          echo "component versions:"
+          python3 scripts/bump_version.py
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "publish=false" >> "$GITHUB_OUTPUT"
@@ -105,8 +109,20 @@ jobs:
           # merging to master twice without moving the version. Caught here
           # rather than by a confusing overwrite at publish time.
           if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null 2>&1; then
-            echo "::error::v$version is already released. Bump the version first: python scripts/bump_version.py"
+            echo "::error::v$version is already released. Bump it first: python scripts/bump_version.py release"
             exit 1
+          fi
+
+          # The other one: a folder that changed since the last release while
+          # its own version stayed put. That publishes an update to PyPI, npm
+          # or a store claiming to be the version already out there, and those
+          # uploads cannot be taken back.
+          prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$prev" ]; then
+            python3 scripts/bump_version.py --check "$prev" \
+              || { echo "::error::a changed component was not bumped; see the log above"; exit 1; }
+          else
+            echo "no previous tag: this is the first release, nothing to compare against"
           fi
 
           echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -154,8 +170,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
-      # The version is Cargo.toml's and `prepare` has already checked that it is
-      # unreleased and that the extension manifest agrees. Nothing to verify here.
+      # The archive is named for Cargo.toml's version, which is the host's own:
+      # `prepare` has already checked it moved if host/ changed. Nothing here.
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -408,7 +424,7 @@ jobs:
       - name: Stage the artifact
         shell: bash
         run: |
-          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          version=$(cat VERSION)
           mkdir -p artifacts
           cd desktop/backend/dist
           # A folder, not a single file: PyInstaller's onedir layout starts far
@@ -446,20 +462,91 @@ jobs:
       - name: Package
         run: |
           version=$(python -c "import json;print(json.load(open('extension/manifest.json'))['version'])")
+          mkdir -p artifacts/chrome artifacts/firefox
+          (cd extension && zip -qr "../artifacts/chrome/docsigner-extension-$version-chrome.zip" . -x '*.DS_Store')
+          (cd dist/firefox-extension && zip -qr "../../artifacts/firefox/docsigner-extension-$version-firefox.zip" .)
+          ls -lR artifacts
+
+      # One artifact per store, not one holding both. Actions wraps an artifact
+      # in a zip of its own, so a shared one made every store upload a zip
+      # inside a zip that had to be opened first. `publish` merges them back
+      # into a single folder, so the release page is unchanged.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-chrome
+          path: artifacts/chrome/*
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-firefox
+          path: artifacts/firefox/*
+          if-no-files-found: error
+
+  # The two packages that go to a registry rather than to a download button.
+  # Built here so the release page carries exactly the file that was uploaded,
+  # and so a broken package fails the release instead of the upload.
+  core:
+    name: core
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the sdist and the wheel
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build core
+
+      # PyPI rejects an upload whose metadata it cannot read, and it rejects it
+      # after the version is spent. Cheaper to find out here.
+      - name: Check the metadata PyPI will read
+        run: twine check core/dist/*
+
+      - name: Stage the artifact
+        run: |
           mkdir -p artifacts
-          (cd extension && zip -qr "../artifacts/docsigner-extension-$version-chrome.zip" . -x '*.DS_Store')
-          (cd dist/firefox-extension && zip -qr "../../artifacts/docsigner-extension-$version-firefox.zip" .)
+          cp core/dist/* artifacts/
           ls -l artifacts
 
       - uses: actions/upload-artifact@v4
         with:
-          name: extension
+          name: core
+          path: artifacts/*
+          if-no-files-found: error
+
+  js:
+    name: js
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # npm pack builds the exact tarball `npm publish` would send, so this is
+      # the upload rehearsed rather than described.
+      - name: Pack
+        run: |
+          mkdir -p artifacts
+          (cd js && npm pack --pack-destination ../artifacts)
+          ls -l artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: js
           path: artifacts/*
           if-no-files-found: error
 
   publish:
     name: publish
-    needs: [prepare, host, desktop-macos, desktop, extension]
+    needs: [prepare, host, desktop-macos, desktop, extension, core, js]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -483,7 +570,8 @@ jobs:
       # a checksum nobody typed is a checksum nobody can typo.
       - name: Fill in the Homebrew checksums
         run: |
-          version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          version=$(cat VERSION)
+          host_version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
           host_sum=$(awk '/docsigner-host-.*-macos-x86_64\.tar\.gz$/ {print $1}' artifacts/SHA256SUMS)
           dmg_sum=$(awk '/DocSigner\.dmg$/ {print $1}' artifacts/SHA256SUMS)
           test -n "$host_sum" && test -n "$dmg_sum"
@@ -495,8 +583,10 @@ jobs:
           sed -e "s/^  version \".*\"/  version \"$version\"/" \
               -e "s/^  sha256 \".*\"/  sha256 \"$dmg_sum\"/" \
               desktop/packaging/homebrew/docsigner.rb > artifacts/docsigner.rb
-          sed -e "s|^  url \".*\"|  url \"$base/docsigner-host-$version-macos-x86_64.tar.gz\"|" \
-              -e "s/^  version \".*\"/  version \"$version\"/" \
+          # The formula installs the host, so its version is the host's. The tag in
+          # the path is the release's, and those two now move independently.
+          sed -e "s|^  url \".*\"|  url \"$base/docsigner-host-$host_version-macos-x86_64.tar.gz\"|" \
+              -e "s/^  version \".*\"/  version \"$host_version\"/" \
               -e "s/^  sha256 \".*\"/  sha256 \"$host_sum\"/" \
               host/packaging/homebrew/docsigner-host.rb > artifacts/docsigner-host.rb
 
@@ -516,13 +606,18 @@ jobs:
       # absent rather than a dead link.
       - name: Build latest.json
         run: |
+          # `version` is the host's: checkUpdate compares it against the host
+          # the user has installed, so a release that did not change the host
+          # must not claim a newer one. `tag` is the release, which is where
+          # the files actually live.
           version=$(grep -m1 '^version' host/Cargo.toml | cut -d'"' -f2)
+          tag=$(cat VERSION)
           repo="${{ github.server_url }}/${{ github.repository }}"
-          python3 - "$version" "$repo" <<'PY'
+          python3 - "$version" "$repo" "$tag" <<'PY'
           import json, os, sys, time
 
-          version, repo = sys.argv[1], sys.argv[2]
-          base = f"{repo}/releases/download/v{version}"
+          version, repo, tag = sys.argv[1], sys.argv[2], sys.argv[3]
+          base = f"{repo}/releases/download/v{tag}"
 
           # (key, match) in order; the first match wins, so the host archives are
           # matched before the desktop ones on the shared OS suffixes.
@@ -535,6 +630,9 @@ jobs:
               ("desktop-linux", "DocSigner-*-linux-x64.tar.gz"),
               ("extension-chrome", "docsigner-extension-*-chrome.zip"),
               ("extension-firefox", "docsigner-extension-*-firefox.zip"),
+              ("core-wheel", "docsigner_core-*.whl"),
+              ("core-sdist", "docsigner_core-*.tar.gz"),
+              ("js-tarball", "docsigner-[0-9]*.tgz"),
           ]
 
           from fnmatch import fnmatch
@@ -580,9 +678,21 @@ jobs:
             | Windows | `docsigner-host-…-windows-x64.zip` | `DocSigner-…-windows-x64.zip` |
             | Linux | `docsigner-host-…-linux-x64.tar.gz` | `DocSigner-…-linux-x64.tar.gz` |
 
-            The extension zips are here too, for the store uploads:
-            `docsigner-extension-…-chrome.zip` and `…-firefox.zip`. Most people
-            should install the extension from the store listing instead.
+            Everything else this release built is attached too, one file per
+            thing, so a single page has all of it:
+
+            | File | For |
+            |---|---|
+            | `docsigner-extension-…-chrome.zip` | the Chrome Web Store upload |
+            | `docsigner-extension-…-firefox.zip` | the Firefox add-ons upload |
+            | `docsigner_core-….whl` / `.tar.gz` | the PyPI upload |
+            | `docsigner-….tgz` | the npm upload |
+            | `docsigner.rb`, `docsigner-host.rb` | the Homebrew tap |
+
+            Most people should install the extension from its store listing
+            rather than from the zip. Each component carries its own version, so
+            a file whose number did not move since the last release is the same
+            build on purpose: nothing in it changed.
 
             `latest.json` lists the current download URL for every one of these
             under `downloads`, which is the stable link to build against.
