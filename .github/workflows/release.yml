@@ -574,10 +574,16 @@ jobs:
 
       # npm pack builds the exact tarball `npm publish` would send, so this is
       # the upload rehearsed rather than described.
+      # Renamed on the way out: npm calls the package `docsigner`, so its
+      # tarball is docsigner-<version>.tgz, which on a release page full of
+      # DocSigner downloads reads like the whole product rather than one small
+      # browser library. npm publish takes any filename.
       - name: Pack
         run: |
           mkdir -p artifacts
           (cd js && npm pack --pack-destination ../artifacts)
+          version=$(node -p "require('./js/package.json').version")
+          mv "artifacts/docsigner-$version.tgz" "artifacts/docsigner-js-$version.tgz"
           ls -l artifacts
 
       - uses: actions/upload-artifact@v4
@@ -676,7 +682,7 @@ jobs:
               ("extension-firefox", "docsigner-extension-*-firefox.zip"),
               ("core-wheel", "docsigner_core-*.whl"),
               ("core-sdist", "docsigner_core-*.tar.gz"),
-              ("js-tarball", "docsigner-[0-9]*.tgz"),
+              ("js-tarball", "docsigner-js-*.tgz"),
           ]
 
           from fnmatch import fnmatch
@@ -713,30 +719,46 @@ jobs:
           files: artifacts/*
           generate_release_notes: true
           body: |
-            One download per operating system. Pick yours; there is no
-            architecture to choose.
+            ## Just want to sign a PDF?
 
-            | Your machine | Browser signing | Batch app |
+            Pick your machine. There is no architecture to choose.
+
+            | Your machine | Sign in the browser | Batch app |
             |---|---|---|
-            | Any Mac, Intel or Apple Silicon | `docsigner-host-…-macos-x86_64.tar.gz` | `DocSigner.dmg` |
+            | Mac (Intel or Apple Silicon) | `docsigner-host-…-macos-x86_64.tar.gz` | `DocSigner.dmg` |
             | Windows | `docsigner-host-…-windows-x64.zip` | `DocSigner-…-windows-x64.zip` |
             | Linux | `docsigner-host-…-linux-x64.tar.gz` | `DocSigner-…-linux-x64.tar.gz` |
 
-            Everything else this release built is attached too, one file per
-            thing, so a single page has all of it:
+            **Browser signing** also needs the extension, which you should
+            install from its store listing rather than from the zips here.
+            **The batch app** needs nothing else.
 
-            | File | For |
+            On a Mac, `brew` is easier than either:
+
+            ```
+            brew install resilient-tech/tap/docsigner-host
+            brew install --cask --no-quarantine resilient-tech/tap/docsigner
+            ```
+
+            ## Everything else attached here
+
+            Not for installing — these are the files that get uploaded
+            somewhere, kept on the release page so there is one place to find
+            them.
+
+            | File | What it is |
             |---|---|
             | `docsigner-extension-…-chrome.zip` | the Chrome Web Store upload |
-            | `docsigner-extension-…-firefox.zip` | the Firefox add-ons upload |
-            | `docsigner_core-….whl` / `.tar.gz` | the PyPI upload |
-            | `docsigner-….tgz` | the npm upload |
-            | `docsigner.rb`, `docsigner-host.rb` | the Homebrew tap |
+            | `docsigner-extension-…-firefox.zip` | the Firefox Add-ons upload |
+            | `docsigner_core-….whl` / `.tar.gz` | the PyPI package (`docsigner-core`) |
+            | `docsigner-js-….tgz` | the npm package (`docsigner`) |
+            | `docsigner.rb` / `docsigner-host.rb` | Homebrew recipes, checksums filled in |
+            | `SHA256SUMS` | verify any download above without trusting this page |
+            | `latest.json` | the update feed the host reads, and a stable download link |
 
-            Most people should install the extension from its store listing
-            rather than from the zip. Each component carries its own version, so
-            a file whose number did not move since the last release is the same
-            build on purpose: nothing in it changed.
+            Each component carries its own version. A file whose number did not
+            move since the last release is the same build on purpose: nothing in
+            it changed.
 
             `latest.json` lists the current download URL for every one of these
             under `downloads`, which is the stable link to build against.
