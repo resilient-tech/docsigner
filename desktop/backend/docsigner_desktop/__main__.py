@@ -16,7 +16,7 @@ from pathlib import Path
 
 import uvicorn
 
-from . import startup
+from . import openfiles, startup
 from .app import app
 
 log = logging.getLogger(__name__)
@@ -118,10 +118,22 @@ def main() -> None:
     # Maximized, not fullscreen: the app is a three-column workspace and the
     # narrow default left the canvas cramped. pywebview maps this to each OS's own
     # "maximize", so the window keeps its title bar and controls.
-    webview.create_window(
+    window = webview.create_window(
         "DocSigner Desktop", f"http://{HOST}:{port}", width=1200, height=820, maximized=True
     )
-    webview.start(icon=_icon())
+
+    # macOS hands over Open With files as an Apple event, not as arguments, and
+    # only once the app has finished launching. Registering from `func` runs it
+    # on the GUI thread after that, which is the only point AppKit's own handler
+    # for the event is already in place to be replaced.
+    #
+    # A reload rather than a push: the UI reads /api/opened once on load and
+    # prefers it over the last folder, so replaying that is all a second Open
+    # With needs. No-op off macOS.
+    def _listen() -> None:
+        openfiles.install(on_files=lambda _paths: window.load_url(f"http://{HOST}:{port}"))
+
+    webview.start(_listen, icon=_icon())
 
 
 if __name__ == "__main__":
