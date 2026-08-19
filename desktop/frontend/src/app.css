@@ -125,8 +125,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Focus has to look like something. Arrowing down moved focus onto an option and
+   nothing changed on screen, so the keys read as dead even though they worked.
+   `:focus`, not `:focus-visible`: focus moved from script does not reliably match
+   focus-visible, which is exactly how it is moved here. The inset bar is the same
+   mark the file rows use for "this is the one". */
 .suggest-menu button:hover {
   background: var(--hover);
+}
+.suggest-menu button:focus {
+  background: var(--hover);
+  color: var(--text);
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--action);
 }
 .sign-btn {
   flex: none;
