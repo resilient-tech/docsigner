@@ -848,7 +848,7 @@ input[type='checkbox']:disabled {
   background: var(--bg);
   border: var(--hairline);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lift);
+  box-shadow: var(--shadow-modal);
 }
 .modal-head {
   display: flex;
@@ -1009,7 +1009,7 @@ input[type='checkbox']:disabled {
   background: var(--bg);
   border: var(--hairline);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lift);
+  box-shadow: var(--shadow-modal);
   padding: 24px;
   display: flex;
   flex-direction: column;

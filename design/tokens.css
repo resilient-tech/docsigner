@@ -171,6 +171,14 @@
   --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lift: 0 12px 44px rgba(0, 0, 0, 0.55);
 
+  /* A dialog sits above a scrim, where one wide blur reads as a smudge rather
+     than as height. Two layers: a tight one for the contact edge and a broad one
+     for the ambient fall-off. --shadow-lift stays what it says it is, the page
+     lying on a desk. */
+  --shadow-modal:
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    0 18px 48px rgba(0, 0, 0, 0.6);
+
   /* What a modal dims the app with. app.css was hardcoding a cool purple-grey
      rgba(43, 36, 62, 0.5), which is the one value that could not follow the
      theme: a cool scrim over warm stock reads as a different product. */
@@ -299,8 +307,18 @@
   --shadow-menu: 0 4px 16px rgba(60, 50, 30, 0.13);
   --shadow-lift: 0 12px 40px rgba(60, 50, 30, 0.16);
 
-  /* Warm, and lighter than dark's: stock does not go to ink when it dims. */
-  --scrim: rgba(60, 50, 30, 0.38);
+  /* Paper's lift is a hairline's worth, but a dialog still has to read as off
+     the page, so this one keeps both layers and leans on the tight one. */
+  --shadow-modal:
+    0 2px 6px rgba(60, 50, 30, 0.12),
+    0 16px 40px rgba(60, 50, 30, 0.22);
+
+  /* Warm, and lighter than dark's: stock does not go to ink when it dims.
+
+     Near-ink rather than the old rgba(60, 50, 30): at 38% that hue is olive
+     enough to tint the whole app green behind a dialog, and a scrim's job is to
+     dim what is behind it, not to colour it. */
+  --scrim: rgba(20, 18, 15, 0.34);
 }
 
 /* ---- Reduced motion ---------------------------------------------------
