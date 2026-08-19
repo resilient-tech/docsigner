@@ -1,5 +1,7 @@
 ---
 import { Icon } from 'astro-icon/components';
+import Document from './Document.astro';
+import Stamp from './Stamp.astro';
 
 /*
  * Two surfaces, both signable. Press the button and the thing happens.
@@ -124,54 +126,14 @@ const tabs = [
                   <span class="zoom">100%</span>
                 </div>
                 <div class="cscroll">
-                  <div class="doc paper">
-                    <div class="lh">
-                      <span class="lh-mark" aria-hidden="true"></span>
-                      <span class="lh-txt">
-                        <b>Resilient Software Services LLP</b>
-                        <i>Ahmedabad · GSTIN 24AAWFR1234K1ZP</i>
-                      </span>
-                    </div>
-                    <p class="d-kind">Tax Invoice</p>
-                    <div class="d-rules">
-                      <span class="r w1"></span><span class="r"></span><span class="r w2"></span>
-                      <span class="r"></span><span class="r w3"></span>
-                    </div>
-                    <div class="d-tbl">
-                      <span class="tr th"></span>
-                      <span class="tr"></span><span class="tr"></span><span class="tr"></span>
-                      <span class="tr tot"></span>
-                    </div>
-                    <div class="d-foot">
-                      <span class="stamp" data-stamp>
-                        <span class="stamp-mark" aria-hidden="true">
-                          <svg viewBox="0 0 120 44" aria-hidden="true">
-                            <path d="M8 30c11-3 16-19 22-21s8 10 3 16-11 4-8-2 12-11 21-11 13 8 22 6 12-10 19-10"
-                              fill="none" stroke="currentColor" stroke-width="2.4"
-                              stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                        </span>
-                        <span class="stamp-txt">
-                          <b>Signed by Smit Vora</b>
-                          <em>2026-04-11 14:32 +05:30</em>
-                        </span>
-                        <img class="stamp-qr" src="/qr-resilient.svg" alt="" width="44" height="44" />
-                      </span>
-                    </div>
-                  </div>
+                  <Document width="100cqw" />
                 </div>
               </section>
 
               <aside class="setup">
                 <div class="f"><span class="fl">Certificate</span><span class="c">Smit Vora (signing, ePass2003, valid until 2027-04-11)</span></div>
                 <div class="f"><span class="fl">Signature</span>
-                  <span class="c mini paper">
-                    <svg viewBox="0 0 120 40" aria-hidden="true">
-                      <path d="M8 28c11-3 16-18 22-20s8 10 3 15-11 4-8-2 12-10 21-10 13 8 22 6 12-9 19-9"
-                        fill="none" stroke="currentColor" stroke-width="2.6"
-                        stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
+                  <span class="c preview paper"><Stamp /></span>
                 </div>
                 <div class="f"><span class="fl">Standard</span><span class="c">CCA-LTA</span></div>
                 <div class="f"><span class="fl">Timestamp authority</span><span class="c">DigiCert</span></div>
@@ -209,11 +171,13 @@ const tabs = [
 
         <div class="scroller">
           <div class="erp">
-            <div class="erp-head">
+            <div class="erp-top">
               <span class="crumb">Sales Invoice</span>
               <span class="erp-id">ACC-SINV-2026-0412</span>
               <span class="pill" data-pill>Submitted</span>
               <span class="spacer"></span>
+              <span class="btn ghost">Full Page</span>
+              <span class="btn ghost">PDF</span>
               <span class="btn ghost">Print</span>
               <button type="button" class="btn primary group" data-sign-erp>
                 <span data-erp-label>Digitally Sign</span>
@@ -221,77 +185,25 @@ const tabs = [
               </button>
             </div>
 
-            <!-- frm.dashboard.set_headline, once a signature exists -->
+            <!-- frm.dashboard.set_headline, once a signature exists. Plain text:
+                 this is a picture of a UI, and links that go somewhere unrelated
+                 are worse than none. The QR on the page is the real one. -->
             <div class="headline" data-headline hidden>
               <Icon name="lucide:check" aria-hidden="true" />
-              Digitally signed by SMIT VORA ·
-              <a href="/qr-resilient.svg" rel="noopener">Signed PDF</a> ·
-              <a href="https://resilient.tech" rel="noopener">Verify</a>
+              Digitally signed by SMIT VORA &middot; Signed PDF &middot; Verify
             </div>
 
-            <div class="erp-body">
-              <div class="invoice paper">
-                <header class="inv-head">
-                  <div class="inv-co">
-                    <span class="lh-mark big" aria-hidden="true"></span>
-                    <div>
-                      <p class="co">Resilient Software Services LLP</p>
-                      <p class="co-sub">4th Floor, Prahladnagar, Ahmedabad 380015, Gujarat</p>
-                      <p class="co-sub">GSTIN 24AAWFR1234K1ZP · LLPIN AAW-1234</p>
-                    </div>
-                  </div>
-                  <p class="inv-kind">Tax Invoice</p>
-                </header>
+            <div class="erp-main">
+              <aside class="pside">
+                <div class="pf"><span class="fl">Print Format</span><span class="c">Resilient Tax Invoice</span></div>
+                <div class="pf"><span class="fl">Language</span><span class="c">English</span></div>
+                <div class="pf"><span class="fl">Letter Head</span><span class="c">Resilient LLP</span></div>
+                <span class="btn ghost wide">No Letterhead</span>
+                <span class="btn ghost wide">Customize</span>
+              </aside>
 
-                <div class="inv-meta">
-                  <span><i>Invoice</i> ACC-SINV-2026-0412</span>
-                  <span><i>Date</i> 11 Apr 2026</span>
-                  <span><i>Terms</i> Net 30</span>
-                </div>
-
-                <div class="inv-to">
-                  <p class="to-l">Billed to</p>
-                  <p class="to-n">Northwind Traders Pvt Ltd</p>
-                  <p class="to-a">Andheri East, Mumbai 400069 · GSTIN 27AABCN1234M1Z8</p>
-                </div>
-
-                <table class="inv-tbl">
-                  <thead>
-                    <tr><th>Description</th><th class="num">Qty</th><th class="num">Amount ₹</th></tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(([d, q, a]) => (
-                      <tr><td>{d}</td><td class="num">{q}</td><td class="num">{a}</td></tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr><td colspan="2">Subtotal</td><td class="num">5,40,000.00</td></tr>
-                    <tr><td colspan="2">IGST 18%</td><td class="num">97,200.00</td></tr>
-                    <tr class="tot"><td colspan="2">Total</td><td class="num">6,37,200.00</td></tr>
-                  </tfoot>
-                </table>
-
-                <div class="inv-foot">
-                  <p class="terms">
-                    Payable within 30 days. Interest at 18% p.a. thereafter.
-                    Subject to Ahmedabad jurisdiction.
-                  </p>
-                  <span class="stamp" data-stamp>
-                    <span class="stamp-mark" aria-hidden="true">
-                      <svg viewBox="0 0 120 44" aria-hidden="true">
-                        <path d="M8 30c11-3 16-19 22-21s8 10 3 16-11 4-8-2 12-11 21-11 13 8 22 6 12-10 19-10"
-                          fill="none" stroke="currentColor" stroke-width="2.4"
-                          stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </span>
-                    <span class="stamp-txt">
-                      <b>Digitally signed by SMIT VORA</b>
-                      <em>2026-04-11 14:32 +05:30</em>
-                      <i>Scan to verify</i>
-                    </span>
-                    <img class="stamp-qr" src="/qr-resilient.svg" alt="" width="52" height="52" />
-                  </span>
-                </div>
+              <div class="pstage">
+                <Document width="100cqw" />
               </div>
             </div>
           </div>
@@ -503,63 +415,7 @@ const tabs = [
     font-size: var(--text-sm); color: var(--dim); font-variant-numeric: tabular-nums;
   }
   .pager { display: inline-flex; align-items: center; gap: var(--s-2); }
-  .cscroll { flex: 1; display: grid; place-items: start center; padding: var(--s-5); }
   .setup { border-left: var(--hairline); padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
-
-  /* ---- the rendered page in the canvas ---- */
-  /* Bigger than before: it is the thing being signed, so it should read as a
-     page rather than a thumbnail. */
-  .doc {
-    width: 320px; padding: 18px 20px 20px;
-    display: flex; flex-direction: column; gap: 10px;
-  }
-  .lh { display: flex; align-items: center; gap: 7px; padding-bottom: 8px; border-bottom: 1px solid var(--paper-line); }
-  .lh-mark {
-    flex: none; width: 16px; height: 16px; border-radius: 3px;
-    background: linear-gradient(150deg, var(--green), var(--green-hover));
-  }
-  .lh-mark.big { width: 26px; height: 26px; border-radius: 5px; }
-  .lh-txt { display: flex; flex-direction: column; line-height: 1.3; }
-  .lh-txt b { font-size: 7.5px; font-weight: 600; }
-  .lh-txt i { font-size: 6px; font-style: normal; opacity: .6; }
-  .d-kind {
-    font-size: 6.5px; font-weight: 600; letter-spacing: .14em;
-    text-transform: uppercase; opacity: .55;
-  }
-  .d-rules, .d-tbl { display: flex; flex-direction: column; gap: 6px; }
-  .r { height: 2.6px; border-radius: 2px; background: var(--paper-line); }
-  .r.w1 { width: 62%; } .r.w2 { width: 84%; } .r.w3 { width: 46%; }
-  /* Dashed rules read as a table rather than as more paragraphs. */
-  .tr { height: 0; border-top: 1px dashed var(--paper-line); }
-  .tr.th { border-top-style: solid; border-top-color: var(--paper-ink); opacity: .45; }
-  .tr.tot { border-top-style: solid; opacity: .7; }
-  .d-foot { margin-top: auto; padding-top: 10px; }
-
-  /* ---- the stamp ---- */
-  /* About a third of the page width, which is what a 180x60pt DSC box is on A4.
-     The mark is the product's `image` style; the QR panel is what appearance.py
-     composes when qr_url is set, and this one really resolves. */
-  .stamp {
-    display: flex; align-items: center; gap: 7px;
-    border: 1px solid var(--paper-line); border-radius: 2px; padding: 5px 6px;
-    color: var(--paper-ink); width: fit-content;
-    opacity: 0; transform: translateY(-3px);
-    transition: opacity .4s var(--ease) .95s, transform .4s var(--ease) .95s;
-  }
-  .signing .stamp, .done .stamp { opacity: 1; transform: none; }
-  .stamp-mark { flex: none; width: 52px; color: var(--paper-ink); opacity: .85; }
-  .stamp-mark svg { width: 100%; height: auto; display: block; }
-  .stamp-txt { display: flex; flex-direction: column; line-height: 1.4; min-width: 0; }
-  .stamp-txt b { font-size: 6px; font-weight: 600; }
-  .stamp-txt em { font-size: 5.5px; font-style: normal; opacity: .65; }
-  .stamp-txt i { font-size: 5px; font-style: normal; opacity: .5; letter-spacing: .06em; text-transform: uppercase; }
-  .stamp-qr { flex: none; border-radius: 1px; }
-
-  .mini {
-    background: var(--paper); border-color: var(--paper-line);
-    color: var(--paper-ink); padding: var(--s-2); text-align: center;
-  }
-  .mini svg { width: 84px; height: auto; margin-inline: auto; display: block; }
 
   /* ---- PIN dialog ---- */
   .pinwrap {
@@ -584,10 +440,6 @@ const tabs = [
 
   /* ---- ERPNext ---- */
   .erp { min-width: 760px; }
-  .erp-head {
-    display: flex; align-items: center; gap: var(--s-3);
-    padding: var(--s-3) var(--s-4); border-bottom: var(--hairline);
-  }
   .crumb { font-size: var(--text-sm); color: var(--faint); }
   .erp-id { font-weight: var(--fw-semibold); font-size: var(--text-sm); }
   .pill {
@@ -610,43 +462,63 @@ const tabs = [
   .headline :global(svg) { width: var(--icon-xs); height: var(--icon-xs); }
   .headline a { color: var(--green-ink); }
 
-  .erp-body { background: var(--bg-deep); display: grid; place-items: start center; padding: var(--s-6); min-height: 452px; }
 
-  /* A letterhead invoice, at a size you can actually read. */
-  .invoice { width: 560px; padding: 26px 28px; display: flex; flex-direction: column; gap: 13px; }
-  .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); }
-  .inv-co { display: flex; gap: 9px; align-items: flex-start; }
-  .co { font-size: 11.5px; font-weight: 600; letter-spacing: .01em; }
-  .co-sub { font-size: 8px; opacity: .65; line-height: 1.5; }
-  .inv-kind {
-    font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
-    border: 1px solid var(--paper-line); border-radius: 2px; padding: 4px 8px; white-space: nowrap;
+  /* ---- where the document sits ---- */
+  /* container-type lets the document size itself off the space it is given, so
+     it fills the canvas instead of leaving a margin the width of a guess. */
+  .cscroll, .pstage {
+    container-type: inline-size;
+    display: grid;
+    place-items: start center;
   }
-  .inv-meta {
-    display: flex; flex-wrap: wrap; gap: 3px var(--s-5);
-    border-block: 1px dashed var(--paper-line); padding-block: 6px; font-size: 8.5px;
-  }
-  .inv-meta i { font-style: normal; opacity: .55; margin-right: 5px; }
-  .inv-to { display: flex; flex-direction: column; gap: 1px; }
-  .to-l { font-size: 6.5px; letter-spacing: .12em; text-transform: uppercase; opacity: .5; }
-  .to-n { font-size: 9.5px; font-weight: 600; }
-  .to-a { font-size: 8px; opacity: .65; }
 
-  .inv-tbl { width: 100%; border-collapse: collapse; font-size: 8.5px; }
-  .inv-tbl th {
-    text-align: left; font-size: 7px; letter-spacing: .1em; text-transform: uppercase;
-    opacity: .55; padding-bottom: 5px; border-bottom: 1px solid var(--paper-ink);
-  }
-  /* Dashed row rules: a print format's table, not a stack of paragraphs. */
-  .inv-tbl td { padding-block: 6px; border-bottom: 1px dashed var(--paper-line); }
-  .inv-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .inv-tbl tfoot td { opacity: .8; border-bottom: 0; padding-block: 3px; }
-  .inv-tbl tfoot .tot td { font-weight: 600; opacity: 1; border-top: 1px solid var(--paper-ink); padding-top: 6px; }
+  .cscroll { flex: 1; padding: var(--s-4); }
+  .pstage { padding: var(--s-5); background: var(--bg-deep); }
 
-  .inv-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-5); margin-top: var(--s-3); }
-  .terms { font-size: 7.5px; opacity: .55; max-width: 26ch; line-height: 1.6; }
+  /* The stamp is part of the document, so it is already at the document's
+     scale and in the document's signature area. Signing only reveals it. */
+  .cscroll :global([data-stamp]),
+  .pstage :global([data-stamp]) {
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  /* Delay on the way IN only. Sharing it made "Sign again" look stuck for over
+     a second while the stamp faded back out. */
+  .signing .cscroll :global([data-stamp]),
+  .done .cscroll :global([data-stamp]),
+  .done .pstage :global([data-stamp]) {
+    opacity: 1;
+    transition-delay: 0.95s;
+  }
+
+  /* The stamp at the size it lands on the page, so the field previews the thing
+     rather than a thumbnail of it. */
+  .preview {
+    background: var(--paper);
+    border-color: var(--paper-line);
+    color: var(--paper-ink);
+    padding: var(--s-2);
+    font-size: 11px;
+    display: grid;
+    place-items: center;
+    white-space: normal;
+  }
+
+  /* ---- Frappe's print view ---- */
+  .erp-top {
+    display: flex; align-items: center; gap: var(--s-2);
+    padding: var(--s-3) var(--s-4); border-bottom: var(--hairline);
+  }
+  .erp-main { display: grid; grid-template-columns: 178px minmax(0, 1fr); min-height: 470px; }
+  .pside {
+    border-right: var(--hairline); padding: var(--s-4);
+    display: flex; flex-direction: column; gap: var(--s-4);
+  }
+  .pf { display: flex; flex-direction: column; gap: var(--s-1); }
+  .btn.wide { width: 100%; }
 
   @media (prefers-reduced-motion: reduce) {
-    .qstatus :global(svg), .stamp { transition-duration: .01ms !important; }
+    .qstatus :global(svg), .cscroll :global([data-stamp]) { transition-duration: .01ms !important; }
   }
 </style>

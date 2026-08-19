@@ -34,6 +34,8 @@ import Surfaces from '../components/Surfaces.astro';
           <Button href="/download" variant="primary" size="lg">Download</Button>
         </div>
       </div>
+      <!-- A page with a signature on it, and nothing to read. The letterhead
+           belongs in the prototypes, where the document is the subject. -->
       <div class="hero-art paper" aria-hidden="true">
         <HeroSheet />
       </div>
@@ -133,8 +135,7 @@ import Surfaces from '../components/Surfaces.astro';
       max-width: var(--measure-h1);
     }
 
-    /* Copy leads when stacked: the headline has to be read first, and the sheet
-       peeking in below is what invites the scroll. */
+    /* Copy leads when stacked: the headline has to be read first. */
     .hero-art {
       max-width: 440px;
     }
