@@ -25,7 +25,10 @@ pub fn notify(app: &str, message: &str) {
         return;
     }
     if let Err(e) = show(app, message) {
-        log::debug!("notification suppressed: {e}");
+        // warn, not debug: the logger is capped at Info, so a debug line here was
+        // discarded and a notification that never appeared left no trace at all —
+        // no popup, no error, nothing in host.log to explain it.
+        log::warn!("could not show the notification: {e}");
     }
 }
 

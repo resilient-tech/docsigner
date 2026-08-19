@@ -281,5 +281,20 @@ app = BUNDLE(
         "LSMinimumSystemVersion": "11.0",
         # The window loads http://127.0.0.1:<port>; allow local networking.
         "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True},
+        # Puts DocSigner in Finder's "Open With" for PDFs. Viewer, not Editor:
+        # we never save over the original, we write a second file beside it.
+        #
+        # Only declare this while openfiles.py is there to answer. macOS sends
+        # the paths as an Apple event rather than as arguments, so an app that
+        # advertises PDFs and does not listen opens empty, which is worse than
+        # not appearing in the menu at all.
+        "CFBundleDocumentTypes": [
+            {
+                "CFBundleTypeName": "PDF document",
+                "CFBundleTypeRole": "Viewer",
+                "LSHandlerRank": "Alternate",
+                "LSItemContentTypes": ["com.adobe.pdf"],
+            }
+        ],
     },
 )

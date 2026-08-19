@@ -76,6 +76,8 @@ Backend (`backend/docsigner_desktop/`):
 - `store.py` — settings and appearance profiles, remembered between launches.
 - `picker.py` — the native file and folder dialogs.
 - `startup.py` — PDFs the app was launched with: "Open With", or a command line.
+- `openfiles.py` — the same thing on macOS, which sends an Apple event
+  instead of arguments. No-op elsewhere.
 - `models.py` — request and response shapes; placement is fractional (0..1).
 - `__main__.py` — opens the native window (or `--server` for headless).
 
