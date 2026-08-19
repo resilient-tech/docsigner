@@ -559,7 +559,7 @@ load, and a new release needs a rebuild to show up. Cloudflare Pages has a
 deploy hook, so the release workflow can call it as its last step.
 
 While the repo is private, those fetches 404. `lib/release.ts` falls back to the
-version in `host/Cargo.toml` and renders the download cards without hashes,
+version in `VERSION` and renders the download cards without hashes,
 with an honest line saying the release isn't public yet.
 
 ---

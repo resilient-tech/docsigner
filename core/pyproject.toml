@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,20 @@ name = "docsigner-core"
 version = "0.1.0"
 license = "Apache-2.0"
 description = "Digital signing on top of pyHanko: interrupted signing sessions, PAdES/CAdES/XAdES, validation"
+# The README becomes the PyPI project page, so it is packaging, not decoration.
+readme = "README.md"
 requires-python = ">=3.10"
+authors = [{ name = "Resilient Tech", email = "info@resilient.tech" }]
+keywords = ["pdf", "digital-signature", "pades", "cades", "xades", "pkcs11", "dsc", "pyhanko"]
+# No "License ::" classifier: `license` above is an SPDX expression (PEP 639),
+# and setuptools rejects stating the licence twice.
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Office/Business",
+    "Development Status :: 4 - Beta",
+]
 dependencies = [
     "pyhanko[image-support]>=0.35",
     "cryptography",
@@ -16,6 +29,11 @@ dependencies = [
     # QR panel in composed stamps (appearance.qr_url).
     "qrcode>=7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/resilient-tech/docsigner"
+Repository = "https://github.com/resilient-tech/docsigner"
+Issues = "https://github.com/resilient-tech/docsigner/issues"
 
 [project.optional-dependencies]
 # PDF rasterization for placement UIs (rendering.py). Optional so the server and

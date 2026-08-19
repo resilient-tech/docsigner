@@ -62,12 +62,12 @@ const KEYS: Record<string, { component: Artifact['component']; os: OS | null }> 
   'desktop-linux': { component: 'desktop', os: 'linux' },
 };
 
-/** Version from host/Cargo.toml, which is the one the whole release follows. */
+/** The release number, from VERSION. Components carry their own; this is the
+ *  one the download page shows, because it names the release the files sit in. */
 function versionFromSource(): string {
   try {
     /* cwd is site/ during the build, and Pages checks out the whole repo. */
-    const toml = readFileSync(join(process.cwd(), '..', 'host', 'Cargo.toml'), 'utf8');
-    return toml.match(/^version\s*=\s*"([^"]+)"/m)?.[1] ?? '0.0.0';
+    return readFileSync(join(process.cwd(), '..', 'VERSION'), 'utf8').trim() || '0.0.0';
   } catch {
     return '0.0.0';
   }

@@ -24,8 +24,8 @@ class DocsignerHost < Formula
   # version that is not set yet. So the release workflow rewrites all three of
   # these lines; the cask, which needs no such ordering, interpolates and gets
   # rewritten in two.
-  url "https://github.com/resilient-tech/docsigner/releases/download/v0.2.0/docsigner-host-0.2.0-macos-x86_64.tar.gz"
-  version "0.2.0"
+  url "https://github.com/resilient-tech/docsigner/releases/download/v0.1.0/docsigner-host-0.1.0-macos-x86_64.tar.gz"
+  version "0.1.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "Apache-2.0"
 

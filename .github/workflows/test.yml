@@ -56,6 +56,32 @@ jobs:
         working-directory: js
         run: node --test
 
+  # The release workflow builds these two, but it only ever runs on master, so a
+  # broken package would surface during the release itself. Rehearse it here on
+  # every push instead. Nothing is uploaded.
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Version files agree with the bump script
+        run: |
+          python scripts/bump_version.py --selftest
+          python scripts/bump_version.py
+      - name: Build core, and check the metadata PyPI will read
+        run: |
+          pip install --upgrade build twine
+          python -m build core
+          twine check core/dist/*
+      - name: Pack js
+        working-directory: js
+        run: npm pack --dry-run
+
   # The parts of the e2e suite that drive the real host binary but need neither
   # a token nor a running server. These were only ever run by hand, which is how
   # a stale binary silently turned every one of them into a skip.
