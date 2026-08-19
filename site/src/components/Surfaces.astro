@@ -224,6 +224,14 @@ const tabs = [
 
 <script>
   import { isPaper, toggleTheme } from '../lib/theme';
+  import { signedAtFor } from '../lib/demo';
+
+  /* The signature is an event, so the stamp says when the button was pressed.
+     Layout sets these to page-load time; this moves them on. */
+  const stampNow = (surface: HTMLElement) => {
+    const when = signedAtFor(new Date());
+    for (const el of surface.querySelectorAll('[data-signed-at]')) el.textContent = when;
+  };
 
   const app = document.querySelector<HTMLElement>('[data-app]');
   const erp = document.querySelector<HTMLElement>('[data-erp]');
@@ -270,6 +278,7 @@ const tabs = [
 
     app.querySelector('[data-pin-ok]')?.addEventListener('click', () => {
       if (pin) pin.hidden = true;
+      stampNow(app);
       app.classList.add('signing');
       if (label) label.textContent = 'Signing…';
       setTimeout(() => {
@@ -303,6 +312,7 @@ const tabs = [
 
     erp.querySelector('[data-sign-erp]')?.addEventListener('click', () => {
       if (erp.classList.contains('done')) return reset();
+      stampNow(erp);
       erp.classList.add('signing');
       if (label) label.textContent = 'Signing…';
       /* Long enough for the mark to finish writing itself: the headline is the
@@ -376,7 +386,7 @@ const tabs = [
     transition: background var(--dur-fast) var(--ease);
   }
   .btn.primary { background: var(--green); color: var(--on-accent); cursor: pointer; }
-  .btn.primary:hover { background: var(--green-hover); }
+  button.btn.primary:hover { background: var(--green-hover); }
   .btn.ghost { border: var(--hairline); color: var(--dim); }
   .btn :global(svg) { width: var(--icon-xs); height: var(--icon-xs); }
 
@@ -389,16 +399,15 @@ const tabs = [
   button.btn.ghost:hover { background: var(--hover); color: var(--text); }
   button.btn:active { transform: translateY(1px); }
   button.btn:focus-visible { box-shadow: var(--focus-ring); }
-  span.btn, .box, .pill, .c { pointer-events: none; }
+  span.btn, span.ic, .box, .pill, .c, .path, .pager, .zoom { pointer-events: none; }
 
-  /* Two soft halos when the surface first comes into view, and never again
-     after the first press. It only has to be noticed at the edge of vision; a
-     ring bright enough to read as a warning is a ring you want to stop. */
-  .nudge { animation: nudge 2.2s var(--ease) 2; }
+  /* Three rings when the surface first comes into view, and never again after
+     the first press. Long enough to notice, short enough not to nag. */
+  .nudge { animation: nudge 1.8s var(--ease) 3; }
 
   @keyframes nudge {
     0%, 100% { box-shadow: 0 0 0 0 transparent; }
-    40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+    35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 38%, transparent); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -409,8 +418,8 @@ const tabs = [
     border-radius: var(--radius-card); color: var(--faint); cursor: pointer;
     transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
   }
-  .ic:hover { background: var(--hover); color: var(--text); }
-  .ic.flat { cursor: default; }
+  button.ic:hover { background: var(--hover); color: var(--text); }
+  .ic.flat { pointer-events: none; cursor: default; }
   .ic :global(svg) { grid-area: 1 / 1; }
   .ic :global(.moon) { display: none; }
   :global(:root[data-theme='paper']) .ic :global(.moon) { display: block; }
@@ -506,7 +515,15 @@ const tabs = [
   .pin-btns { display: flex; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); }
 
   /* ---- ERPNext ---- */
-  .erp { min-width: 760px; }
+  /* Fixed height, and the page area takes what is left: the signed headline is
+     a strip inside the window, so it has to push the document down rather than
+     grow the window it is in. */
+  .erp {
+    min-width: 760px;
+    height: 620px;
+    display: flex;
+    flex-direction: column;
+  }
   .crumb { font-size: var(--text-sm); color: var(--faint); }
   .erp-id { font-weight: var(--fw-semibold); font-size: var(--text-sm); }
   .pill {
@@ -592,7 +609,7 @@ const tabs = [
     display: flex; align-items: center; gap: var(--s-2);
     padding: var(--s-3) var(--s-4); border-bottom: var(--hairline);
   }
-  .erp-main { display: grid; grid-template-columns: 202px minmax(0, 1fr); min-height: 556px; }
+  .erp-main { display: grid; grid-template-columns: 202px minmax(0, 1fr); flex: 1; min-height: 0; }
   .pside {
     border-right: var(--hairline); padding: var(--s-4);
     display: flex; flex-direction: column; gap: var(--s-4);

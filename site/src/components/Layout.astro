@@ -46,6 +46,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
 
     <!-- Blocking on purpose: it must run before the first paint. -->
     <script src="/theme.js" is:inline></script>
+
+    <script>
+      /* The stamps carry a build-time timestamp so they read correctly with no
+         JavaScript. With it, they say now instead. */
+      import { signedAtFor } from '../lib/demo';
+
+      const now = signedAtFor(new Date());
+      for (const el of document.querySelectorAll('[data-signed-at]')) el.textContent = now;
+    </script>
   </head>
 
   <body>

@@ -158,11 +158,19 @@ import { links } from '../config';
     counter-increment: l;
     display: grid;
     grid-template-columns: 26px minmax(0, 1fr);
-    gap: var(--s-3);
+    gap: var(--s-1) var(--s-3);
+  }
+
+  /* Every child in the second column, or auto-placement puts the second one
+     back under the counter and wraps it a word per line. */
+  .lessons li > * {
+    grid-column: 2;
   }
 
   .lessons li::before {
     content: counter(l);
+    grid-column: 1;
+    grid-row: 1;
     display: grid;
     place-items: center;
     width: 26px;
