@@ -4,7 +4,9 @@ import type { AppearanceProfile, FontOption } from '../types'
 import { StampPreview } from './StampPreview'
 
 const TOGGLES: { key: keyof AppearanceProfile; label: string }[] = [
-  { key: 'show_name', label: 'Digitally signed by (name line)' },
+  // Short like the other three, so two equal columns fit them all without
+  // wrapping. The stamp still reads "Digitally signed by <name>".
+  { key: 'show_name', label: 'Signed by' },
   { key: 'show_date', label: 'Date & time' },
   { key: 'show_reason', label: 'Reason' },
   { key: 'show_location', label: 'Location' },
@@ -184,6 +186,7 @@ export function ProfileEditor({
                   <option value="handwritten">Handwritten</option>
                   <option value="text">Text</option>
                   <option value="image">Image</option>
+                  <option value="none">No stamp (invisible)</option>
                 </select>
               </label>
               {profile.style === 'handwritten' && (
@@ -240,8 +243,16 @@ export function ProfileEditor({
                 </label>
               )}
 
+              {/* With no stamp there are no detail lines to draw, but reason and
+                  location are not decoration: they go into the signature itself,
+                  and these checkboxes are what reveal their boxes in the sidebar.
+                  Hiding them made the two unreachable. The name and the date need
+                  no checkbox — they are in every signature regardless. */}
               <div className="toggles">
-                {TOGGLES.map((t) => (
+                {(profile.style === 'none'
+                  ? TOGGLES.filter((t) => t.key === 'show_reason' || t.key === 'show_location')
+                  : TOGGLES
+                ).map((t) => (
                   <label key={t.key} className="tog">
                     <input
                       type="checkbox"

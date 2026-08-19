@@ -503,7 +503,7 @@ export function App() {
                   {/* The reason hangs off the status icon, which is where people
                       point when a row has gone red. */}
                   {r && (
-                    <span className="qrow-status" title={r.ok ? `Signed as ${r.name}` : sentence(r.error)}>
+                    <span className="qrow-status" title={r.ok ? `Signed as ${r.name}${currentProfile?.style === 'none' ? ' — no visible stamp' : ''}` : sentence(r.error)}>
                       {r.ok ? (
                         <CheckCircle2 size={15} className="s-ok" />
                       ) : r.skipped ? (
@@ -546,6 +546,7 @@ export function App() {
               onChange={(p) => patch({ placement: p })}
               onPage={(index) => patch({ placement: { ...placement, page: index } })}
               preview={stamp}
+              invisible={currentProfile?.style === 'none'}
               included={included.has(selected)}
               onInclude={() => toggleInclude(selected)}
               appliesTo={filesToSign.length}

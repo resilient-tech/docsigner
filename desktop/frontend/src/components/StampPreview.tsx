@@ -52,6 +52,13 @@ export function StampPreview({
   boxW: number
   boxH: number
 }) {
+  // Nothing is drawn for an invisible signature, so the preview says so rather
+  // than showing a stamp that will not be there. Handled here, not at each call
+  // site, so the sidebar card, the editor and the page all say the same thing.
+  if (profile.style === 'none') {
+    return <span className="stamp-none">No stamp</span>
+  }
+
   const lines: string[] = []
   if (profile.show_name) lines.push(`Digitally signed by ${signerName}`)
   if (profile.show_date) lines.push(`Date: ${stampTime()}`)

@@ -22,6 +22,7 @@ export function PlacementCanvas({
   onChange,
   onPage,
   preview,
+  invisible = false,
   included,
   onInclude,
   appliesTo,
@@ -31,6 +32,8 @@ export function PlacementCanvas({
   onChange: (p: Placement) => void
   onPage: (index: number) => void
   preview: ReactNode
+  /** Nothing will be drawn on the page, so there is no box to place. */
+  invisible?: boolean
   /** Whether the file on screen is one of the ones that will be signed. */
   included: boolean
   onInclude: () => void
@@ -160,7 +163,10 @@ export function PlacementCanvas({
         <div className="banner warn">
           <span className="banner-msg">
             This file will not be signed.
-            {appliesTo > 0 &&
+            {/* Nothing is placed when there is no stamp, so there is no position
+                to explain — only whether this file is in the batch. */}
+            {!invisible &&
+              appliesTo > 0 &&
               ` The position you set here applies to the ${
                 appliesTo === 1 ? 'selected file' : `${appliesTo} selected files`
               }.`}
@@ -170,7 +176,10 @@ export function PlacementCanvas({
           </button>
         </div>
       ) : (
-        // Only worth saying with a batch: for one file it is where you put it.
+        // Only worth saying with a batch, and only when there is a position to
+        // share: with no stamp nothing is placed, so the note has nothing to warn
+        // about and the drag box it refers to is not on screen either.
+        !invisible &&
         appliesTo > 1 && (
           <div className="banner quiet">
             <span className="banner-msg">This position applies to all {appliesTo} selected files.</span>
@@ -181,6 +190,8 @@ export function PlacementCanvas({
       <div className="canvas-scroll" ref={scrollRef}>
         <div className="page-area" ref={areaRef} style={{ width: Math.round(BASE_W * zoom) }}>
           <img src={render.image} className="page-img" draggable={false} alt="PDF page" />
+          {/* A box you can drag that changes nothing is worse than no box. */}
+          {!invisible && (
           <div
             ref={boxRef}
             className={`sig-box${included ? '' : ' idle'}`}
@@ -196,6 +207,7 @@ export function PlacementCanvas({
             <span className="rh sw" onPointerDown={(e) => begin('sw', e)} />
             <span className="rh se" onPointerDown={(e) => begin('se', e)} />
           </div>
+          )}
         </div>
       </div>
     </div>

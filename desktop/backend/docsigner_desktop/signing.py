@@ -25,7 +25,14 @@ def _box_points(pl: Placement, w_pt: float, h_pt: float) -> list[float]:
 
 
 def _appearance(profile: AppearanceProfile, box: list[float], page: int,
-                reason: str | None, location: str | None) -> dict:
+                reason: str | None, location: str | None) -> dict | None:
+    """The stamp, or None for an invisible signature.
+
+    core reads a missing appearance as "sign, draw nothing" — a real signature
+    that a viewer lists in its signature panel and no reader sees on the page.
+    """
+    if profile.style == "none":
+        return None
     ap: dict = {"page": page, "box": box}
     if profile.style == "handwritten":
         ap["style"] = "handwritten"
