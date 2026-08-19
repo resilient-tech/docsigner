@@ -68,9 +68,9 @@ fix something.
 
 ### 2. Press the button
 
-Actions tab → **Release PR** → **Run workflow**.
+Actions tab → **Start a release** → **Run workflow**.
 
-It opens the PR from `develop` to `master` and fills in what the release will
+It opens the PR — titled `Release v0.1.1` — from `develop` to `master`, and fills in what the release will
 contain — the version each component will get, and the commits going out. Safe
 to press any time; it builds nothing.
 
@@ -104,7 +104,7 @@ a person's decision. Take the files off the release page:
 | Changed      | Upload                                | Where            |
 | ------------ | ------------------------------------- | ---------------- |
 | `core/`      | `docsigner_core-….whl` and `.tar.gz`  | PyPI             |
-| `js/`        | `docsigner-….tgz`                     | npm              |
+| `js/`        | `docsigner-js-….tgz`                  | npm              |
 | `extension/` | `docsigner-extension-…-chrome.zip`    | Chrome Web Store |
 |              | `docsigner-extension-…-firefox.zip`   | Firefox Add-ons  |
 | macOS        | `docsigner.rb`, `docsigner-host.rb`   | the Homebrew tap |

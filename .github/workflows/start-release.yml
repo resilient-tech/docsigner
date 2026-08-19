@@ -1,6 +1,6 @@
-name: Release PR
+name: Start a release
 
-# The button that starts a release. Actions tab -> Release PR -> Run workflow.
+# The button that starts a release. Actions tab -> Start a release -> Run workflow.
 #
 # It opens (or refreshes) the pull request from develop to master and fills the
 # body with the versions the merge will produce and the commits going out.
@@ -30,9 +30,19 @@ jobs:
           fetch-depth: 0
 
       - name: Work out what this release contains
+        id: plan
         run: |
           set -eu
           prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          # The version in the title, so the PR says what it is rather than which
+          # branches it joins. No tag yet means nothing is bumped, so the number
+          # already in VERSION is the one that ships.
+          if [ -n "$prev" ]; then
+            version=$(python3 scripts/bump_version.py --preview "$prev" | awk '$1=="release"{print $4}')
+          else
+            version=$(cat VERSION)
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           {
             echo "Merging this **is** the release. CI bumps the versions on the merge,"
             echo "so there is nothing to run first."
@@ -74,11 +84,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
+          title="Release v${{ steps.plan.outputs.version }}"
           open=$(gh pr list --base master --head develop --state open --json number --jq '.[0].number // empty')
           if [ -n "$open" ]; then
-            gh pr edit "$open" --body-file body.md
+            gh pr edit "$open" --title "$title" --body-file body.md
             echo "refreshed $(gh pr view "$open" --json url --jq .url)"
           else
-            gh pr create --base master --head develop \
-              --title "Release: develop -> master" --body-file body.md
+            gh pr create --base master --head develop --title "$title" --body-file body.md
           fi
