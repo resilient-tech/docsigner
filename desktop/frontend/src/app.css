@@ -125,8 +125,32 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Focus has to look like something. Arrowing down moved focus onto an option and
+   nothing changed on screen, so the keys read as dead even though they worked.
+   `:focus`, not `:focus-visible`: focus moved from script does not reliably match
+   focus-visible, which is exactly how it is moved here. The inset bar is the same
+   mark the file rows use for "this is the one". */
 .suggest-menu button:hover {
   background: var(--hover);
+}
+.suggest-menu button:focus {
+  background: var(--hover);
+  color: var(--text);
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--action);
+}
+/* Stands in for the stamp wherever a preview would be: the sidebar card, the
+   profile editor, and the box on the page. Centred and quiet — it is a statement
+   of fact, not a warning. */
+.stamp-none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 10px;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--faint);
 }
 .sign-btn {
   flex: none;
@@ -960,9 +984,13 @@ input[type='checkbox']:disabled {
 }
 /* Two by two. `auto` so the longest label sets the first column instead of
    wrapping inside an even half. */
+/* Equal columns, not `auto 1fr`. Auto sized the first column to whichever label
+   happened to be in it, so dropping the long "Digitally signed by" row left
+   Reason and Location squeezed together at the left instead of holding the same
+   two positions. */
 .toggles {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 18px;
   margin-top: 8px;
 }

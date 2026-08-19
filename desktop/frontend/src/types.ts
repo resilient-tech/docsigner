@@ -9,7 +9,8 @@ export interface Placement {
 export interface AppearanceProfile {
   id: string
   name: string
-  style: 'handwritten' | 'text' | 'image'
+  /** 'none' signs with no visible stamp — the signature exists, nothing is drawn. */
+  style: 'handwritten' | 'text' | 'image' | 'none'
   font: string
   image?: string | null // base64 / data: URL, used when style === 'image'
   show_name: boolean

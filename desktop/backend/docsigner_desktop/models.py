@@ -20,7 +20,9 @@ class Placement(BaseModel):
 class AppearanceProfile(BaseModel):
     id: str
     name: str
-    style: Literal["handwritten", "text", "image"] = "handwritten"
+    # "none" signs with no visible stamp at all: core reads a missing appearance
+    # as "invisible signature", which is a real PDF signature with nothing drawn.
+    style: Literal["handwritten", "text", "image", "none"] = "handwritten"
     font: str = "great-vibes"
     # base64 (data: URL ok) of an uploaded signature image; used when style="image".
     image: Optional[str] = None
