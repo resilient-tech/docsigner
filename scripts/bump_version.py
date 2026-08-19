@@ -4,6 +4,7 @@
     python scripts/bump_version.py core             # 0.1.0 -> 0.1.1
     python scripts/bump_version.py core minor       # 0.1.0 -> 0.2.0
     python scripts/bump_version.py host 1.0.0       # set it outright
+    python scripts/bump_version.py --preview v0.1.0 # what --auto would do
     python scripts/bump_version.py --auto v0.1.0    # patch-bump whatever changed
     python scripts/bump_version.py --check v0.1.0   # what changed but was not bumped
     python scripts/bump_version.py --selftest       # no files touched
@@ -196,7 +197,9 @@ def _selftest_auto():
         git("commit", "-qm", "change the extension")
         assert check("v0.1.0", root) == ["extension"]
 
+        planned = preview("v0.1.0", root)
         moved = auto("v0.1.0", root)
+        assert planned == moved, "the PR would promise numbers the release did not keep"
         assert moved == {
             "extension": ("0.1.0", "0.1.1"),
             "release": ("0.1.0", "0.1.1"),
@@ -214,6 +217,19 @@ def _selftest_auto():
         assert check("v0.1.1", root) == [], "already bumped, so not stale"
         assert auto("v0.1.1", root) == {"release": ("0.1.1", "0.1.2")}
         assert current("core", root) == "0.2.0", "the typed minor must survive"
+
+
+def preview(previous, root=REPO):
+    """What `--auto` would do, without touching a file.
+
+    The release PR shows this, so the numbers are visible before the merge
+    rather than discovered in the build log afterwards.
+    """
+    out = {}
+    for name in check(previous, root) + ["release"]:
+        was = current(name, root)
+        out[name] = (was, next_version(was))
+    return out
 
 
 def selftest():
@@ -263,6 +279,13 @@ def selftest():
 def main(argv):
     if argv and argv[0] == "--selftest":
         return selftest()
+
+    if argv and argv[0] == "--preview":
+        if len(argv) < 2:
+            raise SystemExit("error: --preview needs the previous tag, e.g. --preview v0.1.0")
+        for name, (was, now) in preview(argv[1]).items():
+            print(f"{name} {was} -> {now}")
+        return None
 
     if argv and argv[0] == "--auto":
         if len(argv) < 2:

@@ -66,12 +66,19 @@ Everything else is automatic. See below.
 they need a real token in a real machine. Do this while there is still time to
 fix something.
 
-### 2. Merge `develop` into `master`
+### 2. Press the button
 
-Open a PR from `develop` to `master` and merge it. **That merge is the
-release.** You type no version and run no script.
+Actions tab → **Release PR** → **Run workflow**.
 
-### 3. Watch it
+It opens the PR from `develop` to `master` and fills in what the release will
+contain — the version each component will get, and the commits going out. Safe
+to press any time; it builds nothing.
+
+### 3. Merge it
+
+**That merge is the release.** You type no version and run no script.
+
+### 4. Watch it
 
 ```bash
 gh run watch
@@ -89,7 +96,7 @@ afterwards**, or the next release starts from stale numbers.
 
 A failed build leaves **no tag behind**, because the tag is created last.
 
-### 4. Upload what changed
+### 5. Upload what changed
 
 CI builds and attaches everything. It uploads to **no registry** — that is still
 a person's decision. Take the files off the release page:
