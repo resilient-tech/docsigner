@@ -2,7 +2,7 @@
 import Layout from '../components/Layout.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
-import HeroSheet from '../components/HeroSheet.astro';
+import Sheet from '../components/Sheet.astro';
 import Surfaces from '../components/Surfaces.astro';
 
 /*
@@ -36,8 +36,8 @@ import Surfaces from '../components/Surfaces.astro';
       </div>
       <!-- A page with a signature on it, and nothing to read. The letterhead
            belongs in the prototypes, where the document is the subject. -->
-      <div class="hero-art paper" aria-hidden="true">
-        <HeroSheet />
+      <div class="hero-art">
+        <Sheet width="100%" drawSignature />
       </div>
     </div>
   </Section>
@@ -100,9 +100,12 @@ import Surfaces from '../components/Surfaces.astro';
   }
 
   /* A page on a desk, not a screenshot in a box. */
+  /* The sheet fills its column, as it always did. */
   .hero-art {
-    padding: var(--s-6) var(--s-6) var(--s-8);
     transform: rotate(-1.4deg);
+  }
+
+  .hero-art :global(.sheet) {
     box-shadow: var(--shadow-lift);
   }
 
@@ -144,7 +147,6 @@ import Surfaces from '../components/Surfaces.astro';
   @media (max-width: 640px) {
     .hero-art {
       transform: none;
-      padding: var(--s-4);
     }
   }
 </style>

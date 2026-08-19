@@ -1,0 +1,100 @@
+---
+interface Props {
+  /* Placement inside a parent viewBox. Left off, the box is standalone and CSS
+     sizes it. A nested <svg> is the only way to reuse this: bare SVG children
+     at an Astro template's root get parsed as HTML, where <image> means <img>
+     and <text> means nothing at all. */
+  x?: number;
+  y?: number;
+  size?: number;
+  /* Draw the mark on load, once. Only the hero asks for this. */
+  draw?: boolean;
+  class?: string;
+}
+
+const { x, y, size, draw = false, class: extra } = Astro.props;
+const placed = x !== undefined;
+
+/*
+ * The signature stamp, at the hero's geometry unchanged: a 180x60 box, the mark
+ * across the top, a rule under it, the signed-by lines below and the QR to the
+ * right.
+ *
+ * That is the product's `image` appearance style, and the QR is real --
+ * generated with the same qrcode settings appearance.py uses, so it resolves to
+ * resilient.tech.
+ */
+---
+
+<svg
+  class:list={['sigbox', extra]}
+  viewBox="0 0 180 60"
+  x={placed ? x : undefined}
+  y={placed ? y : undefined}
+  width={placed ? size : undefined}
+  height={placed ? size! / 3 : undefined}
+  aria-hidden="true"
+>
+  <rect
+    x="0.5"
+    y="0.5"
+    width="179"
+    height="59"
+    rx="3"
+    fill="none"
+    stroke="var(--paper-ink)"
+    stroke-width="1"
+    opacity="0.22"
+  />
+  <path
+    class:list={['ink', { draw }]}
+    pathLength="1"
+    d="M14 31c11-3 16-19 22-21s8 10 3 16-11 4-8-2 12-11 21-11 13 8 22 6 12-10 19-10"
+    fill="none"
+    stroke="var(--paper-ink)"
+    stroke-width="2.1"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.88"
+  />
+  <image href="/qr-resilient.svg" x="133" y="9" width="42" height="42" opacity="0.85" />
+  <rect x="14" y="40" width="112" height="1.1" fill="var(--paper-ink)" opacity="0.22" />
+  <text
+    x="14"
+    y="50"
+    font-size="6.4"
+    fill="var(--paper-ink)"
+    opacity="0.72"
+    font-family="system-ui, sans-serif">Digitally signed by SMIT VORA</text>
+  <text
+    x="14"
+    y="57"
+    font-size="5.4"
+    fill="var(--paper-ink)"
+    opacity="0.5"
+    font-family="system-ui, sans-serif">2026-04-11 14:32 +05:30</text>
+</svg>
+
+<style>
+  /* Draws itself once, on load, then holds. pathLength="1" lets one dash rule
+     drive it whatever the real path length is. */
+  .ink.draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: ink-draw 1500ms var(--ease) 400ms forwards;
+  }
+
+  @keyframes ink-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Drawn, not animated: the signature is the point, so it stays visible. */
+  @media (prefers-reduced-motion: reduce) {
+    .ink.draw {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+  }
+</style>

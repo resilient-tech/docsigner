@@ -1,0 +1,91 @@
+---
+import SignatureBox from './SignatureBox.astro';
+
+interface Props {
+  /* Sheet width. One viewBox holds everything, so this is the only size. */
+  width?: string;
+  /* Leaf and firm name across the top. The prototypes are a document in an
+     application; the hero is a page, and a letterhead there points the first
+     screen at Resilient rather than at the product. */
+  letterhead?: boolean;
+  drawSignature?: boolean;
+  class?: string;
+}
+
+const { width = '340px', letterhead = false, drawSignature = false, class: extra } = Astro.props;
+
+/*
+ * A page with a signature and a verification QR on it, drawn rather than
+ * screenshotted so it takes the theme's --paper tokens and stays sharp at any
+ * size. The body geometry is the hero's, unchanged.
+ *
+ * Greeked lines, not invoice copy. Real text at prototype scale lands at six
+ * pixels, which is present but not readable, and the document is scenery for
+ * the signature either way.
+ *
+ * .paper (design/base.css) supplies the sheet itself. Paper has no dark mode:
+ * in the dark theme this is the one bright object on the screen, which is the
+ * picture worth making.
+ */
+
+/* The letterhead adds a band on top and pushes the body down by the same. */
+const band = letterhead ? 46 : 0;
+---
+
+<div class:list={['sheet', 'paper', extra]} style={`--sheet-w: ${width}`} aria-hidden="true">
+  <svg viewBox={`0 0 340 ${250 + band}`}>
+  {
+    letterhead && (
+      <>
+        <image href="/rt-leaf.png" x="0" y="0" width="26" height="14" />
+        <text
+          x="33"
+          y="12"
+          font-size="11.5"
+          font-weight="600"
+          fill="var(--paper-ink)"
+          font-family="system-ui, sans-serif">Resilient Software Services LLP</text>
+        <rect x="0" y="28" width="300" height="1" fill="var(--paper-ink)" opacity="0.28" />
+      </>
+    )
+  }
+
+  <g transform={`translate(0 ${band})`}>
+    <rect x="0" y="6" width="126" height="3.4" rx="0.8" fill="var(--paper-ink)" opacity="0.5" />
+
+    <rect x="0" y="24" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="35" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="46" width="268" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+
+    <rect x="0" y="72" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="83" width="286" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="94" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="105" width="232" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+
+    <rect x="0" y="130" width="188" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="141" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="152" width="146" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16" />
+
+    <g class="sig" data-sig>
+      <SignatureBox x={0} y={176} size={180} draw={drawSignature} />
+    </g>
+    </g>
+  </svg>
+</div>
+
+<style>
+  /* The viewBox carries every proportion, so width is the only measurement
+     here. The margin is padding on the sheet rather than space in the viewBox,
+     because .paper's border and radius have to sit outside the drawing. */
+  .sheet {
+    width: var(--sheet-w);
+    padding: var(--s-6) var(--s-6) var(--s-8);
+    box-sizing: border-box;
+  }
+
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+</style>
