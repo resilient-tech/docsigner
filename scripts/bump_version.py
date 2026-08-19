@@ -4,6 +4,7 @@
     python scripts/bump_version.py core             # 0.1.0 -> 0.1.1
     python scripts/bump_version.py core minor       # 0.1.0 -> 0.2.0
     python scripts/bump_version.py host 1.0.0       # set it outright
+    python scripts/bump_version.py --auto v0.1.0    # patch-bump whatever changed
     python scripts/bump_version.py --check v0.1.0   # what changed but was not bumped
     python scripts/bump_version.py --selftest       # no files touched
 
@@ -16,9 +17,11 @@ an update with nothing in it.
 them, so it moves every time. The desktop app has no number of its own -- it is
 a bundle of core and host, so it ships as the release.
 
-Called by hand before merging `develop` into `master`. The release workflow only
-reads: `--check` is what fails the build when a folder moved and its version did
-not.
+The release workflow calls `--auto` for you, so an ordinary release needs none of
+this: merge to master and every changed component gets a patch bump. Run a
+command here only to make a bump bigger than a patch, on `develop` before the
+merge -- `--auto` then leaves that component alone, since its version has
+already moved.
 """
 
 import re
@@ -117,33 +120,109 @@ def check(previous, root=REPO):
     return stale
 
 
+def auto(previous, root=REPO):
+    """Patch-bump every component whose folder changed, and the release with it.
+
+    Patch, always: it is what almost every release is, and guessing between
+    patch and minor is not worth a manual step on every release. `minor` and
+    `major` stay a typed decision for the releases that need one -- run one by
+    hand on develop before merging and this leaves that component alone,
+    because by then its version has already moved.
+
+    The release number moves whether or not a component did. Something is being
+    released, so it needs a tag nobody has used.
+    """
+    moved = {}
+    for name in check(previous, root) + ["release"]:
+        was = current(name, root)
+        moved[name] = (was, bump(name, "patch", root=root))
+    return moved
+
+
+def _scaffold(root):
+    """A miniature repo: one version file per component, all at 0.1.0."""
+    for folder in ("host", "extension", "core", "js"):
+        (root / folder).mkdir()
+    (root / "VERSION").write_text("0.1.0\n")
+    (root / "host/Cargo.toml").write_text(
+        '[package]\nname = "docsigner-host"\nversion = "0.1.0"\nedition = "2021"\n'
+    )
+    # A dependency's version line comes first on purpose: replacing the wrong
+    # one is the failure this guards against.
+    (root / "host/Cargo.lock").write_text(
+        '[[package]]\nname = "aho-corasick"\nversion = "1.1.3"\n\n'
+        '[[package]]\nname = "docsigner-host"\nversion = "0.1.0"\n'
+    )
+    (root / "extension/manifest.json").write_text(
+        '{\n  "manifest_version": 3,\n  "version": "0.1.0"\n}\n'
+    )
+    (root / "core/pyproject.toml").write_text(
+        '[project]\nname = "docsigner-core"\nversion = "0.1.0"\n'
+    )
+    (root / "js/package.json").write_text(
+        '{\n  "name": "docsigner",\n  "version": "0.1.0"\n}\n'
+    )
+
+
+def _selftest_auto():
+    """--auto decides every release now, so it is checked against a real repo.
+
+    Three things have to hold, and only the first is obvious: a changed folder
+    is bumped, an unchanged one is not, and one already bumped by hand is left
+    at the number the human chose.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _scaffold(root)
+
+        def git(*args):
+            done = _git(*args, root=root)
+            assert done.returncode == 0, f"git {args[0]} failed: {done.stderr}"
+            return done
+
+        git("init", "-q")
+        git("config", "user.email", "selftest@example.invalid")
+        git("config", "user.name", "selftest")
+        git("add", "-A")
+        git("commit", "-qm", "first")
+        git("tag", "v0.1.0")
+
+        assert check("v0.1.0", root) == [], "nothing changed yet"
+
+        (root / "extension/background.js").write_text("// a change\n")
+        git("add", "-A")
+        git("commit", "-qm", "change the extension")
+        assert check("v0.1.0", root) == ["extension"]
+
+        moved = auto("v0.1.0", root)
+        assert moved == {
+            "extension": ("0.1.0", "0.1.1"),
+            "release": ("0.1.0", "0.1.1"),
+        }, moved
+        assert current("core", root) == "0.1.0", "core did not change; leave it alone"
+
+        # A minor bump typed by hand on develop must survive the automatic pass.
+        git("add", "-A")
+        git("commit", "-qm", "release")
+        git("tag", "v0.1.1")
+        (root / "core/engine.py").write_text("# a feature\n")
+        bump("core", "minor", root=root)
+        git("add", "-A")
+        git("commit", "-qm", "feat: something")
+        assert check("v0.1.1", root) == [], "already bumped, so not stale"
+        assert auto("v0.1.1", root) == {"release": ("0.1.1", "0.1.2")}
+        assert current("core", root) == "0.2.0", "the typed minor must survive"
+
+
 def selftest():
     """The whole point is that it edits one number and leaves the file alone."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        for folder in ("host", "extension", "core", "js"):
-            (root / folder).mkdir()
-        (root / "VERSION").write_text("0.1.0\n")
-        (root / "host/Cargo.toml").write_text(
-            '[package]\nname = "docsigner-host"\nversion = "0.1.0"\nedition = "2021"\n'
-        )
-        # A dependency's version line comes first on purpose: replacing the
-        # wrong one is the failure this guards against.
-        (root / "host/Cargo.lock").write_text(
-            '[[package]]\nname = "aho-corasick"\nversion = "1.1.3"\n\n'
-            '[[package]]\nname = "docsigner-host"\nversion = "0.1.0"\n'
-        )
-        (root / "extension/manifest.json").write_text(
-            '{\n  "manifest_version": 3,\n  "version": "0.1.0"\n}\n'
-        )
-        (root / "core/pyproject.toml").write_text(
-            '[project]\nname = "docsigner-core"\nversion = "0.1.0"\n'
-        )
-        (root / "js/package.json").write_text(
-            '{\n  "name": "docsigner",\n  "version": "0.1.0"\n}\n'
-        )
+        _scaffold(root)
 
         for name in COMPONENTS:
             assert current(name, root) == "0.1.0", name
@@ -177,12 +256,20 @@ def selftest():
             continue
         raise AssertionError(f"{bad!r} should have been refused")
 
+    _selftest_auto()
     print("selftest ok")
 
 
 def main(argv):
     if argv and argv[0] == "--selftest":
         return selftest()
+
+    if argv and argv[0] == "--auto":
+        if len(argv) < 2:
+            raise SystemExit("error: --auto needs the previous tag, e.g. --auto v0.1.0")
+        for name, (was, now) in auto(argv[1]).items():
+            print(f"{name} {was} -> {now}")
+        return None
 
     if argv and argv[0] == "--check":
         if len(argv) < 2:

@@ -46,14 +46,15 @@ See what they all are:
 python scripts/bump_version.py
 ```
 
-Move one:
+Move one by hand — only when a patch is not the right size:
 
 ```bash
-python scripts/bump_version.py core          # 0.1.0 -> 0.1.1  (a fix)
 python scripts/bump_version.py core minor    # 0.1.0 -> 0.2.0  (a feature)
 python scripts/bump_version.py core major    # 0.1.0 -> 1.0.0  (a break)
 python scripts/bump_version.py core 2.0.0    # or say the number
 ```
+
+Everything else is automatic. See below.
 
 ---
 
@@ -65,67 +66,73 @@ python scripts/bump_version.py core 2.0.0    # or say the number
 they need a real token in a real machine. Do this while there is still time to
 fix something.
 
-### 2. Bump what changed
-
-Work out what actually moved since the last release:
-
-```bash
-git diff --stat $(git describe --tags --abbrev=0) -- core/ js/ extension/ host/
-```
-
-Bump each of those, then the release number, which always moves:
-
-```bash
-python scripts/bump_version.py core
-python scripts/bump_version.py release
-```
-
-> **Note:** you cannot forget this. The `prepare` job compares every folder
-> against the last tag and fails the release if one changed without its number
-> moving.
-
-### 3. Commit on `develop`
-
-```bash
-git commit -am "chore(release): v0.1.1"
-git push
-```
-
-### 4. Merge `develop` into `master`
+### 2. Merge `develop` into `master`
 
 Open a PR from `develop` to `master` and merge it. **That merge is the
-release.**
+release.** You type no version and run no script.
 
-### 5. Watch it
+### 3. Watch it
 
 ```bash
 gh run watch
 ```
 
-| Stage       | What happens                                                        |
-| ----------- | -------------------------------------------------------------------- |
-| `prepare`   | reads every version, refuses a tag that exists or a missed bump      |
-| builds      | host, desktop, extension, core, js — in parallel                     |
-| `publish`   | checksums, Homebrew files, `latest.json`, the tag, the Release       |
+| Stage       | What happens                                                          |
+| ----------- | ---------------------------------------------------------------------- |
+| `prepare`   | patch-bumps every changed component and the release, commits it back   |
+| builds      | host, desktop, extension, core, js — in parallel, off that new commit  |
+| `publish`   | checksums, Homebrew files, `latest.json`, the tag, the Release         |
 
-A failed build leaves **no tag behind**, because the tag is created last. Fix
-and merge again.
+`prepare` leaves a `chore(release): v0.1.1` commit on `master`, so the numbers
+in the repo are the numbers that shipped. **Pull `master` back into `develop`
+afterwards**, or the next release starts from stale numbers.
 
-### 6. Upload what changed
+A failed build leaves **no tag behind**, because the tag is created last.
+
+### 4. Upload what changed
 
 CI builds and attaches everything. It uploads to **no registry** — that is still
 a person's decision. Take the files off the release page:
 
-| Changed     | Upload                                    | Where                    |
-| ----------- | ----------------------------------------- | ------------------------ |
-| `core/`     | `docsigner_core-….whl` and `.tar.gz`      | PyPI                     |
-| `js/`       | `docsigner-….tgz`                         | npm                      |
-| `extension/`| `docsigner-extension-…-chrome.zip`        | Chrome Web Store         |
-|             | `docsigner-extension-…-firefox.zip`       | Firefox Add-ons          |
-| macOS       | `docsigner.rb`, `docsigner-host.rb`       | the Homebrew tap         |
+| Changed      | Upload                                | Where            |
+| ------------ | ------------------------------------- | ---------------- |
+| `core/`      | `docsigner_core-….whl` and `.tar.gz`  | PyPI             |
+| `js/`        | `docsigner-….tgz`                     | npm              |
+| `extension/` | `docsigner-extension-…-chrome.zip`    | Chrome Web Store |
+|              | `docsigner-extension-…-firefox.zip`   | Firefox Add-ons  |
+| macOS        | `docsigner.rb`, `docsigner-host.rb`   | the Homebrew tap |
 
-**Only upload what changed.** If core's number did not move, its file is the
-same build as last time and PyPI will refuse it anyway.
+**Only upload what changed.** A file whose number did not move is the same build
+as last time, and the registry will refuse it anyway.
+
+---
+
+## Wanting a minor or a major
+
+The automatic bump is always a patch, because that is what almost every release
+is. When a release deserves more, say so on `develop` before merging:
+
+```bash
+python scripts/bump_version.py core minor
+git commit -am "chore: core 0.2.0"
+```
+
+Then merge as usual. `prepare` sees core's number already moved and leaves it
+alone.
+
+---
+
+## What makes it automatic
+
+`prepare` needs to push its bump commit to `master`, which needs a token with
+write access:
+
+| Secret      | Why                                                              |
+| ----------- | ---------------------------------------------------------------- |
+| `BOT_TOKEN` | a PAT that can push to `master`. Without it the job falls back to the built-in token, which cannot push to a protected branch. |
+
+That push would normally start another release. It does not, because `prepare`
+skips any run whose head commit starts with `chore(release):` — its own.
 
 ---
 

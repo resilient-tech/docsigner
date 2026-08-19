@@ -41,7 +41,7 @@ python scripts/bump_version.py     # 0.2.0 -> 0.2.1, in three files
 git commit -am "chore(release): v0.2.1"
 ```
 
-The version in `Cargo.toml` is the host's own, bumped only when `host/` changes (`python scripts/bump_version.py host`). The release tag comes from `VERSION` at the repo root. A merge that forgot either bump fails in the first job, before anything builds. Run the workflow from the Actions tab (`workflow_dispatch`) to build without publishing.
+The version in `Cargo.toml` is the host's own, and the release workflow patch-bumps it on the merge to master whenever `host/` changed. The release tag comes from `VERSION` at the repo root. Nothing to type; see [docs/releasing.md](../docs/releasing.md). Run the workflow from the Actions tab (`workflow_dispatch`) to build without publishing.
 
 **One download per OS, and the architecture is not the user's problem.** Each choice is deliberate and the reasoning is written into the workflow so nobody removes it:
 
