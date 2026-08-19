@@ -2,6 +2,7 @@
 import { Icon } from 'astro-icon/components';
 import Sheet from './Sheet.astro';
 import SignatureBox from './SignatureBox.astro';
+import { folder, invoiceFile, invoiceNo, year } from '../lib/demo';
 
 /*
  * Two surfaces, both signable. Press the button and the thing happens.
@@ -34,14 +35,14 @@ import SignatureBox from './SignatureBox.astro';
  */
 
 const files = [
-  { name: 'invoice_2026_0412.pdf', size: '12,698 KB', outcome: 'signed' },
-  { name: 'invoice_2026_0413.pdf', size: '431 KB', outcome: 'signed' },
+  { name: invoiceFile(12), size: '12,698 KB', outcome: 'signed' },
+  { name: invoiceFile(13), size: '431 KB', outcome: 'signed' },
   { name: 'credit_note_0088.pdf', size: '96 KB', outcome: 'signed' },
   { name: 'annexure_c.pdf', size: '1,204 KB', outcome: 'skipped' },
 ];
 
 const rows = [
-  ['ERPNext implementation, Q1 2026', '1', '4,20,000.00'],
+  [`ERPNext implementation, Q1 ${year}`, '1', '4,20,000.00'],
   ['India Compliance, annual licence', '1', '72,000.00'],
   ['Onboarding and data migration', '2', '48,000.00'],
 ];
@@ -91,7 +92,7 @@ const tabs = [
 
             <div class="toolbar">
               <span class="btn ghost"><Icon name="lucide:folder-open" aria-hidden="true" /> Choose folder</span>
-              <span class="path">~/Invoices/2026-04</span>
+              <span class="path">{folder}</span>
               <span class="ic flat" aria-hidden="true"><Icon name="lucide:refresh-cw" /></span>
             </div>
 
@@ -133,8 +134,12 @@ const tabs = [
               <aside class="setup">
                 <div class="f"><span class="fl">Certificate</span><span class="c">Smit Vora (signing, ePass2003, valid until 2027-04-11)</span></div>
                 <div class="f"><span class="fl">Signature</span>
-                  <span class="c preview paper">
-                    <SignatureBox class="sigprev" />
+                  <span class="sig-paper paper">
+                    <SignatureBox class="sigprev" frame={false} />
+                  </span>
+                  <span class="profile-row">
+                    <span class="c grow">Handwritten + Date <i>&#9662;</i></span>
+                    <span class="btn ghost">Edit</span>
                   </span>
                 </div>
                 <div class="f"><span class="fl">Standard</span><span class="c">CCA-LTA</span></div>
@@ -167,7 +172,7 @@ const tabs = [
           <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="url">
             <Icon name="lucide:lock" aria-hidden="true" />
-            erp.resilient.tech/app/sales-invoice/ACC-SINV-2026-0412
+            erp.resilient.tech/app/sales-invoice/{invoiceNo}
           </span>
         </div>
 
@@ -175,7 +180,7 @@ const tabs = [
           <div class="erp">
             <div class="erp-top">
               <span class="crumb">Sales Invoice</span>
-              <span class="erp-id">ACC-SINV-2026-0412</span>
+              <span class="erp-id">{invoiceNo}</span>
               <span class="pill" data-pill>Submitted</span>
               <span class="spacer"></span>
               <span class="btn ghost">PDF</span>
@@ -265,12 +270,27 @@ const tabs = [
     const pill = erp.querySelector<HTMLElement>('[data-pill]');
     const headline = erp.querySelector<HTMLElement>('[data-headline]');
 
+    const reset = () => {
+      erp.classList.remove('signing', 'done');
+      if (label) label.textContent = 'Digitally Sign';
+      if (pill) pill.textContent = 'Submitted';
+      pill?.classList.remove('good');
+      if (headline) headline.hidden = true;
+    };
+
     erp.querySelector('[data-sign-erp]')?.addEventListener('click', () => {
-      const done = erp.classList.toggle('done');
-      if (label) label.textContent = done ? 'Sign again' : 'Digitally Sign';
-      if (pill) pill.textContent = done ? 'Signed' : 'Submitted';
-      pill?.classList.toggle('good', done);
-      if (headline) headline.hidden = !done;
+      if (erp.classList.contains('done')) return reset();
+      erp.classList.add('signing');
+      if (label) label.textContent = 'Signing…';
+      /* Long enough for the mark to finish writing itself: the headline is the
+         server confirming, and it cannot confirm before the ink is dry. */
+      setTimeout(() => {
+        erp.classList.add('done');
+        if (label) label.textContent = 'Sign again';
+        if (pill) pill.textContent = 'Signed';
+        pill?.classList.add('good');
+        if (headline) headline.hidden = false;
+      }, 1550);
     });
   }
 </script>
@@ -486,28 +506,39 @@ const tabs = [
   }
 
   /* Delay on the way IN only. Sharing it made "Sign again" look stuck for over
-     a second while the stamp faded back out. */
+     a second while the stamp faded back out.
+
+     Short delay now: the box lands, then the mark writes itself into it, which
+     is the part worth waiting for. */
   .signing .cscroll :global([data-sig]),
   .done .cscroll :global([data-sig]),
+  .signing .pstage :global([data-sig]),
   .done .pstage :global([data-sig]) {
     opacity: 1;
-    transition-delay: 0.95s;
+    transition-delay: 0.2s;
   }
 
-  /* The stamp itself, at the width the field gives it. */
-  .preview {
-    background: var(--paper);
+  /* SetupPanel's CARD_W/CARD_H: a fixed shape, so the preview shows what the
+     signature contains rather than jumping about as the box is resized on the
+     canvas. */
+  .sig-paper {
+    aspect-ratio: 220 / 60;
     border-color: var(--paper-line);
     color: var(--paper-ink);
-    padding: var(--s-2);
-    display: block;
+    display: grid;
+    place-items: center;
+    padding: 0 var(--s-2);
   }
 
   .sigprev {
     width: 100%;
     height: auto;
-    display: block;
   }
+
+  .profile-row { display: flex; gap: var(--s-2); }
+  .profile-row .grow { flex: 1; min-width: 0; }
+  .profile-row .c { display: flex; align-items: center; justify-content: space-between; }
+  .profile-row i { font-style: normal; opacity: .5; }
 
   /* ---- Frappe's print view ---- */
   .erp-top {

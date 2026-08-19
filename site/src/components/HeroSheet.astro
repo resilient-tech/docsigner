@@ -1,4 +1,5 @@
 ---
+import { signedAt } from '../lib/demo';
 /*
  * The artifact: a page with a signature and a verification QR on it, drawn
  * rather than screenshotted so it takes the theme's --paper tokens and stays
@@ -12,10 +13,10 @@
 ---
 
 <svg class="hero-sheet" viewBox="0 0 340 250" aria-hidden="true">
-  <rect x="0" y="6" width="126" height="3.4" rx="0.8" fill="var(--paper-ink)" opacity="0.5"/>
-  <rect x="0" y="24" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="35" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="46" width="268" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/>
-  <rect x="0" y="72" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="83" width="286" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="94" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="105" width="232" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/>
-  <rect x="0" y="130" width="188" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="141" width="300" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="152" width="146" height="1.6" rx="0.8" fill="var(--paper-ink)" opacity="0.16"/>
+  <rect x="0" y="6" width="126" height="3.8" rx="1.9" fill="var(--paper-ink)" opacity="0.5"/>
+  <rect x="0" y="24" width="300" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="35" width="300" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="46" width="268" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/>
+  <rect x="0" y="72" width="300" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="83" width="286" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="94" width="300" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="105" width="232" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/>
+  <rect x="0" y="130" width="188" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="141" width="300" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/><rect x="0" y="152" width="146" height="2.8" rx="1.4" fill="var(--paper-ink)" opacity="0.16"/>
   <g transform="translate(0 176)">
     <rect x="0" y="0" width="180" height="60" rx="3" fill="none"
           stroke="var(--paper-ink)" stroke-width="1" opacity="0.22"/>
@@ -28,7 +29,7 @@
     <text x="14" y="50" font-size="6.4" fill="var(--paper-ink)" opacity="0.72"
           font-family="system-ui, sans-serif">Digitally signed by SMIT VORA</text>
     <text x="14" y="57" font-size="5.4" fill="var(--paper-ink)" opacity="0.5"
-          font-family="system-ui, sans-serif">2026-04-11 14:32 +05:30</text>
+          font-family="system-ui, sans-serif">{signedAt}</text>
   </g>
 </svg>
 

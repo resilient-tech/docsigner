@@ -1,4 +1,5 @@
 ---
+import { signedAt } from '../lib/demo';
 interface Props {
   /* Placement inside a parent viewBox. Left off, the box is standalone and CSS
      sizes it. A nested <svg> is the only way to reuse this: bare SVG children
@@ -7,12 +8,13 @@ interface Props {
   x?: number;
   y?: number;
   size?: number;
-  /* Draw the mark on load, once. Only the hero asks for this. */
-  draw?: boolean;
+  /* The box rule around it. The setup panel's field has its own border, and
+     two rounded rectangles a pixel apart look like a mistake. */
+  frame?: boolean;
   class?: string;
 }
 
-const { x, y, size, draw = false, class: extra } = Astro.props;
+const { x, y, size, frame = true, class: extra } = Astro.props;
 const placed = x !== undefined;
 
 /*
@@ -28,26 +30,30 @@ const placed = x !== undefined;
 
 <svg
   class:list={['sigbox', extra]}
-  viewBox="0 0 180 60"
+  viewBox={frame ? '0 0 180 60' : '10 4 162 54'}
   x={placed ? x : undefined}
   y={placed ? y : undefined}
   width={placed ? size : undefined}
   height={placed ? size! / 3 : undefined}
   aria-hidden="true"
 >
-  <rect
-    x="0"
-    y="0"
-    width="180"
-    height="60"
-    rx="3"
-    fill="none"
-    stroke="var(--paper-ink)"
-    stroke-width="1"
-    opacity="0.22"
-  />
+  {
+    frame && (
+      <rect
+        x="0"
+        y="0"
+        width="180"
+        height="60"
+        rx="3"
+        fill="none"
+        stroke="var(--paper-ink)"
+        stroke-width="1"
+        opacity="0.22"
+      />
+    )
+  }
   <path
-    class:list={['ink', { draw }]}
+    class="ink"
     pathLength="1"
     d="M14 31c11-3 16-19 22-21s8 10 3 16-11 4-8-2 12-11 21-11 13 8 22 6 12-10 19-10"
     fill="none"
@@ -72,16 +78,26 @@ const placed = x !== undefined;
     font-size="5.4"
     fill="var(--paper-ink)"
     opacity="0.5"
-    font-family="system-ui, sans-serif">2026-04-11 14:32 +05:30</text>
+    font-family="system-ui, sans-serif">{signedAt}</text>
 </svg>
 
 <style>
-  /* Draws itself once, on load, then holds. pathLength="1" lets one dash rule
-     drive it whatever the real path length is. */
-  .ink.draw {
+  /* The mark writes itself while a surface is signing, which is the same moment
+     the hero's does on load. A fade read as a picture appearing; this reads as
+     signing. pathLength="1" lets one dash rule drive it whatever the real path
+     length is.
+
+     Scoped under [data-sig] so the setup panel's preview, which is a settings
+     value and not an event, stays still. */
+  /* Undrawn is the resting state on a page waiting to be signed, so there is no
+     frame where the finished mark shows before the animation resets it. */
+  :global([data-sig]) .ink {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: ink-draw 1500ms var(--ease) 400ms forwards;
+  }
+
+  :global(.signing [data-sig]) .ink {
+    animation: ink-draw 1200ms var(--ease) 250ms forwards;
   }
 
   @keyframes ink-draw {
@@ -91,10 +107,14 @@ const placed = x !== undefined;
   }
 
   /* Drawn, not animated: the signature is the point, so it stays visible. */
+  /* Drawn, not animated: the signature is the point, so it appears whole. */
   @media (prefers-reduced-motion: reduce) {
-    .ink.draw {
-      animation: none;
+    :global([data-sig]) .ink {
       stroke-dashoffset: 0;
+    }
+
+    :global(.signing [data-sig]) .ink {
+      animation: none;
     }
   }
 </style>
