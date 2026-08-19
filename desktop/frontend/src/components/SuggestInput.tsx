@@ -34,6 +34,8 @@ export function SuggestInput({
 }) {
   const [open, setOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  // Set when the keyboard asked for the list, cleared once focus has landed.
+  const [reachFor, setReachFor] = useState(false)
   const wrapRef = useRef<HTMLSpanElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLUListElement>(null)
@@ -55,6 +57,16 @@ export function SuggestInput({
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
   }, [open])
+
+  // An effect, not requestAnimationFrame. The frame fired before React had put
+  // the <ul> in the DOM, so menuRef was still empty and focusOption returned
+  // having done nothing: the list opened and then the arrow keys did nothing at
+  // all. An effect runs after the commit, so the options are always there.
+  useEffect(() => {
+    if (!reachFor || !open) return
+    focusOption(0)
+    setReachFor(false)
+  }, [reachFor, open, list.length])
 
   function focusOption(index: number) {
     const items = menuRef.current?.querySelectorAll('button')
@@ -95,7 +107,7 @@ export function SuggestInput({
             e.preventDefault()
             setShowAll(true)
             setOpen(true)
-            requestAnimationFrame(() => focusOption(0)) // a frame, so the list exists
+            setReachFor(true)
           }
         }}
       />
