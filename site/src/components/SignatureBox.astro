@@ -15,6 +15,12 @@ interface Props {
 }
 
 const { x, y, size, frame = true, class: extra } = Astro.props;
+
+/* Unframed, the field's own border is the frame, so the margin has to come from
+   the viewBox instead of the box rule. The content sits at x 14..175, y 9..58.2,
+   and this is that plus six units on every side -- margin in viewBox units
+   scales with the drawing, where padding in pixels would not. */
+const UNFRAMED = '8 3 173 61';
 const placed = x !== undefined;
 
 /*
@@ -30,7 +36,7 @@ const placed = x !== undefined;
 
 <svg
   class:list={['sigbox', extra]}
-  viewBox={frame ? '0 0 180 60' : '10 4 162 54'}
+  viewBox={frame ? '0 0 180 60' : UNFRAMED}
   x={placed ? x : undefined}
   y={placed ? y : undefined}
   width={placed ? size : undefined}

@@ -518,21 +518,20 @@ const tabs = [
     transition-delay: 0.2s;
   }
 
-  /* SetupPanel's CARD_W/CARD_H: a fixed shape, so the preview shows what the
-     signature contains rather than jumping about as the box is resized on the
-     canvas. */
+  /* SetupPanel's card: a fixed shape, so the preview shows what the signature
+     contains rather than jumping about as the box is resized on the canvas. Its
+     height follows the drawing, whose viewBox carries an even margin on all
+     four sides. */
   .sig-paper {
-    aspect-ratio: 220 / 60;
     border-color: var(--paper-line);
     color: var(--paper-ink);
-    display: grid;
-    place-items: center;
-    padding: 0 var(--s-2);
+    display: block;
   }
 
   .sigprev {
     width: 100%;
     height: auto;
+    display: block;
   }
 
   .profile-row { display: flex; gap: var(--s-2); }
