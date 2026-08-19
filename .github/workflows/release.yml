@@ -1,13 +1,15 @@
 name: Release
 
 # Merging into master is the release. Work lands on develop; when a batch of it
-# is ready, bump what changed, bump the release number, and merge. This builds
-# every artifact, tags the commit and publishes:
+# is ready, merge it. Nothing else. `prepare` works out which folders changed
+# since the last tag, patch-bumps those components and the release number,
+# commits that back to master, and the rest builds, tags and publishes.
 #
-#     python scripts/bump_version.py core       # only what actually changed
-#     python scripts/bump_version.py release    # always, it numbers the release
-#     git commit -am "chore(release): v0.1.1"
-#     # merge develop into master
+# Nobody types a version for an ordinary release. A bigger bump is the one
+# manual case, typed on develop before the merge, and the automatic pass leaves
+# that component alone because its number has already moved:
+#
+#     python scripts/bump_version.py core minor
 #
 # Every component carries its own number, because each is published somewhere
 # different, and a number that moves for nothing means a store review or a
@@ -15,11 +17,11 @@ name: Release
 # carries them all; the desktop app has none of its own, being a bundle of core
 # and host, so it ships as the release.
 #
-# Two mistakes are caught in the first job, before anything is built: a merge
-# that forgot the release bump (the tag already exists), and a folder that
-# changed without its version moving. Nothing here ever pushes a commit.
+# This is the one workflow that pushes a commit, and `prepare`'s `if:` is what
+# stops that push starting another release.
 #
-# Run it with workflow_dispatch to check the builds without publishing.
+# Run it with workflow_dispatch to check the builds without publishing. A manual
+# run bumps nothing and pushes nothing.
 #
 # ---------------------------------------------------------------------------
 # Why one architecture per OS, deliberately
@@ -81,52 +83,80 @@ jobs:
   prepare:
     name: prepare
     runs-on: ubuntu-latest
+    # The bump this job pushes lands back on master as another push, which would
+    # start another release, which would push again. Skipping its own commit is
+    # what stops that.
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
     outputs:
       version: ${{ steps.plan.outputs.version }}
       publish: ${{ steps.plan.outputs.publish }}
+      # The commit carrying the bumped versions. Every other job checks this
+      # out rather than the merge commit, which still has the old numbers.
+      sha: ${{ steps.commit.outputs.sha || steps.plan.outputs.sha }}
     steps:
-      # Full history and tags. The version check compares every folder against
-      # the last release, and a shallow clone has neither.
+      # Full history and tags: the bump compares every folder against the last
+      # release, and a shallow clone has neither. BOT_TOKEN rather than the
+      # default one because this job pushes; the fallback keeps manual runs
+      # working before the secret exists, since those never push.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.BOT_TOKEN || github.token }}
 
       - id: plan
         run: |
           set -eu
-          version=$(cat VERSION)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "component versions:"
-          python3 scripts/bump_version.py
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "building $version, publishing nothing (manual run)"
+            echo "building $(cat VERSION), publishing nothing (manual run)"
             exit 0
           fi
 
-          # The forgotten bump, which is the one mistake this flow can make:
-          # merging to master twice without moving the version. Caught here
-          # rather than by a confusing overwrite at publish time.
+          # Nobody types a version for an ordinary release. Every component
+          # whose folder changed since the last tag gets a patch bump, and the
+          # release number moves with them. A bigger bump is typed on develop
+          # before the merge, and this leaves that component alone because its
+          # version has already moved.
+          prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$prev" ]; then
+            python3 scripts/bump_version.py --auto "$prev"
+          else
+            echo "no previous tag: first release, shipping the versions as they are"
+          fi
+
+          version=$(cat VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "releasing $version. component versions:"
+          python3 scripts/bump_version.py
+
+          # Only reachable on the first release, or if someone hand-edited
+          # VERSION backwards: --auto always moves it past the last tag.
           if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null 2>&1; then
-            echo "::error::v$version is already released. Bump it first: python scripts/bump_version.py release"
+            echo "::error::v$version is already released. Check VERSION."
             exit 1
           fi
 
-          # The other one: a folder that changed since the last release while
-          # its own version stayed put. That publishes an update to PyPI, npm
-          # or a store claiming to be the version already out there, and those
-          # uploads cannot be taken back.
-          prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          if [ -n "$prev" ]; then
-            python3 scripts/bump_version.py --check "$prev" \
-              || { echo "::error::a changed component was not bumped; see the log above"; exit 1; }
+      # Pushed to master so the numbers in the repo are the numbers that were
+      # released. It is also what the builds below check out, since the merge
+      # commit still carries the old ones.
+      - name: Commit the bump
+        id: commit
+        if: steps.plan.outputs.publish == 'true'
+        run: |
+          set -eu
+          git config user.name "DocSigner Bot"
+          git config user.email "bot@resilient.tech"
+          if git diff --quiet; then
+            echo "no version moved (first release)"
           else
-            echo "no previous tag: this is the first release, nothing to compare against"
+            git commit -am "chore(release): v${{ steps.plan.outputs.version }}"
+            git push origin HEAD:master
           fi
-
-          echo "publish=true" >> "$GITHUB_OUTPUT"
-          echo "releasing $version"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   host:
     needs: prepare
@@ -155,6 +185,8 @@ jobs:
         working-directory: host
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -244,6 +276,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       # arch -x86_64 needs it, and the arm64 runner images do not ship it.
       - name: Install Rosetta
@@ -322,6 +356,8 @@ jobs:
             python: .venv/bin/python
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -449,6 +485,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/setup-python@v5
         with:
@@ -492,6 +530,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/setup-python@v5
         with:
@@ -525,6 +565,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -550,6 +592,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -665,7 +709,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.prepare.outputs.version }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ needs.prepare.outputs.sha }}
           files: artifacts/*
           generate_release_notes: true
           body: |

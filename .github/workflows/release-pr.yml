@@ -1,0 +1,84 @@
+name: Release PR
+
+# The button that starts a release. Actions tab -> Release PR -> Run workflow.
+#
+# It opens (or refreshes) the pull request from develop to master and fills the
+# body with the versions the merge will produce and the commits going out.
+# Nothing is built, tagged or published here: merging the PR is what releases.
+#
+# Split from release.yml on purpose. That one runs on master and must never be
+# something you press by accident; this one is safe to press any time, and the
+# worst it can do is update a description.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open:
+    name: open the release PR
+    runs-on: ubuntu-latest
+    steps:
+      # develop, not the default checkout: this describes what develop would
+      # release. Full history so the last tag is reachable.
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Work out what this release contains
+        run: |
+          set -eu
+          prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          {
+            echo "Merging this **is** the release. CI bumps the versions on the merge,"
+            echo "so there is nothing to run first."
+            echo
+            if [ -n "$prev" ]; then
+              echo "## Versions this will produce"
+              echo
+              echo '```'
+              python3 scripts/bump_version.py --preview "$prev"
+              echo '```'
+              echo
+              echo "A component missing from that list did not change, so it keeps its"
+              echo "number and needs no upload anywhere."
+              echo
+              echo "## Commits since $prev"
+              echo
+              git log --oneline --no-merges "$prev"..HEAD | head -50
+            else
+              echo "## First release"
+              echo
+              echo "No previous tag, so nothing is bumped. These ship as they are:"
+              echo
+              echo '```'
+              python3 scripts/bump_version.py
+              echo '```'
+            fi
+            echo
+            echo "---"
+            echo
+            echo "After merging, pull master back into develop so the next release"
+            echo "starts from the numbers that shipped. See docs/releasing.md."
+          } > body.md
+          cat body.md
+
+      # Edit rather than fail when one is already open: pressing the button
+      # twice should refresh the description, not error.
+      - name: Open or refresh the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          open=$(gh pr list --base master --head develop --state open --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh pr edit "$open" --body-file body.md
+            echo "refreshed $(gh pr view "$open" --json url --jq .url)"
+          else
+            gh pr create --base master --head develop \
+              --title "Release: develop -> master" --body-file body.md
+          fi
