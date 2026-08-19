@@ -14,22 +14,38 @@
     } catch {
       return;
     }
-    if (!detail || typeof detail.requestId !== "string" || typeof detail.command !== "string") {
+    if (
+      !detail ||
+      typeof detail.requestId !== "string" ||
+      typeof detail.command !== "string"
+    ) {
       return;
     }
 
     const { requestId, command, params } = detail;
     Promise.resolve()
-      .then(() => api.runtime.sendMessage({ requestId, command, params: params ?? {} }))
+      .then(() =>
+        api.runtime.sendMessage({ requestId, command, params: params ?? {} }),
+      )
       .then((reply) => {
-        if (reply && (reply.result !== undefined || reply.error !== undefined)) {
+        if (
+          reply &&
+          (reply.result !== undefined || reply.error !== undefined)
+        ) {
           respond(requestId, reply);
         } else {
-          respond(requestId, { error: { code: "INTERNAL", message: "Empty reply from extension background" } });
+          respond(requestId, {
+            error: {
+              code: "INTERNAL",
+              message: "Empty reply from extension background",
+            },
+          });
         }
       })
       .catch((e) => {
-        respond(requestId, { error: { code: "INTERNAL", message: String((e && e.message) || e) } });
+        respond(requestId, {
+          error: { code: "INTERNAL", message: String((e && e.message) || e) },
+        });
       });
   });
 
