@@ -97,11 +97,11 @@ const verify = artifact?.sha256
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--s-4);
+    gap: var(--s-3);
     background: var(--surface);
     border: var(--hairline);
     border-radius: var(--radius);
-    padding: var(--s-6);
+    padding: var(--s-5);
   }
 
   /* Selected: one edge. This used to be a border colour plus a 1px ring
@@ -191,8 +191,10 @@ const verify = artifact?.sha256
     border-radius: var(--radius-card);
     padding: var(--s-2) var(--s-3);
     width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
+    /* design/base.css sets inline code to nowrap; a tap path is long enough to
+       need the opposite. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   .pending {
