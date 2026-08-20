@@ -1,11 +1,32 @@
 {
   "name": "docsigner",
   "version": "0.1.0",
-  "description": "Browser library for the DocSigner document signing stack.",
+  "description": "Sign PDFs in the browser with a DSC token. The page-side library for DocSigner.",
+  "keywords": [
+    "pdf",
+    "digital-signature",
+    "dsc",
+    "pkcs11",
+    "pades",
+    "signing",
+    "token"
+  ],
+  "homepage": "https://github.com/resilient-tech/docsigner/tree/HEAD/js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/resilient-tech/docsigner.git",
+    "directory": "js"
+  },
+  "bugs": "https://github.com/resilient-tech/docsigner/issues",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "docsigner.js",
+  "files": [
+    "docsigner.js",
+    "LICENSE",
+    "NOTICE"
+  ],
   "scripts": {
     "test": "node --test"
-  },
-  "license": "Apache-2.0"
+  }
 }

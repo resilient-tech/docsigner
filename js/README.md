@@ -1,16 +1,19 @@
-# docsigner.js
+# docsigner
 
-The page-side library. One file, no dependencies. It talks to the browser
-extension, which talks to the native host, so a web page can list token
-certificates and sign hashes. The API and error codes are in
-[`../CONTRACTS.md`](../CONTRACTS.md); `../demo/demo.js` is the full worked
-example.
+Sign PDFs in the browser with a DSC token. One file, no dependencies.
 
-`docsigner.js` is an ES module. Import it in a bundler or straight from a
-`<script type="module">` tag; there is nothing to build.
+The page never sees the private key. This library talks to the DocSigner browser
+extension, which talks to a native host, which reads the token — so a web page
+can list certificates and get hashes signed without the key ever leaving the
+device.
 
-Where this sits in the whole flow, and why the page needs 4 hops to reach a USB
-token: [`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain).
+```bash
+npm install docsigner
+```
+
+Or copy `docsigner.js` into your site. It is an ES module: import it in a
+bundler or straight from a `<script type="module">` tag. There is nothing to
+build.
 
 ## Use it
 
@@ -28,7 +31,9 @@ token: [`../docs/architecture.md`](../docs/architecture.md#the-browser-hop-chain
 </script>
 ```
 
-Signing needs the extension and the native host installed (see the root README).
+Signing needs the extension and the native host installed on the user's
+machine. Both are on the
+[releases page](https://github.com/resilient-tech/docsigner/releases).
 
 ## Check before you prompt
 
@@ -50,17 +55,26 @@ for an internal mirror. The same URL rides on `EXTENSION_NOT_INSTALLED` and
 `HOST_NOT_INSTALLED` as `error.downloadUrl`, so a page that only catches errors
 gets it too.
 
-## Distribute
+## Documentation
 
-Copy the one file you need into your site. No build step is required on the
-consuming side. To publish to npm (package name `docsigner`, MIT):
+|                                                 |                                                                                                                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The API and every error code, frozen            | [CONTRACTS.md](https://github.com/resilient-tech/docsigner/blob/HEAD/CONTRACTS.md)                                                                                  |
+| Why a page needs four hops to reach a USB token | [docs/architecture.md](https://github.com/resilient-tech/docsigner/blob/HEAD/docs/architecture.md#the-browser-hop-chain)                                            |
+| A full worked example                           | [demo/demo.js](https://github.com/resilient-tech/docsigner/blob/HEAD/demo/demo.js) — [run it](https://github.com/resilient-tech/docsigner/blob/HEAD/demo/README.md) |
+| The rest of DocSigner                           | [the repository](https://github.com/resilient-tech/docsigner)                                                                                                       |
+
+Apache-2.0.
+
+---
+
+## Working on it
+
+From a clone of the repo:
 
 ```bash
-npm publish
+cd js && node --test
 ```
 
-## Tests
-
-```bash
-node --test
-```
+Releases are built and published from the repo —
+[docs/releasing.md](https://github.com/resilient-tech/docsigner/blob/HEAD/docs/releasing.md).
