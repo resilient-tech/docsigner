@@ -1,0 +1,311 @@
+---
+import { Icon } from 'astro-icon/components';
+import { answers, byId, profiles } from '../lib/profiles';
+
+/*
+ * One question instead of a six-row table.
+ *
+ * The reader's real question is "which of these is mine", and what decides it is
+ * how long the signature has to keep verifying. So that is the only question,
+ * with a region toggle for the two rungs where India differs.
+ *
+ * No JavaScript. Six radios and CSS sibling selectors, the same mechanism the
+ * surface tabs use. The radios come first in the DOM, durations before regions,
+ * which is what lets `#d-after:checked ~ #r-india:checked ~ .answers` reach the
+ * panel: `~` only looks forward.
+ *
+ * Six panels, not eight -- the first two rungs do not vary by region -- and the
+ * toggle dims itself when it would change nothing rather than sitting there
+ * implying it matters.
+ */
+
+/* Every (duration, region) pair that has a distinct answer. */
+const panels = answers.flatMap((a) =>
+  [
+    { a, region: 'any' as const, id: a.any },
+    ...(a.india ? [{ a, region: 'india' as const, id: a.india }] : []),
+  ].map(({ region, id }) => ({ key: `${a.slug}-${region}`, a, region, p: byId(id) }))
+);
+---
+
+<div class="picker">
+  {
+    answers.map((a, i) => (
+      <input type="radio" name="dur" id={`d-${a.slug}`} checked={i === 0} />
+    ))
+  }
+  <input type="radio" name="reg" id="r-any" checked />
+  <input type="radio" name="reg" id="r-india" />
+
+  <fieldset class="opts">
+    <legend class="q">How long does the signature have to hold up?</legend>
+    {
+      answers.map((a) => (
+        <label for={`d-${a.slug}`}>
+          <b>{a.label}</b>
+          <i>{a.hint}</i>
+        </label>
+      ))
+    }
+  </fieldset>
+
+  <div class="reg">
+    <span>Signing in</span>
+    <span class="seg">
+      <label for="r-any">Anywhere</label>
+      <label for="r-india">India</label>
+    </span>
+  </div>
+
+  <div class="answers" aria-live="polite">
+    {
+      panels.map(({ key, p }) => (
+        <article class="a" data-panel={key}>
+          <header>
+            <span class="a-id">{p.id.startsWith('CCA') ? p.id : `PAdES ${p.id}`}</span>
+            <span class="a-why">{p.adds}</span>
+          </header>
+          <div class="a-body">
+            <div class="a-col">
+              <p class="a-l">What you need</p>
+              {p.needs.length === 0 ? (
+                <p class="none">Nothing. It signs as-is.</p>
+              ) : (
+                <ul class="need">
+                  {p.needs.map((n) => (
+                    <li>
+                      <Icon name="lucide:check" aria-hidden="true" />
+                      <span>
+                        {n.what}
+                        {n.key && <code>{n.key}</code>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div class="a-col">
+              <p class="a-l">Worth knowing</p>
+              <p class="note">{p.note}</p>
+            </div>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .picker { position: relative; }
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .opts {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--s-3);
+  }
+
+  .q {
+    padding: 0;
+    margin-bottom: var(--s-6);
+    font-size: var(--display-2);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-display);
+    letter-spacing: var(--tracking-display);
+    max-width: 26ch;
+    text-wrap: balance;
+  }
+
+  .opts label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    padding: var(--s-4);
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--radius);
+    transition:
+      border-color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
+  }
+
+  .opts label:hover { border-color: var(--border-strong); }
+  .opts b { font-size: var(--text-sm); font-weight: var(--fw-semibold); }
+  .opts i { font-style: normal; font-size: var(--text-xs); color: var(--faint); }
+
+  .reg {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+    font-size: var(--text-sm);
+    color: var(--dim);
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .seg {
+    display: flex;
+    gap: 3px;
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+  }
+
+  .seg label {
+    cursor: pointer;
+    padding: var(--s-1) var(--s-3);
+    border-radius: var(--radius-card);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--faint);
+  }
+
+  /* Which option is lit. */
+  #d-today:checked ~ .opts label[for='d-today'],
+  #d-when:checked ~ .opts label[for='d-when'],
+  #d-after:checked ~ .opts label[for='d-after'],
+  #d-decades:checked ~ .opts label[for='d-decades'] {
+    background: var(--green-soft);
+    border-color: var(--green);
+  }
+
+  #r-any:checked ~ .reg label[for='r-any'],
+  #r-india:checked ~ .reg label[for='r-india'] {
+    background: var(--green-soft);
+    color: var(--green-ink);
+  }
+
+  /* Keyboard focus has to be visible on a control drawn as a label. */
+  #d-today:focus-visible ~ .opts label[for='d-today'],
+  #d-when:focus-visible ~ .opts label[for='d-when'],
+  #d-after:focus-visible ~ .opts label[for='d-after'],
+  #d-decades:focus-visible ~ .opts label[for='d-decades'],
+  #r-any:focus-visible ~ .reg label[for='r-any'],
+  #r-india:focus-visible ~ .reg label[for='r-india'] {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* The region changes nothing for the first two rungs, so it steps back. */
+  #d-today:checked ~ .reg,
+  #d-when:checked ~ .reg {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ---- the answer ---- */
+  .answers { margin-top: var(--s-8); }
+
+  .a {
+    display: none;
+    background: var(--bg-deep);
+    border: var(--hairline);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  #d-today:checked ~ .answers [data-panel='today-any'],
+  #d-when:checked ~ .answers [data-panel='when-any'],
+  #d-after:checked ~ #r-any:checked ~ .answers [data-panel='after-any'],
+  #d-after:checked ~ #r-india:checked ~ .answers [data-panel='after-india'],
+  #d-decades:checked ~ #r-any:checked ~ .answers [data-panel='decades-any'],
+  #d-decades:checked ~ #r-india:checked ~ .answers [data-panel='decades-india'] {
+    display: block;
+  }
+
+  .a header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-6) var(--s-6) var(--s-5);
+    border-bottom: var(--hairline);
+  }
+
+  .a-id {
+    font-family: var(--mono);
+    font-size: var(--display-3);
+    font-weight: var(--fw-semibold);
+    color: var(--green-ink);
+  }
+
+  .a-why {
+    color: var(--dim);
+    font-size: var(--text-sm);
+    flex: 1;
+    min-width: 24ch;
+  }
+
+  .a-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .a-col { padding: var(--s-5) var(--s-6); }
+  .a-col + .a-col { border-left: var(--hairline); }
+
+  .a-l {
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: var(--s-3);
+  }
+
+  .need {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+
+  .need li {
+    display: flex;
+    gap: var(--s-2);
+    align-items: flex-start;
+    font-size: var(--text-sm);
+  }
+
+  .need :global(svg) {
+    flex: none;
+    margin-top: 3px;
+    color: var(--green-ink);
+  }
+
+  .need code {
+    margin-left: var(--s-2);
+    font-size: var(--text-xs);
+  }
+
+  /* The one rung that costs nothing is the one worth pointing at. */
+  .none {
+    color: var(--green-ink);
+    font-weight: var(--fw-semibold);
+    font-size: var(--text-sm);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
+  /* --bp-md */
+  @media (max-width: 768px) {
+    .a-body { grid-template-columns: 1fr; }
+    .a-col + .a-col {
+      border-left: 0;
+      border-top: var(--hairline);
+    }
+  }
+</style>

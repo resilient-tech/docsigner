@@ -3,49 +3,14 @@ import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
+import ProfilePicker from '../components/ProfilePicker.astro';
 import { links } from '../config';
 
 /*
- * The profile ladder, and what each rung costs you in configuration.
- *
- * That second column is the reason this page exists. Every signing product
- * lists the profiles it supports; none of them tell you that B-LT needs a trust
- * folder and reachable revocation endpoints before it will produce anything. It
- * is the question a person actually has, so it gets a column.
+ * The picker is the only listing of the six profiles. There used to be a table
+ * of all of them underneath, with the same three columns the picker's panels
+ * already show, so it went.
  */
-
-const profiles = [
-  {
-    id: 'B-B',
-    adds: 'The signature itself.',
-    needs: null,
-  },
-  {
-    id: 'B-T',
-    adds: 'A trusted timestamp, per RFC 3161. Proves the signature existed by a date.',
-    needs: 'A timestamp authority',
-  },
-  {
-    id: 'B-LT',
-    adds: 'Revocation data embedded in the file, OCSP or CRL. It still validates once the certificate expires.',
-    needs: 'A timestamp authority, your CA chain, reachable OCSP or CRL',
-  },
-  {
-    id: 'B-LTA',
-    adds: 'An archival timestamp over the whole thing, so the chain can be re-timestamped for decades.',
-    needs: 'A timestamp authority, your CA chain, reachable OCSP or CRL',
-  },
-  {
-    id: 'CCA-LTV',
-    adds: "India's variant: the same revocation data, in the pdfRevocationInfoArchival attribute, per ESAIG 1.19.",
-    needs: 'Your CA chain, reachable OCSP or CRL',
-  },
-  {
-    id: 'CCA-LTA',
-    adds: 'CCA-LTV, plus a timestamp.',
-    needs: 'A timestamp authority, your CA chain, reachable OCSP or CRL',
-  },
-];
 
 const skipped = [
   ['Safari', 'The extension needs a signed macOS app wrapper around it. Parked until someone asks.'],
@@ -64,34 +29,11 @@ const skipped = [
   <Hero
     kicker="Standards"
     title="What the signature claims"
-    lede="Six profiles. The longer they have to last, the more you set up."
+    lede="The longer a signature has to last, the more you set up. Start here."
   />
 
   <Section>
-    <div class="ladder scroll-x">
-      <table>
-        <thead>
-          <tr>
-            <th>Profile</th>
-            <th>What it adds</th>
-            <th>What it needs</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            profiles.map((p) => (
-              <tr>
-                <td><code>{p.id}</code></td>
-                <td>{p.adds}</td>
-                <td class="needs">
-                  {p.needs ?? <span class="none">Nothing. It signs as-is.</span>}
-                </td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
-    </div>
+    <ProfilePicker />
 
     <p class="after">
       PAdES per ETSI EN 319 142-1. The output opens as signed in Adobe Reader and
@@ -163,57 +105,6 @@ const skipped = [
 </Layout>
 
 <style>
-  .ladder {
-    border: var(--hairline);
-    border-radius: var(--radius);
-    background: var(--surface);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-    /* The profile column never wraps and the other two share what is left. */
-    min-width: 640px;
-  }
-
-  th {
-    text-align: left;
-    font-size: var(--text-xs);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
-    color: var(--faint);
-    padding: var(--s-3) var(--s-4);
-    border-bottom: var(--hairline);
-    white-space: nowrap;
-  }
-
-  td {
-    padding: var(--s-4);
-    border-bottom: var(--hairline);
-    color: var(--dim);
-    vertical-align: top;
-  }
-
-  tbody tr:last-child td {
-    border-bottom: 0;
-  }
-
-  td:first-child {
-    color: var(--text);
-    white-space: nowrap;
-  }
-
-  .needs {
-    color: var(--faint);
-  }
-
-  /* The one rung that costs nothing is the one worth pointing at. */
-  .none {
-    color: var(--green-ink);
-  }
-
   .after {
     margin-top: var(--s-6);
     font-size: var(--text-sm);
