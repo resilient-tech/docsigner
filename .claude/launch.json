@@ -5,15 +5,33 @@
       "name": "site",
       "cwd": "site",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev", "--port", "4321"],
+      "runtimeArgs": [
+        "dev",
+        "--port",
+        "4321"
+      ],
       "port": 4321
     },
     {
       "name": "desktop",
       "cwd": "desktop/backend",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "docsigner_desktop", "--server"],
+      "runtimeArgs": [
+        "-m",
+        "docsigner_desktop",
+        "--server"
+      ],
       "port": 8000
+    },
+    {
+      "name": "demo",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8080"
+      ],
+      "port": 8080
     }
   ]
 }

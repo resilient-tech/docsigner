@@ -71,7 +71,7 @@ batch-signs a folder with no server and no extension.
 | `desktop/` | `docsigner-desktop`, batch-sign a folder locally | [docs/desktop.md](docs/desktop.md) |
 | `extension/` | WebExtension (MV3) for Chrome, Edge, Brave, Firefox | [extension/README.md](extension/README.md) |
 | `js/` | `docsigner.js`, the page-side library (one file, no deps) | [js/README.md](js/README.md) |
-| `demo/` | A working demo page, and the integration example | |
+| `demo/` | A working demo page, and the integration example | [demo/README.md](demo/README.md) |
 | `trust/` | Trust anchors for the LTV profiles | [server/README.md](server/README.md#trust-anchors-for-the-ltv-profiles) |
 
 Two things sit above all of it:

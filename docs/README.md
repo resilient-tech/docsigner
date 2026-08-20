@@ -27,7 +27,8 @@ commands and code for whoever works on that module.
 
 The browser side (extension + `docsigner.js`) is small enough to live in its own
 folder: [`../extension/README.md`](../extension/README.md) and
-[`../js/README.md`](../js/README.md).
+[`../js/README.md`](../js/README.md). To see it working, run the demo page:
+[`../demo/README.md`](../demo/README.md).
 
 **The contract**
 
