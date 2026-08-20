@@ -57,19 +57,19 @@ def test_site_links_to_files_that_exist(path):
     )
 
 
-# core/ ships to PyPI, and Apache-2.0 asks for the licence and the NOTICE to
-# travel with the code. Packaging tools cannot reach above the project
-# directory, so core/ carries its own copies -- which is a copy, and copies
-# drift. Same rot as a module map, checked the same way.
+# core/ and js/ are published packages, and Apache-2.0 asks for the licence and
+# the NOTICE to travel with the code. Packaging tools cannot reach above the
+# project directory, so each carries its own copies -- which are copies, and
+# copies drift. Same rot as a module map, checked the same way.
+@pytest.mark.parametrize("folder", ["core", "js"])
 @pytest.mark.parametrize("name", ["LICENSE", "NOTICE"])
-def test_core_ships_the_repo_licence(name):
-    original = (REPO / name).read_bytes()
-    shipped = REPO / "core" / name
+def test_published_packages_ship_the_repo_licence(folder, name):
+    shipped = REPO / folder / name
     assert shipped.is_file(), (
-        f"core/{name} is missing. It is listed in core/pyproject.toml's "
-        f"license-files, so the wheel would be built without it."
+        f"{folder}/{name} is missing, so the published package would go out "
+        f"without it."
     )
-    assert shipped.read_bytes() == original, (
-        f"core/{name} has drifted from {name} at the repo root. "
+    assert shipped.read_bytes() == (REPO / name).read_bytes(), (
+        f"{folder}/{name} has drifted from {name} at the repo root. "
         f"Copy the root one over it."
     )
