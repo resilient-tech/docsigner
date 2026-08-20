@@ -6,6 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "docsigner-core"
 version = "0.1.0"
 license = "Apache-2.0"
+# Apache-2.0 asks for the licence and the NOTICE to travel with the code, and
+# packaging tools cannot reach above the project directory to the repo root --
+# so core/ keeps its own copies. test_docs.py fails if they drift.
+license-files = ["LICENSE", "NOTICE"]
 description = "Digital signing on top of pyHanko: interrupted signing sessions, PAdES/CAdES/XAdES, validation"
 # The README becomes the PyPI project page, so it is packaging, not decoration.
 readme = "README.md"
@@ -30,8 +34,12 @@ dependencies = [
     "qrcode>=7",
 ]
 
+# Shown as links in PyPI's sidebar. Homepage points at core/ rather than the
+# repo root: this is one package out of a monorepo, and the root is about the
+# whole product. Repository stays the root, which is what a clone needs.
 [project.urls]
-Homepage = "https://github.com/resilient-tech/docsigner"
+Homepage = "https://github.com/resilient-tech/docsigner/tree/HEAD/core"
+Documentation = "https://github.com/resilient-tech/docsigner/blob/HEAD/docs/core.md"
 Repository = "https://github.com/resilient-tech/docsigner"
 Issues = "https://github.com/resilient-tech/docsigner/issues"
 
