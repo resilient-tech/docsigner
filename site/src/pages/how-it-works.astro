@@ -41,7 +41,7 @@ const hops = [
     lede="Your app carries a 32-byte hash out and a signature back. The document stays where it is."
   />
 
-  <Section ground="deep">
+  <Section>
     <SigningSteps />
   </Section>
 
@@ -76,7 +76,7 @@ const hops = [
     </p>
   </Section>
 
-  <Section ground="deep" label="Two decisions" title="What we chose, and why">
+  <Section label="Two decisions" title="What we chose, and why">
     <div class="decisions">
       <div>
         <h3>Sessions are files on disk</h3>
@@ -117,7 +117,7 @@ const hops = [
     </div>
   </Section>
 
-  <Section>
+  <Section centre>
     <div class="end">
       <h2>This is one of three ways</h2>
       <p class="lede">
@@ -203,12 +203,13 @@ const hops = [
     margin-top: var(--s-8);
   }
 
-  /* Left, like every heading above it. A centred closer under a page of
-     left-aligned text reads as a different page's furniture. */
+  /* Centred, and the only centred thing on the page. It carries no label, so it
+     is not a section announcing a subject: it is the end of the page, and
+     centring is what says so. */
   .end {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--s-4);
   }
 </style>

@@ -46,7 +46,7 @@ import Surfaces from '../components/Surfaces.astro';
     <Surfaces />
   </Section>
 
-  <Section ground="deep" label="Why it exists" title="No tool would do it">
+  <Section label="Why it exists" title="No tool would do it">
     <div class="why">
       <p>
         A DSC token on Linux left three options: pay for a Windows-only tool,
@@ -59,7 +59,7 @@ import Surfaces from '../components/Surfaces.astro';
     </div>
   </Section>
 
-  <Section>
+  <Section centre>
     <div class="end">
       <h2>Sign something</h2>
       <p class="lede">No account, no licence key, nothing leaves your machine.</p>
@@ -117,12 +117,13 @@ import Surfaces from '../components/Surfaces.astro';
   }
 
   /* ---- close ---- */
-  /* Left, like every heading above it. A centred closer under a page of
-     left-aligned text reads as a different page's furniture. */
+  /* Centred, and the only centred thing on the page. It carries no label, so it
+     is not a section announcing a subject: it is the end of the page, and
+     centring is what says so. */
   .end {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--s-4);
   }
 

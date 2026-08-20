@@ -1,8 +1,5 @@
 ---
 interface Props {
-  /* Alternating ground. Sections stack bg / deep / bg so the eye gets a break
-     without a border on every seam. */
-  ground?: 'bg' | 'deep';
   label?: string;
   title?: string;
   lede?: string;
@@ -20,7 +17,6 @@ interface Props {
 }
 
 const {
-  ground = 'bg',
   label,
   title,
   lede,
@@ -30,7 +26,7 @@ const {
   class: extra,
 } = Astro.props;
 
-const cls = ['section', ground, centre && 'centre', full && 'full', extra]
+const cls = ['section', centre && 'centre', full && 'full', extra]
   .filter(Boolean)
   .join(' ');
 ---
@@ -55,108 +51,15 @@ const cls = ['section', ground, centre && 'centre', full && 'full', extra]
     padding-block: var(--section-y);
   }
 
-  .bg {
-    background: var(--bg);
-  }
+  /* One ground for the whole page. The alternating band was the loudest way to
+     mark a seam and the least effective: in dark the two greys are a shade
+     apart, and in paper the tan band cut a story into slabs. The label's accent
+     tick does the marking now. */
 
-  .deep {
-    background: var(--bg-deep);
-  }
-
-  /* ----------------------------------------------------------------------
-     Comparison switch, temporary: see components/ToneSwitch.astro.
-
-     Every variant below is one tone. What differs is what replaces the band.
-     ---------------------------------------------------------------------- */
-  :global(:root[data-tone]) .deep {
-    background: var(--bg);
-  }
-
-  /* gutter: the label moves out into a left column and everything else lines up
-     against a single edge. The page is 1120 wide and prose caps at 68ch, so
-     without this there is 441px of nothing to the right of every heading; this
-     spends some of it on structure instead. Answers the seam and the emptiness
-     with one move. */
-  :global(:root[data-tone='gutter']) .head {
-    display: grid;
-    grid-template-columns: 150px minmax(0, var(--measure));
-    column-gap: var(--s-8);
-    row-gap: var(--s-3);
-    max-width: none;
-  }
-
-  :global(:root[data-tone='gutter']) .label {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    text-align: right;
-    padding-top: 0.45em;
-  }
-
-  :global(:root[data-tone='gutter']) .head > :not(.label) {
-    grid-column: 2;
-  }
-
-  /* Fully global: the section's body comes in through a slot, so it carries the
-     calling page's scope attribute and a scoped selector never matches it.
-     Qualified by .section because .inner is not ours alone -- SiteNav and
-     SiteFooter use the same class, and without this the nav got indented too. */
-  :global(:root[data-tone='gutter'] .section > .inner > :not(.head)) {
-    margin-left: calc(150px + var(--s-8));
-  }
-
-  /* The page title block is Hero, not a Section, so it needs the same treatment
-     or the page ends up with two left edges -- which is the problem this variant
-     exists to solve. */
-  :global(:root[data-tone='gutter'] .hero > .inner) {
-    display: grid;
-    grid-template-columns: 150px minmax(0, var(--measure));
-    column-gap: var(--s-8);
-    row-gap: var(--s-4);
-  }
-
-  :global(:root[data-tone='gutter'] .hero .label) {
-    grid-column: 1;
-    grid-row: 1 / span 4;
-    text-align: right;
-    padding-top: 0.45em;
-  }
-
-  :global(:root[data-tone='gutter'] .hero > .inner > :not(.label)) {
-    grid-column: 2;
-  }
-
-  /* rule: a hairline the full width of the page. */
-  :global(:root[data-tone='rule']) .section + .section {
-    border-top: var(--hairline);
-  }
-
-  /* objects: the recess becomes a property of the thing that needed framing
-     rather than of the page it sits on, and the rhythm carries the seam. A
-     section with a label is starting a subject and gets the full measure of
-     air; one without is continuing, and gets less. */
-  :global(:root[data-tone='objects']) .section:not(:has(.label)) {
-    padding-block: var(--s-16);
-  }
-
-  :global(:root[data-tone='objects'] .chooser),
-  :global(:root[data-tone='objects'] .seq) {
-    background: var(--bg-deep);
-    border: var(--hairline);
-    border-radius: var(--radius-lg);
-    padding: var(--s-6);
-  }
-
-  /* The page hero draws its own hairline seam. Under any variant that goes, or
-     "one tone, nothing" still has a line in it and the comparison is muddied. */
-  :global(:root[data-tone] .hero) {
-    border-bottom: 0;
-  }
-
-  /* tick: the site's own accent, at the size the nav and the callouts use it.
-     Hero's kicker is a .label too, so it gets one; DownloadCard's <dt> is also a
-     .label and must not, which is why this is not simply .label everywhere. */
-  :global(:root[data-tone='tick'] .hero .label::before),
-  :global(:root[data-tone='tick']) .label::before {
+  /* A section announces itself with the accent the nav underline and the callout
+     borders already use, rather than with a change of ground. */
+  .label::before,
+  :global(.hero .label)::before {
     content: '';
     display: block;
     width: 22px;
@@ -164,62 +67,6 @@ const cls = ['section', ground, centre && 'centre', full && 'full', extra]
     margin-bottom: var(--s-3);
     border-radius: var(--pill);
     background: var(--green);
-  }
-
-  /* measure: a rule inside a document, not a division between slabs. */
-  :global(:root[data-tone='measure']) .section + .section > .inner::before {
-    content: '';
-    display: block;
-    max-width: var(--measure);
-    height: 1px;
-    margin-bottom: var(--s-12);
-    background: var(--border);
-  }
-
-  /* numbers: reset on the root rather than on body, because an inline style
-     attribute is exactly what our own CSP forbids. Only sections that announce
-     a subject take a number, or the count jumps over the hero and the closing
-     block. */
-  :global(:root[data-tone='numbers']) {
-    counter-reset: sec;
-  }
-
-  :global(:root[data-tone='numbers']) .section:has(.label) {
-    counter-increment: sec;
-  }
-
-  :global(:root[data-tone='numbers']) .label::before {
-    content: counter(sec, decimal-leading-zero) ' \2014\a0';
-    color: var(--green-ink);
-  }
-
-  :global(:root[data-tone='rule']) .section + .section {
-    border-top: var(--hairline);
-  }
-
-  /* svh, not vh: on a phone, vh is the tallest the viewport ever gets, so a
-     100vh band sits partly under the URL bar until you scroll.
-
-     Content starts at the top, it does not centre. Centring a 400px block in an
-     840px band puts 200px of nothing above the heading. Only the hero is full
-     now, and there the air is the point, so full implies centred and there is no
-     second flag to forget to pass.
-
-     `safe center`, not `center`: plain centring overflows a grid in both
-     directions, so on a phone the hero centred itself into a band shorter than
-     itself, leaving dead space above the fold and the call to action below it.
-     safe falls back to start the moment the content stops fitting.
-
-     The height subtracts the nav rather than padding it out. The nav is sticky,
-     which means it is in normal flow and takes its 60px above this section, so a
-     full 100svh here made the first screen 960px tall: it overshot the viewport
-     by exactly the nav, put a scrollbar on a page that should not have one, and
-     left the centred content sitting low. */
-  .full {
-    min-height: calc(100svh - var(--nav-h));
-    display: grid;
-    align-content: safe center;
-    padding-block: var(--s-8);
   }
 
   .head {

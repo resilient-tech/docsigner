@@ -81,7 +81,7 @@ const products = [
   </Hero>
 
   <!-- The chooser. One card per product, each jumping to its own section. -->
-  <Section ground="deep">
+  <Section>
     <nav class="chooser" aria-label="Products">
       {
         products.map((p) => (
@@ -222,7 +222,6 @@ const products = [
   <!-- -------------------------------------------------- desktop signer -->
   <Section
     id="desktop"
-    ground="deep"
     label="Desktop signer"
     title="A folder of PDFs, one PIN"
     lede="One app and nothing else. It carries its own helper, so there is no second install and no browser involved."
@@ -273,7 +272,6 @@ const products = [
   </Section>
 
   <Section
-    ground="deep"
     label="Built on it"
     title="Or build your own"
     lede="The signing engine is a Python package, so anything that can import it can sign."

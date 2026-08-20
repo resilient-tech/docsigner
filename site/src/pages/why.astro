@@ -2,8 +2,6 @@
 import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
-import Button from '../components/Button.astro';
-import { links } from '../config';
 
 /*
  * The one page on the site written in the first person.
@@ -24,7 +22,7 @@ import { links } from '../config';
 >
   <Hero kicker="Why" title="Why we built this" lede="Short version: no tool would do it." />
 
-  <Section ground="deep">
+  <Section>
     <div class="prose">
       <p>We are accountants who learned to write software.</p>
       <p>
@@ -86,7 +84,7 @@ import { links } from '../config';
     </ol>
   </Section>
 
-  <Section ground="deep" label="One more reason" title="The paper">
+  <Section label="One more reason" title="The paper">
     <div class="prose">
       <p>
         We used to print documents that were born digital, sign them by hand,
@@ -100,19 +98,12 @@ import { links } from '../config';
     </div>
   </Section>
 
-  <Section>
-    <div class="end">
-      <h2>Read it before you run it</h2>
-      <p class="lede">
+  <Section label="The licence" title="Read it before you run it">
+    <div class="prose">
+      <p>
         The token cannot tell you what it signed. The software can, so all of it
         is Apache-2.0.
       </p>
-      <div class="row">
-        <Button href="/download" variant="primary" size="lg">Download</Button>
-        <Button href={links.repo} variant="default" size="lg" trailing="lucide:external-link">
-          Read the source
-        </Button>
-      </div>
     </div>
   </Section>
 </Layout>
@@ -204,17 +195,5 @@ import { links } from '../config';
 
   /* Left, like every heading above it. A centred closer under a page of
      left-aligned text reads as a different page's furniture. */
-  .end {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--s-4);
-  }
 
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s-3);
-    justify-content: center;
-  }
 </style>
