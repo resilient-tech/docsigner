@@ -50,7 +50,11 @@ import { Icon } from 'astro-icon/components';
   <Section label="Why it exists" title="No tool would do it">
     <div class="why-grid">
       <div class="why">
-        <p>A DSC token on Linux left three options. We wanted a fourth.</p>
+        <p>A DSC token on Linux left three options, and we wanted a fourth.</p>
+        <p>
+          Open source was no help either. Those tools sign happily with a key in
+          a file, and a DSC does not live in a file.
+        </p>
         <Button href="/why" variant="default" size="md" trailing="lucide:arrow-right">
           The longer story
         </Button>
@@ -118,15 +122,21 @@ import { Icon } from 'astro-icon/components';
   /* ---- why ---- */
   /* The paragraph rules out three options; the tiles answer them in order, and
      they sit in the space the prose was leaving empty. */
+  /* Equal halves. The old 1fr + 360px left the prose column wider than its own
+     58ch cap, so 106px of it could never hold anything. */
   .why-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
-    gap: var(--s-16);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-12);
     align-items: start;
   }
 
+  /* Pulled up by its own top padding so the first row sits on the same line as
+     the first line of prose. Aligning the boxes instead left the card's text
+     20px low, which is the padding and reads as a mistake. */
   .options {
     list-style: none;
+    margin-top: calc(-1 * var(--s-5));
     padding: var(--s-5) var(--s-6);
     display: flex;
     flex-direction: column;
@@ -168,7 +178,6 @@ import { Icon } from 'astro-icon/components';
     flex-direction: column;
     align-items: flex-start;
     gap: var(--s-4);
-    max-width: 58ch;
     color: var(--dim);
   }
 
