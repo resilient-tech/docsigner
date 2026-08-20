@@ -47,15 +47,33 @@ import Surfaces from '../components/Surfaces.astro';
   </Section>
 
   <Section label="Why it exists" title="No tool would do it">
-    <div class="why">
-      <p>
-        A DSC token on Linux left three options: pay for a Windows-only tool,
-        reboot into Windows, or print the page and sign it by hand. We wanted a
-        fourth.
-      </p>
-      <Button href="/why" variant="default" size="md" trailing="lucide:arrow-right">
-        The longer story
-      </Button>
+    <div class="why-grid">
+      <div class="why">
+        <p>
+          A DSC token on Linux left three options: pay for a Windows-only tool,
+          reboot into Windows, or print the page and sign it by hand. We wanted a
+          fourth.
+        </p>
+        <Button href="/why" variant="default" size="md" trailing="lucide:arrow-right">
+          The longer story
+        </Button>
+      </div>
+
+      <!-- One tile per option the paragraph rules out, in the same order. -->
+      <dl class="costs">
+        <div>
+          <dt>&#8377;0</dt>
+          <dd>No licence, no subscription, nothing per signature.</dd>
+        </div>
+        <div>
+          <dt>0 reboots</dt>
+          <dd>macOS, Windows and Linux run the same signing engine.</dd>
+        </div>
+        <div>
+          <dt>0 pages</dt>
+          <dd>Nothing gets printed to be signed and scanned back in.</dd>
+        </div>
+      </dl>
     </div>
   </Section>
 
@@ -107,6 +125,45 @@ import Surfaces from '../components/Surfaces.astro';
   }
 
   /* ---- why ---- */
+  /* The paragraph rules out three options; the tiles answer them in order, and
+     they sit in the space the prose was leaving empty. */
+  .why-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+    gap: var(--s-16);
+    align-items: start;
+  }
+
+  .costs {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--radius-lg);
+  }
+
+  .costs > div {
+    padding: var(--s-5) var(--s-6);
+  }
+
+  .costs > div + div {
+    border-top: var(--hairline);
+  }
+
+  .costs dt {
+    font-size: var(--display-2);
+    font-weight: var(--fw-semibold);
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .costs dd {
+    margin-top: var(--s-2);
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
   .why {
     display: flex;
     flex-direction: column;
@@ -129,6 +186,11 @@ import Surfaces from '../components/Surfaces.astro';
 
   /* --bp-lg */
   @media (max-width: 1024px) {
+    .why-grid {
+      grid-template-columns: 1fr;
+      gap: var(--s-8);
+    }
+
     .hero-grid {
       grid-template-columns: 1fr;
       gap: var(--s-8);
