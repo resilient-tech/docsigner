@@ -55,3 +55,21 @@ def test_site_links_to_files_that_exist(path):
         f"site/src/config.ts links to {path}, which is not in the repo. "
         "Fix the link or restore the file."
     )
+
+
+# core/ ships to PyPI, and Apache-2.0 asks for the licence and the NOTICE to
+# travel with the code. Packaging tools cannot reach above the project
+# directory, so core/ carries its own copies -- which is a copy, and copies
+# drift. Same rot as a module map, checked the same way.
+@pytest.mark.parametrize("name", ["LICENSE", "NOTICE"])
+def test_core_ships_the_repo_licence(name):
+    original = (REPO / name).read_bytes()
+    shipped = REPO / "core" / name
+    assert shipped.is_file(), (
+        f"core/{name} is missing. It is listed in core/pyproject.toml's "
+        f"license-files, so the wheel would be built without it."
+    )
+    assert shipped.read_bytes() == original, (
+        f"core/{name} has drifted from {name} at the repo root. "
+        f"Copy the root one over it."
+    )
