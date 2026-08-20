@@ -93,6 +93,21 @@ const products = [
         ))
       }
     </nav>
+
+    <!-- Hidden until the script sets html[data-platform]: with no JavaScript
+         there is nothing to switch, and every download renders anyway. -->
+    <div class="platform">
+      <span class="pl-label">Downloads for</span>
+      <div class="seg" role="group" aria-label="Your platform">
+        {
+          platforms.map((p) => (
+            <button type="button" data-platform-pick={p.os} aria-pressed="false">
+              {p.title}
+            </button>
+          ))
+        }
+      </div>
+    </div>
   </Section>
 
   <!-- ------------------------------------------------------ web signer -->
@@ -126,49 +141,50 @@ const products = [
         )
       }
 
+      <h3 class="sub-head">The extension</h3>
       <div class="grid">
-        <DownloadCard
-          title="Chrome, Edge, Brave"
-          blurb="One zip for every Chromium browser."
-          icon="lucide:chrome"
-          version={release.version}
-          artifact={find('extension-chrome')}
-        />
-        <DownloadCard
-          title="Firefox"
-          blurb="Its own zip: Firefox needs the Gecko id."
-          icon="lucide:puzzle"
-          version={release.version}
-          artifact={find('extension-firefox')}
-        />
+        <div class="only" data-browser="chromium">
+          <DownloadCard
+            title="Chrome, Edge, Brave"
+            blurb="One zip for every Chromium browser."
+            icon="lucide:chrome"
+            version={release.version}
+            artifact={find('extension-chrome')}
+          />
+        </div>
+        <div class="only" data-browser="firefox">
+          <DownloadCard
+            title="Firefox"
+            blurb="Its own zip: Firefox needs the Gecko id."
+            icon="lucide:puzzle"
+            version={release.version}
+            artifact={find('extension-firefox')}
+          />
+        </div>
       </div>
+      <button type="button" class="show-all" data-show-all="browser">
+        The other browser
+      </button>
 
       <h3 class="sub-head">The helper app</h3>
-      {
-        brew.ready && (
-          <div class="grid">
-            <DownloadCard
-              title="Homebrew"
-              blurb="macOS, and Linux via linuxbrew."
-              icon="lucide:beer"
-              version={release.version}
-              command={brew.host}
-            />
-          </div>
-        )
-      }
       <div class="grid">
         {platforms.map((p) => (
-          <DownloadCard
-            title={p.title}
-            blurb="Unpack and run the installer."
-            icon={p.icon}
-            version={release.version}
-            artifact={find(`host-${p.os}`)}
-            os={p.os}
-          />
+          <div class="only" data-os={p.os}>
+            <DownloadCard
+              title={p.title}
+              blurb="Unpack and run the installer."
+              icon={p.icon}
+              version={release.version}
+              artifact={find(`host-${p.os}`)}
+              command={brew.ready && p.os !== 'windows' ? brew.host : undefined}
+              os={p.os}
+            />
+          </div>
         ))}
       </div>
+      <button type="button" class="show-all" data-show-all="os">
+        Other platforms
+      </button>
 
       <Callout tone="note" title="Will it work with your token?">
         <p>
@@ -180,6 +196,7 @@ const products = [
 
       {
         !WINDOWS_SIGNED && (
+          <div class="only" data-os="windows">
           <Callout tone="warn" title="Windows will warn you">
             <p>
               The Windows builds are not code-signed yet, so SmartScreen says
@@ -187,15 +204,18 @@ const products = [
               build we published.
             </p>
           </Callout>
+          </div>
         )
       }
 
-      <Callout tone="note" title="macOS builds are x86_64, on purpose">
-        <p>
-          They run under Rosetta on Apple Silicon. Several token vendors ship
-          x86_64-only drivers, and a native arm64 build could not load them.
-        </p>
-      </Callout>
+      <div class="only" data-os="macos">
+        <Callout tone="note" title="macOS builds are x86_64, on purpose">
+          <p>
+            They run under Rosetta on Apple Silicon. Several token vendors ship
+            x86_64-only drivers, and a native arm64 build could not load them.
+          </p>
+        </Callout>
+      </div>
     </div>
   </Section>
 
@@ -208,31 +228,24 @@ const products = [
     lede="One app and nothing else. It carries its own helper, so there is no second install and no browser involved."
   >
     <div class="stack">
-      {
-        brew.ready && (
-          <div class="grid">
-            <DownloadCard
-              title="Homebrew"
-              blurb="macOS."
-              icon="lucide:beer"
-              version={release.version}
-              command={brew.desktop}
-            />
-          </div>
-        )
-      }
       <div class="grid">
         {platforms.map((p) => (
-          <DownloadCard
-            title={p.title}
-            blurb="Bundles its own helper."
-            icon={p.icon}
-            version={release.version}
-            artifact={find(`desktop-${p.os}`)}
-            os={p.os}
-          />
+          <div class="only" data-os={p.os}>
+            <DownloadCard
+              title={p.title}
+              blurb="Bundles its own helper."
+              icon={p.icon}
+              version={release.version}
+              artifact={find(`desktop-${p.os}`)}
+              command={brew.ready && p.os === 'macos' ? brew.desktop : undefined}
+              os={p.os}
+            />
+          </div>
         ))}
       </div>
+      <button type="button" class="show-all" data-show-all="os">
+        Other platforms
+      </button>
     </div>
   </Section>
 
@@ -284,19 +297,147 @@ const products = [
 </Layout>
 
 <script>
-  /* Light up the card matching the visitor's OS. Nothing gets hidden: a guess
-     that highlights helps, a guess that hides is a dead end. */
-  import { detectOS } from '../lib/platform';
+  /* Narrow the page to one platform and one browser.
+   *
+   * The filtering is CSS keyed off html[data-platform] and html[data-browser],
+   * so with no JavaScript nothing is set, nothing is hidden, and the page is the
+   * full list it always was. Detection that comes back 'unknown' sets the empty
+   * string: enough for the switch to appear, not enough to hide anything.
+   *
+   * "Other platforms" and "The other browser" clear their attribute rather than
+   * naming a value. A guess that hides needs a visible way out. */
+  import { detectOS, detectBrowser } from '../lib/platform';
+
+  const root = document.documentElement;
 
   const os = detectOS();
-  if (os !== 'unknown') {
-    for (const el of document.querySelectorAll<HTMLElement>(`.dl[data-os="${os}"]`)) {
-      el.dataset.match = 'true';
+  root.dataset.platform = os === 'unknown' ? '' : os;
+
+  /* The chip on the card, still earned by detection rather than by the switch. */
+  for (const el of document.querySelectorAll<HTMLElement>(`.dl[data-os="${os}"]`)) {
+    el.dataset.match = 'true';
+  }
+
+  /* Chromium browsers share one zip; Safari has no build, so it sees both. */
+  void detectBrowser().then((browser) => {
+    root.dataset.browser =
+      browser === 'firefox'
+        ? 'firefox'
+        : browser === 'safari' || browser === 'unknown'
+          ? ''
+          : 'chromium';
+  });
+
+  const picks = document.querySelectorAll<HTMLButtonElement>('[data-platform-pick]');
+
+  function sync() {
+    for (const b of picks) {
+      b.setAttribute('aria-pressed', String(b.dataset.platformPick === root.dataset.platform));
     }
   }
+
+  document.addEventListener('click', (event) => {
+    const hit = (event.target as HTMLElement).closest<HTMLElement>(
+      '[data-platform-pick], [data-show-all]',
+    );
+    if (!hit) return;
+
+    const all = hit.dataset.showAll;
+    if (all === 'os') root.dataset.platform = '';
+    else if (all === 'browser') root.dataset.browser = '';
+    else root.dataset.platform = hit.dataset.platformPick ?? '';
+
+    sync();
+  });
+
+  sync();
 </script>
 
 <style>
+  /*
+   * One platform, one browser. `:global(html[...])` because the attribute lives
+   * on the root element, which carries no scope of this page's; `.only` is
+   * scoped as usual, so nothing outside /download can be hidden by these.
+   */
+  :global(html[data-platform='macos']) .only[data-os]:not([data-os='macos']),
+  :global(html[data-platform='windows']) .only[data-os]:not([data-os='windows']),
+  :global(html[data-platform='linux']) .only[data-os]:not([data-os='linux']),
+  :global(html[data-browser='chromium']) .only[data-browser]:not([data-browser='chromium']),
+  :global(html[data-browser='firefox']) .only[data-browser]:not([data-browser='firefox']) {
+    display: none;
+  }
+
+  /* Nothing hidden, nothing to reveal. */
+  :global(html:not([data-platform='macos']):not([data-platform='windows']):not([data-platform='linux']))
+    .show-all[data-show-all='os'],
+  :global(html:not([data-browser='chromium']):not([data-browser='firefox']))
+    .show-all[data-show-all='browser'] {
+    display: none;
+  }
+
+  /* ---- the platform switch ---- */
+  .platform {
+    display: none;
+    align-items: center;
+    gap: var(--s-3);
+    margin-top: var(--s-6);
+  }
+
+  :global(html[data-platform]) .platform {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .pl-label {
+    font-size: var(--text-sm);
+    color: var(--dim);
+  }
+
+  .seg {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--pill);
+  }
+
+  .seg button {
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--dim);
+    background: none;
+    border: 0;
+    border-radius: var(--pill);
+    padding: var(--s-1) var(--s-4);
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease);
+  }
+
+  .seg button:hover {
+    color: var(--text);
+  }
+
+  .seg button[aria-pressed='true'] {
+    background: var(--green-soft);
+    color: var(--green-ink);
+    font-weight: var(--fw-semibold);
+  }
+
+  /* A text button, because it reveals rather than navigates. */
+  .show-all {
+    align-self: flex-start;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--green-ink);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
   .notice {
     margin-top: var(--s-4);
     max-width: 640px;

@@ -9,7 +9,9 @@ interface Props {
   icon: string;
   version: string;
   artifact?: Artifact;
-  /* Shell one-liner shown instead of a button, for the Homebrew paths. */
+  /* Shell one-liner. Shown under the button when there is one (Homebrew is an
+     alternative to the zip, not a separate product), and alone when there is
+     not. */
   command?: string;
   /* Marks the card the visitor's platform detection lit up. Set client-side. */
   os?: string;
@@ -22,6 +24,11 @@ const size = formatSize(artifact?.size ?? null);
  * The trust block. Publishing size, hash and a verify command next to the button
  * is the thing a signing tool of all things should not be omitting, and it costs
  * nothing: the release already writes SHA256SUMS.
+ *
+ * It is folded now. Version and size sit on one line under the button, and the
+ * filename, the hash and the command that checks it live behind one summary.
+ * Nine cards printing a 64-character hash in full was the loudest thing on the
+ * page, and the people who check a hash are the people who will open a fold.
  *
  * Attestations are not wired into CI yet (roadmap D7), so no `gh attestation
  * verify` line is offered. Claiming one that doesn't exist would be worse than
@@ -48,42 +55,35 @@ const verify = artifact?.sha256
   </header>
 
   {
-    command ? (
-      <code class="cmd">{command}</code>
-    ) : artifact ? (
+    artifact ? (
       <>
         <Button href={artifact.url} variant="primary" size="md" icon="lucide:download">
           Download
         </Button>
-        <dl class="facts">
-          <div>
-            <dt class="label">Version</dt>
-            <dd>{version}</dd>
-          </div>
-          {size && (
-            <div>
-              <dt class="label">Size</dt>
-              <dd>{size}</dd>
-            </div>
-          )}
-          <div class="wide">
-            <dt class="label">File</dt>
-            <dd class="mono">{artifact.filename}</dd>
-          </div>
-          {artifact.sha256 && (
-            <div class="wide">
-              <dt class="label">SHA-256</dt>
-              <dd class="mono hash">{artifact.sha256}</dd>
-            </div>
-          )}
-        </dl>
+        {command && <code class="cmd">{command}</code>}
+        <p class="meta">
+          {version}
+          {size && ` · ${size}`}
+        </p>
         {verify && (
           <details>
-            <summary>Check it before you run it</summary>
+            <summary>Verify this download</summary>
+            <dl class="facts">
+              <div>
+                <dt class="label">File</dt>
+                <dd class="mono">{artifact.filename}</dd>
+              </div>
+              <div>
+                <dt class="label">SHA-256</dt>
+                <dd class="mono hash">{artifact.sha256}</dd>
+              </div>
+            </dl>
             <pre>{verify}</pre>
           </details>
         )}
       </>
+    ) : command ? (
+      <code class="cmd">{command}</code>
     ) : (
       <p class="pending">Not in this release.</p>
     )
@@ -154,17 +154,18 @@ const verify = artifact?.sha256
     margin-top: var(--s-1);
   }
 
-  .facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--s-3) var(--s-6);
-    width: 100%;
-    margin: 0;
+  /* Version and size, the two facts worth seeing without asking. */
+  .meta {
     font-size: var(--text-xs);
+    color: var(--dim);
   }
 
-  .wide {
-    grid-column: 1 / -1;
+  .facts {
+    display: grid;
+    gap: var(--s-3);
+    width: 100%;
+    margin: var(--s-3) 0 0;
+    font-size: var(--text-xs);
   }
 
   dd {
