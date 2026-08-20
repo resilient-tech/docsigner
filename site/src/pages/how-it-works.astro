@@ -25,7 +25,7 @@ const hops = [
     body: 'The only browser context allowed to open native messaging. It also holds the consent decision and the command allowlist.',
   },
   {
-    name: 'The helper process',
+    name: 'The helper app',
     body: 'Separate because a browser cannot load a PKCS#11 driver. It speaks JSON over stdin and stdout, which is all native messaging is.',
   },
   {
@@ -37,12 +37,12 @@ const hops = [
 
 <Layout
   title="How it works"
-  description="The four steps of signing a PDF with a USB token from a web page, why the page has to sit between your server and the token, and why a helper app is unavoidable."
+  description="The four steps of signing a PDF with a USB token from a web page, why your app has to sit between your server and the token, and why a helper app is unavoidable."
 >
   <Hero
     kicker="How it works"
-    title="Your page sits in the middle"
-    lede="Because it is the only thing that can reach both the server and the token."
+    title="The PDF never leaves your server"
+    lede="Your app carries a 32-byte hash out and a signature back. The document stays where it is."
   />
 
   <Section ground="deep">

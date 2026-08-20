@@ -4,7 +4,7 @@ import { Icon } from 'astro-icon/components';
 /*
  * The signing sequence, steppable.
  *
- * The layout is the argument. Your page sits in the MIDDLE, between the server
+ * The layout is the argument. Your app sits in the MIDDLE, between the server
  * and the token, because it is the only one of the three that can talk to both:
  * a server cannot reach a USB port, and a token cannot reach the internet. Draw
  * them in that order and the four steps stop needing an explanation.
@@ -26,7 +26,7 @@ const steps = [
     side: 'token',
     out: 'list request',
     back: 'certificates',
-    body: 'Your page asks the token what it holds. The extension carries the question to the helper app, which reads the certificates off the hardware and hands them back. Nothing is signed yet.',
+    body: 'Your app asks the token what it holds. The extension carries the question to the helper app, which reads the certificates off the hardware and hands them back. Nothing is signed yet.',
   },
   {
     n: 2,
@@ -34,7 +34,7 @@ const steps = [
     side: 'server',
     out: 'the PDF',
     back: '32-byte hash',
-    body: 'Your page posts the document and the chosen certificate to your own server. The server builds the signature structure inside the PDF, keeps the half-finished file on disk, and returns just the hash that needs signing.',
+    body: 'Your app posts the document and the chosen certificate to your own server. The server builds the signature structure inside the PDF, keeps the half-finished file on disk, and returns just the hash that needs signing.',
   },
   {
     n: 3,
@@ -50,7 +50,7 @@ const steps = [
     side: 'server',
     out: 'signature',
     back: 'download link',
-    body: 'Your page returns the signature. The server embeds it, adds whatever timestamp and revocation data the profile calls for, and the finished file is ready where it always was.',
+    body: 'Your app returns the signature. The server embeds it, adds whatever timestamp and revocation data the profile calls for, and the finished file is ready where it always was.',
   },
 ];
 ---
@@ -90,7 +90,7 @@ const steps = [
 
     <div class="actor mid">
       <span class="ic"><Icon name="lucide:globe" /></span>
-      <span class="name">Your page</span>
+      <span class="name">Your app</span>
       <span class="sub">talks to both</span>
     </div>
 
