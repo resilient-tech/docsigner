@@ -47,8 +47,19 @@ const cls = ['section', centre && 'centre', full && 'full', extra]
 </section>
 
 <style>
+  /* Half the rhythm each side, so a seam between two sections costs
+     --section-y once rather than twice. Before this every section paid a full
+     96px top and bottom and abutting sections put 192px between them, which is
+     most of a screen of nothing. */
   .section {
-    padding-block: var(--section-y);
+    padding-block: calc(var(--section-y) / 2);
+  }
+
+  /* A section with no label is not announcing a subject, it is continuing the
+     block above it, so it does not open a new seam. The closing block is the
+     exception and asks for its air back with `centre`. */
+  .section:not(:has(.head)):not(.centre) {
+    padding-top: var(--s-6);
   }
 
   /* One ground for the whole page. The alternating band was the loudest way to
@@ -69,6 +80,31 @@ const cls = ['section', centre && 'centre', full && 'full', extra]
     background: var(--green);
   }
 
+  /* svh, not vh: on a phone, vh is the tallest the viewport ever gets, so a
+     100vh band sits partly under the URL bar until you scroll.
+
+     Content starts at the top, it does not centre. Centring a 400px block in an
+     840px band puts 200px of nothing above the heading. Only the hero is full
+     now, and there the air is the point, so full implies centred and there is no
+     second flag to forget to pass.
+
+     `safe center`, not `center`: plain centring overflows a grid in both
+     directions, so on a phone the hero centred itself into a band shorter than
+     itself, leaving dead space above the fold and the call to action below it.
+     safe falls back to start the moment the content stops fitting.
+
+     The height subtracts the nav rather than padding it out. The nav is sticky,
+     which means it is in normal flow and takes its 60px above this section, so a
+     full 100svh here made the first screen 960px tall: it overshot the viewport
+     by exactly the nav, put a scrollbar on a page that should not have one, and
+     left the centred content sitting low. */
+  .full {
+    min-height: calc(100svh - var(--nav-h));
+    display: grid;
+    align-content: safe center;
+    padding-block: var(--s-8);
+  }
+
   .head {
     display: flex;
     flex-direction: column;
@@ -86,7 +122,7 @@ const cls = ['section', centre && 'centre', full && 'full', extra]
   /* --bp-md */
   @media (max-width: 768px) {
     .section {
-      padding-block: var(--s-16);
+      padding-block: var(--s-8);
     }
     .head {
       margin-bottom: var(--s-8);

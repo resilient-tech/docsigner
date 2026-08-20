@@ -27,12 +27,13 @@ const { width = '520px' } = Astro.props;
  * picture worth making.
  */
 
-/* The letterhead band on top, and how far it pushes the body down. */
-const band = 10;
+/* The letterhead ends at y=14, and every gap around a block of rules is the
+   same 23 units: below the letterhead, between the groups, above the stamp. */
+const SIG_Y = 178;
 ---
 
 <div class="sheet paper" style={`--sheet-w: ${width}`} aria-hidden="true">
-  <svg viewBox={`0 0 340 ${250 + band}`}>
+  <svg viewBox="0 0 340 252">
     <image href="/rt-leaf.png" x="0" y="0" width="26" height="14" />
     <text
       x="33"
@@ -42,22 +43,18 @@ const band = 10;
       fill="var(--paper-ink)"
       font-family="system-ui, sans-serif">Resilient Software Services LLP</text>
 
-    <g transform={`translate(0 ${band})`}>
-      <rect x="0" y="24" width="300" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
-      <rect x="0" y="39" width="268" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="37" width="300" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="52" width="268" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
 
-      <rect x="0" y="66" width="300" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
-      <rect x="0" y="81" width="286" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
-      <rect x="0" y="96" width="232" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="79" width="300" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="94" width="286" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="109" width="232" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
 
-      <rect x="0" y="123" width="300" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
-      <rect x="0" y="138" width="188" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="136" width="300" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
+    <rect x="0" y="151" width="188" height="4" rx="2" fill="var(--paper-ink)" opacity="0.16" />
 
-
-
-      <g class="sig" data-sig>
-        <SignatureBox x={0} y={176} size={180} />
-      </g>
+    <g class="sig" data-sig>
+      <SignatureBox x={0} y={SIG_Y} size={180} />
     </g>
   </svg>
 </div>
