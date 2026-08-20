@@ -114,7 +114,11 @@
      screen that has to say what this is. */
   --display-hero: clamp(2.75rem, 7vw, 4.5rem);
   --display-1: clamp(2.25rem, 5vw, 3.25rem);
-  --display-2: clamp(1.75rem, 3.5vw, 2.25rem);
+  /* Was 2.25rem at the top. A 36px section title above 16px body is a jump of
+     2.25x with nothing in between, which reads as a hole rather than as
+     hierarchy. 2rem puts it at 1.45x off --display-3 and 2x off body, and the
+     h3 step now actually sits between them. */
+  --display-2: clamp(1.625rem, 3vw, 2rem);
   --display-3: 1.375rem;
   --text-lede: 1.125rem;
   --text-body: 1rem;

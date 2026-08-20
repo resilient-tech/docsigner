@@ -47,12 +47,12 @@ const cls = ['section', centre && 'centre', full && 'full', extra]
 </section>
 
 <style>
-  /* Half the rhythm each side, so a seam between two sections costs
-     --section-y once rather than twice. Before this every section paid a full
-     96px top and bottom and abutting sections put 192px between them, which is
-     most of a screen of nothing. */
+  /* A seam has to read as bigger than the gap inside a section, or the page has
+     one rhythm and everything looks equally spaced. The head sits 48px above its
+     body, so a seam of 128 is 2.7x that. 96 was too close to it -- sections ran
+     together -- and 192, a full --section-y each side, was most of a screen. */
   .section {
-    padding-block: calc(var(--section-y) / 2);
+    padding-block: var(--s-16);
   }
 
   /* A section with no label is not announcing a subject, it is continuing the
@@ -122,7 +122,7 @@ const cls = ['section', centre && 'centre', full && 'full', extra]
   /* --bp-md */
   @media (max-width: 768px) {
     .section {
-      padding-block: var(--s-8);
+      padding-block: var(--s-12);
     }
     .head {
       margin-bottom: var(--s-8);
