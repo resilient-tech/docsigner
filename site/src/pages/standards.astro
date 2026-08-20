@@ -2,9 +2,7 @@
 import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
-import Button from '../components/Button.astro';
 import ProfilePicker from '../components/ProfilePicker.astro';
-import { links } from '../config';
 
 /*
  * The picker is the only listing of the six profiles. There used to be a table
@@ -81,27 +79,6 @@ const skipped = [
       validates for the long-lived profiles without you fetching anything.
     </p>
   </Section>
-
-  <Section label="Not supported" title="Three things it will not do">
-    <p class="plain">
-      Safari needs the extension wrapped in a signed macOS app, which is not
-      built. EU trust lists arrive as signed per-country XML and need their own
-      parser, so trust anchors are a folder of PEM files instead. RSA-PSS is
-      absent because nearly every DSC token in the field uses PKCS#1 v1.5.
-      Any of them moves onto the list the day someone needs it.
-    </p>
-
-    <div class="more">
-      <Button
-        href={links.docsArchitecture}
-        variant="default"
-        size="md"
-        trailing="lucide:external-link"
-      >
-        The reasoning, in full
-      </Button>
-    </div>
-  </Section>
 </Layout>
 
 <style>
@@ -142,12 +119,5 @@ const skipped = [
     color: var(--text);
   }
 
-  .plain {
-    max-width: var(--measure);
-    color: var(--dim);
-  }
 
-  .more {
-    margin-top: var(--s-8);
-  }
 </style>

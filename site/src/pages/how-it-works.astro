@@ -68,11 +68,6 @@ const hops = [
       At the end of it the token signs 32 bytes and hands them back. It will not
       give up the key, which is why the signing happens in two halves.
     </p>
-
-    <p class="aside">
-      Nothing in the chain asks you to trust a localhost certificate, edit
-      <code>/etc/hosts</code>, or run Java.
-    </p>
   </Section>
 
   <Section label="Two decisions" title="What we chose, and why">
@@ -175,14 +170,6 @@ const hops = [
     max-width: var(--measure);
   }
 
-  .aside {
-    margin-top: var(--s-8);
-    padding-left: var(--s-4);
-    border-left: var(--accent-bar) solid var(--green);
-    font-size: var(--text-body);
-    color: var(--text);
-    max-width: var(--measure);
-  }
 
   .decisions {
     display: grid;
