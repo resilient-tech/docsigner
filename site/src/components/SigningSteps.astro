@@ -32,9 +32,9 @@ const steps = [
     n: 2,
     title: 'Prepare the signature',
     side: 'server',
-    out: 'the PDF',
+    out: 'sign request',
     back: '32-byte hash',
-    body: 'Your app posts the document and the chosen certificate to your own server. The server builds the signature structure inside the PDF, keeps the half-finished file on disk, and returns just the hash that needs signing.',
+    body: 'Your app tells your own server which document to sign and which certificate to use. The server builds the signature structure inside the PDF, keeps the half-finished file on disk, and returns just the hash that needs signing.',
   },
   {
     n: 3,

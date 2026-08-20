@@ -18,7 +18,7 @@ import { links } from '../config';
 const hops = [
   {
     name: 'The content script',
-    body: 'Runs inside the page’s own world, so it is the only thing the page can reach. It relays messages and does nothing else.',
+    body: 'Runs inside your app’s own world, so it is the only part of the extension your app can reach. It relays messages and does nothing else.',
   },
   {
     name: 'The background worker',
@@ -75,7 +75,7 @@ const hops = [
     </p>
   </Section>
 
-  <Section ground="deep" label="Two decisions" title="Questions people ask">
+  <Section ground="deep" label="Two decisions" title="What we chose, and why">
     <div class="decisions">
       <div>
         <h3>Sessions are files on disk</h3>
@@ -87,7 +87,7 @@ const hops = [
         </p>
       </div>
       <div>
-        <h3>Consent per origin, not a licence key</h3>
+        <h3>Consent per origin</h3>
         <p>
           The first time a site asks for your certificates, the extension asks
           you, and it remembers the answer for that origin. There is no key to
@@ -118,9 +118,12 @@ const hops = [
 
   <Section centre>
     <div class="end">
-      <h2>Which one do I need?</h2>
-      <p class="lede">Four ways to sign. Most people need exactly one.</p>
-      <Button href="/download" variant="primary" size="lg">See them</Button>
+      <h2>This is one of three ways</h2>
+      <p class="lede">
+        The desktop app and the server flow skip the browser entirely. Same
+        signing engine underneath.
+      </p>
+      <Button href="/download" variant="primary" size="lg">See all three</Button>
     </div>
   </Section>
 </Layout>

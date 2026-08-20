@@ -3,6 +3,7 @@ import { Icon } from 'astro-icon/components';
 import Sheet from './Sheet.astro';
 import SignatureBox from './SignatureBox.astro';
 import { folder, invoiceFile, invoiceNo, year } from '../lib/demo';
+import { links } from '../config';
 
 /*
  * Two surfaces, both signable. Press the button and the thing happens.
@@ -214,9 +215,8 @@ const tabs = [
         </div>
       </div>
       <figcaption class="cap">
-        ERPNext, signing an invoice on submit. Built with
-        <a href="https://github.com/resilient-tech/docsigner/blob/HEAD/docs/roadmap.md" rel="noopener">docsigner_integration</a>,
-        a separate app. Yours could look like anything.
+        ERPNext, signing an invoice on submit. One button, added by a
+        <a href={links.roadmap} rel="noopener">Frappe app</a>.
       </figcaption>
     </figure>
   </div>

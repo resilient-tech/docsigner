@@ -10,7 +10,7 @@ import { getRelease } from '../lib/release';
 import { brew, stores, links, WINDOWS_SIGNED } from '../config';
 
 /*
- * One page, four products.
+ * One page, three products.
  *
  * It used to be Step 1 / Step 2 / Optional, which is the install order and not
  * how anyone arrives. People come knowing the job, so the page is named by
@@ -80,7 +80,7 @@ const products = [
     }
   </Hero>
 
-  <!-- The chooser. Four cards, each jumping to its own section below. -->
+  <!-- The chooser. One card per product, each jumping to its own section. -->
   <Section ground="deep">
     <nav class="chooser" aria-label="Products">
       {
