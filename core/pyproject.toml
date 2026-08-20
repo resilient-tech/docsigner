@@ -34,8 +34,12 @@ dependencies = [
     "qrcode>=7",
 ]
 
+# Shown as links in PyPI's sidebar. Homepage points at core/ rather than the
+# repo root: this is one package out of a monorepo, and the root is about the
+# whole product. Repository stays the root, which is what a clone needs.
 [project.urls]
-Homepage = "https://github.com/resilient-tech/docsigner"
+Homepage = "https://github.com/resilient-tech/docsigner/tree/HEAD/core"
+Documentation = "https://github.com/resilient-tech/docsigner/blob/HEAD/docs/core.md"
 Repository = "https://github.com/resilient-tech/docsigner"
 Issues = "https://github.com/resilient-tech/docsigner/issues"
 
