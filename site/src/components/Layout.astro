@@ -1,6 +1,7 @@
 ---
 import SiteNav from './SiteNav.astro';
 import SiteFooter from './SiteFooter.astro';
+import ToneSwitch from './ToneSwitch.astro';
 import '../styles/site.css';
 
 interface Props {
@@ -46,6 +47,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
 
     <!-- Blocking on purpose: it must run before the first paint. -->
     <script src="/theme.js" is:inline></script>
+    <script src="/tone.js" is:inline></script>
 
     <script>
       /* The stamps carry a build-time timestamp so they read correctly with no
@@ -64,5 +66,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
       <slot />
     </main>
     <SiteFooter />
+    <ToneSwitch />
   </body>
 </html>

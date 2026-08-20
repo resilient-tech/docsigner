@@ -1,0 +1,110 @@
+---
+/*
+ * Temporary scaffolding, not a feature. Three ways to treat the seam between
+ * sections, switchable on any page so the choice can be made by looking rather
+ * than by imagining. Remove this component, public/tone.js, the rules in
+ * Section.astro and the two lines in Layout.astro once the call is made.
+ */
+const options = [
+  { tone: '', label: 'Bands' },
+  { tone: 'flat', label: 'One tone' },
+  { tone: 'rule', label: 'One tone + rule' },
+];
+---
+
+<div class="tone" data-tone-switch>
+  <span class="lbl">Sections</span>
+  {
+    options.map((o) => (
+      <button type="button" data-tone={o.tone} aria-pressed="false">
+        {o.label}
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  const box = document.querySelector<HTMLElement>('[data-tone-switch]');
+  const root = document.documentElement;
+
+  const apply = (tone: string) => {
+    if (tone) root.dataset.tone = tone;
+    else delete root.dataset.tone;
+    localStorage.setItem('tone', tone);
+    for (const b of box!.querySelectorAll<HTMLButtonElement>('button')) {
+      b.setAttribute('aria-pressed', String((b.dataset.tone ?? '') === tone));
+    }
+  };
+
+  box?.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
+    if (b) apply(b.dataset.tone ?? '');
+  });
+
+  apply(root.dataset.tone ?? '');
+</script>
+
+<style>
+  .tone {
+    position: fixed;
+    right: var(--s-4);
+    bottom: var(--s-4);
+    z-index: var(--z-overlay);
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+    padding: var(--s-1);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(var(--nav-blur));
+    border: var(--hairline);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-menu);
+  }
+
+  .lbl {
+    font-size: var(--text-xs);
+    color: var(--faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding-inline: var(--s-2);
+  }
+
+  button {
+    font-size: var(--text-xs);
+    font-weight: var(--fw-medium);
+    color: var(--dim);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease);
+  }
+
+  button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--green-soft);
+    color: var(--green-ink);
+  }
+
+  button:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* --bp-md: a phone has no room for it beside the content. */
+  @media (max-width: 768px) {
+    .tone {
+      left: var(--s-4);
+      justify-content: center;
+    }
+
+    .lbl {
+      display: none;
+    }
+  }
+</style>

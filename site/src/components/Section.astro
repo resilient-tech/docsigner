@@ -63,6 +63,16 @@ const cls = ['section', ground, centre && 'centre', full && 'full', extra]
     background: var(--bg-deep);
   }
 
+  /* Comparison switch, temporary: see public/tone.js. One tone throughout, and
+     either nothing at the seams or a hairline. */
+  :global(:root[data-tone]) .deep {
+    background: var(--bg);
+  }
+
+  :global(:root[data-tone='rule']) .section + .section {
+    border-top: var(--hairline);
+  }
+
   /* svh, not vh: on a phone, vh is the tallest the viewport ever gets, so a
      100vh band sits partly under the URL bar until you scroll.
 
