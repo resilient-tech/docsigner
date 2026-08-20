@@ -84,6 +84,10 @@ h4 {
 h1 {
   font-size: var(--display-1);
   max-width: var(--measure-h1);
+  /* Optical, not arbitrary: at display size the same weight reads heavier, and
+     the same tracking reads looser. */
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.02em;
 }
 h2 {
   font-size: var(--display-2);
@@ -182,7 +186,7 @@ hr {
    and demo/.server-row, with two different weights. This is the one. */
 .label {
   font-size: var(--text-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--faint);
