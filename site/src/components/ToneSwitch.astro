@@ -1,46 +1,42 @@
 ---
 /*
- * Temporary scaffolding, not a feature. Three ways to treat the seam between
- * sections, switchable on any page so the choice can be made by looking rather
- * than by imagining. Remove this component, public/tone.js, the rules in
- * Section.astro and the two lines in Layout.astro once the call is made.
+ * Temporary scaffolding, not a feature. Seven treatments for the seam between
+ * sections, switchable on any page and remembered across navigation, so the
+ * choice can be made by looking rather than by imagining.
+ *
+ * Remove this component, public/tone.js, the marked block in Section.astro and
+ * the two lines in Layout.astro once the call is made.
  */
 const options = [
-  { tone: '', label: 'Bands' },
-  { tone: 'flat', label: 'One tone' },
-  { tone: 'rule', label: 'One tone + rule' },
+  { tone: '', label: 'Bands (ships today)' },
+  { tone: 'flat', label: 'One tone, nothing' },
+  { tone: 'objects', label: 'Object trays + rhythm' },
+  { tone: 'tick', label: 'Accent tick on label' },
+  { tone: 'measure', label: 'Rule at the measure' },
+  { tone: 'numbers', label: 'Numbered labels' },
+  { tone: 'rule', label: 'Rule, full width' },
 ];
 ---
 
-<div class="tone" data-tone-switch>
-  <span class="lbl">Sections</span>
-  {
-    options.map((o) => (
-      <button type="button" data-tone={o.tone} aria-pressed="false">
-        {o.label}
-      </button>
-    ))
-  }
+<div class="tone">
+  <label for="tone-pick">Sections</label>
+  <select id="tone-pick" data-tone-pick>
+    {options.map((o) => <option value={o.tone}>{o.label}</option>)}
+  </select>
 </div>
 
 <script>
-  const box = document.querySelector<HTMLElement>('[data-tone-switch]');
+  const pick = document.querySelector<HTMLSelectElement>('[data-tone-pick]');
   const root = document.documentElement;
 
   const apply = (tone: string) => {
     if (tone) root.dataset.tone = tone;
     else delete root.dataset.tone;
     localStorage.setItem('tone', tone);
-    for (const b of box!.querySelectorAll<HTMLButtonElement>('button')) {
-      b.setAttribute('aria-pressed', String((b.dataset.tone ?? '') === tone));
-    }
+    if (pick) pick.value = tone;
   };
 
-  box?.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
-    if (b) apply(b.dataset.tone ?? '');
-  });
-
+  pick?.addEventListener('change', () => apply(pick.value));
   apply(root.dataset.tone ?? '');
 </script>
 
@@ -52,59 +48,43 @@ const options = [
     z-index: var(--z-overlay);
     display: flex;
     align-items: center;
-    gap: var(--s-1);
-    padding: var(--s-1);
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
     backdrop-filter: blur(var(--nav-blur));
     border: var(--hairline);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-menu);
   }
 
-  .lbl {
+  label {
     font-size: var(--text-xs);
     color: var(--faint);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding-inline: var(--s-2);
+    white-space: nowrap;
   }
 
-  button {
+  select {
     font-size: var(--text-xs);
     font-weight: var(--fw-medium);
-    color: var(--dim);
-    padding: var(--s-2) var(--s-3);
-    border-radius: var(--radius-card);
-    cursor: pointer;
-    white-space: nowrap;
-    transition:
-      background var(--dur-fast) var(--ease),
-      color var(--dur-fast) var(--ease);
-  }
-
-  button:hover {
-    background: var(--hover);
     color: var(--text);
+    background: var(--surface);
+    border: var(--hairline);
+    border-radius: var(--radius-card);
+    padding: var(--s-1) var(--s-2);
+    cursor: pointer;
   }
 
-  button[aria-pressed='true'] {
-    background: var(--green-soft);
-    color: var(--green-ink);
-  }
-
-  button:focus-visible {
+  select:focus-visible {
     box-shadow: var(--focus-ring);
   }
 
-  /* --bp-md: a phone has no room for it beside the content. */
+  /* --bp-md: no room beside the content on a phone. */
   @media (max-width: 768px) {
     .tone {
       left: var(--s-4);
       justify-content: center;
-    }
-
-    .lbl {
-      display: none;
     }
   }
 </style>

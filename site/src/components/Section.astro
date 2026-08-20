@@ -63,10 +63,81 @@ const cls = ['section', ground, centre && 'centre', full && 'full', extra]
     background: var(--bg-deep);
   }
 
-  /* Comparison switch, temporary: see public/tone.js. One tone throughout, and
-     either nothing at the seams or a hairline. */
+  /* ----------------------------------------------------------------------
+     Comparison switch, temporary: see components/ToneSwitch.astro.
+
+     Every variant below is one tone. What differs is what replaces the band.
+     ---------------------------------------------------------------------- */
   :global(:root[data-tone]) .deep {
     background: var(--bg);
+  }
+
+  /* rule: a hairline the full width of the page. */
+  :global(:root[data-tone='rule']) .section + .section {
+    border-top: var(--hairline);
+  }
+
+  /* objects: the recess becomes a property of the thing that needed framing
+     rather than of the page it sits on, and the rhythm carries the seam. A
+     section with a label is starting a subject and gets the full measure of
+     air; one without is continuing, and gets less. */
+  :global(:root[data-tone='objects']) .section:not(:has(.label)) {
+    padding-block: var(--s-16);
+  }
+
+  :global(:root[data-tone='objects'] .chooser),
+  :global(:root[data-tone='objects'] .seq) {
+    background: var(--bg-deep);
+    border: var(--hairline);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+  }
+
+  /* The page hero draws its own hairline seam. Under any variant that goes, or
+     "one tone, nothing" still has a line in it and the comparison is muddied. */
+  :global(:root[data-tone] .hero) {
+    border-bottom: 0;
+  }
+
+  /* tick: the site's own accent, at the size the nav and the callouts use it.
+     Hero's kicker is a .label too, so it gets one; DownloadCard's <dt> is also a
+     .label and must not, which is why this is not simply .label everywhere. */
+  :global(:root[data-tone='tick'] .hero .label::before),
+  :global(:root[data-tone='tick']) .label::before {
+    content: '';
+    display: block;
+    width: 22px;
+    height: var(--accent-bar);
+    margin-bottom: var(--s-3);
+    border-radius: var(--pill);
+    background: var(--green);
+  }
+
+  /* measure: a rule inside a document, not a division between slabs. */
+  :global(:root[data-tone='measure']) .section + .section > .inner::before {
+    content: '';
+    display: block;
+    max-width: var(--measure);
+    height: 1px;
+    margin-bottom: var(--s-12);
+    background: var(--border);
+  }
+
+  /* numbers: reset on the root rather than on body, because an inline style
+     attribute is exactly what our own CSP forbids. Only sections that announce
+     a subject take a number, or the count jumps over the hero and the closing
+     block. */
+  :global(:root[data-tone='numbers']) {
+    counter-reset: sec;
+  }
+
+  :global(:root[data-tone='numbers']) .section:has(.label) {
+    counter-increment: sec;
+  }
+
+  :global(:root[data-tone='numbers']) .label::before {
+    content: counter(sec, decimal-leading-zero) ' \2014\a0';
+    color: var(--green-ink);
   }
 
   :global(:root[data-tone='rule']) .section + .section {
