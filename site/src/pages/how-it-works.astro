@@ -28,10 +28,6 @@ const hops = [
     name: 'The helper app',
     body: 'Separate because a browser cannot load a PKCS#11 driver. It speaks JSON over stdin and stdout, which is all native messaging is.',
   },
-  {
-    name: 'The token',
-    body: 'Holds the private key and will not hand it over. It will sign 32 bytes if you know the PIN. That refusal is the reason for the whole two-step.',
-  },
 ];
 ---
 
@@ -52,7 +48,7 @@ const hops = [
   <Section
     label="The hop chain"
     title="Why a helper app has to exist"
-    lede="No browser will let a page open a USB device."
+    lede="No browser will let a page open a USB device, so the trip from your app to the token takes three hops."
   >
     <ol class="hops">
       {
@@ -67,6 +63,11 @@ const hops = [
         ))
       }
     </ol>
+
+    <p class="tail">
+      At the end of it the token signs 32 bytes and hands them back. It will not
+      give up the key, which is why the signing happens in two halves.
+    </p>
 
     <p class="aside">
       This is the part every competing product buries, and it is the part that
@@ -167,6 +168,13 @@ const hops = [
   .decisions p {
     font-size: var(--text-sm);
     color: var(--dim);
+  }
+
+  .tail {
+    margin-top: var(--s-6);
+    font-size: var(--text-sm);
+    color: var(--dim);
+    max-width: var(--measure);
   }
 
   .aside {
