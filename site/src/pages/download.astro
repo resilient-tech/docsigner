@@ -3,6 +3,7 @@ import Layout from '../components/Layout.astro';
 import Hero from '../components/Hero.astro';
 import Section from '../components/Section.astro';
 import DownloadCard from '../components/DownloadCard.astro';
+import PlatformSwitch from '../components/PlatformSwitch.astro';
 import Callout from '../components/Callout.astro';
 import Button from '../components/Button.astro';
 import { Icon } from 'astro-icon/components';
@@ -115,22 +116,7 @@ const products = [
         )
       }
 
-      <!-- Hidden until the script sets html[data-platform]: with no JavaScript
-           there is nothing to switch, and every download renders anyway. It
-           sits here, above the first grid it changes, rather than up by the
-           chooser where it looked like a filter for the products. -->
-      <div class="platform">
-        <span class="pl-label">Downloads for</span>
-        <div class="seg" role="group" aria-label="Your platform">
-          {
-            platforms.map((p) => (
-              <button type="button" data-platform-pick={p.os} aria-pressed="false">
-                {p.title}
-              </button>
-            ))
-          }
-        </div>
-      </div>
+      <PlatformSwitch platforms={platforms} />
 
       <div class="grid">
         <div class="only" data-browser="chromium">
@@ -212,6 +198,8 @@ const products = [
     lede="One app and nothing else. It carries its own helper, so there is no second install and no browser involved."
   >
     <div class="stack">
+      <PlatformSwitch platforms={platforms} />
+
       <div class="grid">
         {platforms.map((p) => (
           <div class="only" data-os={p.os}>
@@ -358,54 +346,6 @@ const products = [
   :global(html:not([data-browser='chromium']):not([data-browser='firefox']))
     .show-all[data-show-all='browser'] {
     display: none;
-  }
-
-  /* ---- the platform switch ---- */
-  .platform {
-    display: none;
-    align-items: center;
-    gap: var(--s-3);
-  }
-
-  :global(html[data-platform]) .platform {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .pl-label {
-    font-size: var(--text-sm);
-    color: var(--dim);
-  }
-
-  .seg {
-    display: flex;
-    gap: 2px;
-    padding: 3px;
-    background: var(--surface);
-    border: var(--hairline);
-    border-radius: var(--pill);
-  }
-
-  .seg button {
-    font: inherit;
-    font-size: var(--text-sm);
-    color: var(--dim);
-    background: none;
-    border: 0;
-    border-radius: var(--pill);
-    padding: var(--s-1) var(--s-4);
-    cursor: pointer;
-    transition: color var(--dur-fast) var(--ease);
-  }
-
-  .seg button:hover {
-    color: var(--text);
-  }
-
-  .seg button[aria-pressed='true'] {
-    background: var(--green-soft);
-    color: var(--green-ink);
-    font-weight: var(--fw-semibold);
   }
 
   /* A text button, because it reveals rather than navigates. */
