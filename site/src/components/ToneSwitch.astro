@@ -14,6 +14,7 @@ const options = [
   { tone: 'tick', label: 'Accent tick on label' },
   { tone: 'measure', label: 'Rule at the measure' },
   { tone: 'numbers', label: 'Numbered labels' },
+  { tone: 'gutter', label: 'Label in the gutter' },
   { tone: 'rule', label: 'Rule, full width' },
 ];
 ---
@@ -29,15 +30,22 @@ const options = [
   const pick = document.querySelector<HTMLSelectElement>('[data-tone-pick]');
   const root = document.documentElement;
 
+  /* Reading and writing are separate on purpose. The first version persisted on
+     init too, so any load where tone.js had not applied the stored choice --
+     a stale cache, a hand-typed value -- overwrote that choice with nothing. */
+  const sync = (tone: string) => {
+    if (pick) pick.value = tone;
+  };
+
   const apply = (tone: string) => {
     if (tone) root.dataset.tone = tone;
     else delete root.dataset.tone;
     localStorage.setItem('tone', tone);
-    if (pick) pick.value = tone;
+    sync(tone);
   };
 
   pick?.addEventListener('change', () => apply(pick.value));
-  apply(root.dataset.tone ?? '');
+  sync(root.dataset.tone ?? '');
 </script>
 
 <style>

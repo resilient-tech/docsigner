@@ -100,7 +100,7 @@ import { links } from '../config';
     </div>
   </Section>
 
-  <Section centre>
+  <Section>
     <div class="end">
       <h2>Read it before you run it</h2>
       <p class="lede">
@@ -202,10 +202,12 @@ import { links } from '../config';
     max-width: 60ch;
   }
 
+  /* Left, like every heading above it. A centred closer under a page of
+     left-aligned text reads as a different page's furniture. */
   .end {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--s-4);
   }
 

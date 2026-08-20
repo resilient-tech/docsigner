@@ -117,7 +117,7 @@ const hops = [
     </div>
   </Section>
 
-  <Section centre>
+  <Section>
     <div class="end">
       <h2>This is one of three ways</h2>
       <p class="lede">
@@ -203,10 +203,12 @@ const hops = [
     margin-top: var(--s-8);
   }
 
+  /* Left, like every heading above it. A centred closer under a page of
+     left-aligned text reads as a different page's furniture. */
   .end {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--s-4);
   }
 </style>

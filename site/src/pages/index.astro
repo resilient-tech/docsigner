@@ -59,7 +59,7 @@ import Surfaces from '../components/Surfaces.astro';
     </div>
   </Section>
 
-  <Section centre>
+  <Section>
     <div class="end">
       <h2>Sign something</h2>
       <p class="lede">No account, no licence key, nothing leaves your machine.</p>
@@ -117,10 +117,12 @@ import Surfaces from '../components/Surfaces.astro';
   }
 
   /* ---- close ---- */
+  /* Left, like every heading above it. A centred closer under a page of
+     left-aligned text reads as a different page's furniture. */
   .end {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--s-4);
   }
 

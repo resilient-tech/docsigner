@@ -72,6 +72,59 @@ const cls = ['section', ground, centre && 'centre', full && 'full', extra]
     background: var(--bg);
   }
 
+  /* gutter: the label moves out into a left column and everything else lines up
+     against a single edge. The page is 1120 wide and prose caps at 68ch, so
+     without this there is 441px of nothing to the right of every heading; this
+     spends some of it on structure instead. Answers the seam and the emptiness
+     with one move. */
+  :global(:root[data-tone='gutter']) .head {
+    display: grid;
+    grid-template-columns: 150px minmax(0, var(--measure));
+    column-gap: var(--s-8);
+    row-gap: var(--s-3);
+    max-width: none;
+  }
+
+  :global(:root[data-tone='gutter']) .label {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    text-align: right;
+    padding-top: 0.45em;
+  }
+
+  :global(:root[data-tone='gutter']) .head > :not(.label) {
+    grid-column: 2;
+  }
+
+  /* Fully global: the section's body comes in through a slot, so it carries the
+     calling page's scope attribute and a scoped selector never matches it.
+     Qualified by .section because .inner is not ours alone -- SiteNav and
+     SiteFooter use the same class, and without this the nav got indented too. */
+  :global(:root[data-tone='gutter'] .section > .inner > :not(.head)) {
+    margin-left: calc(150px + var(--s-8));
+  }
+
+  /* The page title block is Hero, not a Section, so it needs the same treatment
+     or the page ends up with two left edges -- which is the problem this variant
+     exists to solve. */
+  :global(:root[data-tone='gutter'] .hero > .inner) {
+    display: grid;
+    grid-template-columns: 150px minmax(0, var(--measure));
+    column-gap: var(--s-8);
+    row-gap: var(--s-4);
+  }
+
+  :global(:root[data-tone='gutter'] .hero .label) {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    text-align: right;
+    padding-top: 0.45em;
+  }
+
+  :global(:root[data-tone='gutter'] .hero > .inner > :not(.label)) {
+    grid-column: 2;
+  }
+
   /* rule: a hairline the full width of the page. */
   :global(:root[data-tone='rule']) .section + .section {
     border-top: var(--hairline);
