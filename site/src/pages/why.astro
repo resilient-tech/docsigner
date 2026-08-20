@@ -26,29 +26,26 @@ import { links } from '../config';
 
   <Section ground="deep">
     <div class="prose">
+      <p>We are accountants who learned to write software.</p>
       <p>
-        We are commerce graduates. Accountants, mostly, who liked software more
-        than we expected to and taught ourselves to build it. These days that
-        means Frappe and ERPNext, and compliance work for people who file the
-        same returns we used to file.
+        The work is compliance: returns, invoices, filings, the same things we
+        used to do by hand. We build it on Frappe and ERPNext, for people who
+        file what we used to file. All of it ends in a signature, and in India
+        that signature lives on a USB token.
       </p>
       <p>
-        Which is how we kept arriving at the same wall. Almost everything we
-        built ended at a document nobody would accept until it had been signed,
-        and in India that means a DSC on a USB token. Everyone doing this work
-        has one in a drawer. None of us had a decent way to use it.
-      </p>
-      <p>
-        So we went looking properly. Every tool that handled tokens was
-        commercial, or Windows-only, or both. The open-source ones signed
-        happily with a key in a file, which is not where a DSC lives. That left
-        paying, rebooting into Windows, or printing the page and signing it by
-        hand.
+        We had the tokens. Nothing we could buy or download would use them the
+        way we needed.
       </p>
       <p class="pull">We wondered how hard it could really be.</p>
       <p>
         Harder than it looks. Though almost none of the hard part turned out to
         be cryptography.
+      </p>
+      <p>
+        The first thing in the way was the browser. It cannot talk to a USB
+        token at all, so signing on the web needs a small program running on the
+        machine, and that decided the shape of everything after it.
       </p>
     </div>
   </Section>
@@ -56,9 +53,9 @@ import { links } from '../config';
   <Section label="The first week" title="What a real token taught us">
     <div class="prose">
       <p>
-        It worked against test keys long before it worked against hardware. Then
-        we plugged in a real Capricorn token, and the list of things we had wrong
-        got long quickly.
+        It worked against test keys long before it worked against hardware.
+        Then we plugged in a real Capricorn token and found out what we had
+        wrong.
       </p>
     </div>
 
@@ -85,11 +82,6 @@ import { links } from '../config';
           So it re-initialises on every scan, gives each driver twenty seconds,
           and names the program you need to close.
         </p>
-      </li>
-      <li>
-        <h3>Ten handwriting fonts was nine too many</h3>
-        <p>Nobody wants to audition ten fonts to sign an invoice.</p>
-        <p class="fix">Five now, one per personality.</p>
       </li>
     </ol>
 
