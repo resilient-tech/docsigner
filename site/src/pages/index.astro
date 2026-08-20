@@ -4,6 +4,7 @@ import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
 import HeroSheet from '../components/HeroSheet.astro';
 import Surfaces from '../components/Surfaces.astro';
+import { Icon } from 'astro-icon/components';
 
 /*
  * Four blocks: what it is, what it looks like, why it exists, go.
@@ -49,31 +50,21 @@ import Surfaces from '../components/Surfaces.astro';
   <Section label="Why it exists" title="No tool would do it">
     <div class="why-grid">
       <div class="why">
-        <p>
-          A DSC token on Linux left three options: pay for a Windows-only tool,
-          reboot into Windows, or print the page and sign it by hand. We wanted a
-          fourth.
-        </p>
+        <p>A DSC token on Linux left three options. We wanted a fourth.</p>
         <Button href="/why" variant="default" size="md" trailing="lucide:arrow-right">
           The longer story
         </Button>
       </div>
 
-      <!-- One tile per option the paragraph rules out, in the same order. -->
-      <dl class="costs">
-        <div>
-          <dt>&#8377;0</dt>
-          <dd>No licence, no subscription, nothing per signature.</dd>
-        </div>
-        <div>
-          <dt>0 reboots</dt>
-          <dd>macOS, Windows and Linux run the same signing engine.</dd>
-        </div>
-        <div>
-          <dt>0 pages</dt>
-          <dd>Nothing gets printed to be signed and scanned back in.</dd>
-        </div>
-      </dl>
+      <!-- The three the paragraph counts, and the fourth. Said once: the prose
+           used to list them too, which meant reading the same three phrases
+           twice for one new word. -->
+      <ul class="options">
+        <li><Icon name="lucide:x" aria-hidden="true" /><s>Pay for a Windows-only tool</s></li>
+        <li><Icon name="lucide:x" aria-hidden="true" /><s>Reboot into Windows</s></li>
+        <li><Icon name="lucide:x" aria-hidden="true" /><s>Print it and sign by hand</s></li>
+        <li class="live"><Icon name="lucide:check" aria-hidden="true" />Run this</li>
+      </ul>
     </div>
   </Section>
 
@@ -129,39 +120,47 @@ import Surfaces from '../components/Surfaces.astro';
      they sit in the space the prose was leaving empty. */
   .why-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
     gap: var(--s-16);
     align-items: start;
   }
 
-  .costs {
+  .options {
+    list-style: none;
+    padding: var(--s-5) var(--s-6);
     display: flex;
     flex-direction: column;
+    gap: var(--s-4);
     background: var(--surface);
     border: var(--hairline);
     border-radius: var(--radius-lg);
   }
 
-  .costs > div {
-    padding: var(--s-5) var(--s-6);
+  .options li {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    color: var(--faint);
   }
 
-  .costs > div + div {
-    border-top: var(--hairline);
+  .options :global(svg) {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex: none;
   }
 
-  .costs dt {
-    font-size: var(--display-2);
+  .options s {
+    text-decoration-thickness: 1px;
+  }
+
+  /* The fourth, and the only one that is not crossed out. */
+  .options .live {
+    color: var(--text);
     font-weight: var(--fw-semibold);
-    letter-spacing: -0.01em;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.1;
   }
 
-  .costs dd {
-    margin-top: var(--s-2);
-    font-size: var(--text-sm);
-    color: var(--dim);
+  .options .live :global(svg) {
+    color: var(--green-ink);
   }
 
   .why {
